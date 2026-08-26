@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Miracolo Lab</title>
+<style>
+:root{--bg:#0b0d10;--card:#14181d;--card2:#101419;--text:#f4f6f8;--muted:#9aa3ad;--line:#28303a;--accent:#7aa7ff;--good:#6ed39a;--warn:#f2c66d;--bad:#f27d7d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.app{max-width:1100px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.title{font-size:24px;font-weight:800}.sub{color:var(--muted);font-size:13px}
+nav{display:flex;gap:7px;overflow:auto;margin-bottom:14px}button,select,input{font:inherit}button{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:10px 13px;cursor:pointer}button:hover{border-color:var(--accent)}button.primary{background:#1c3158;border-color:var(--accent)}button.good{background:#173b2b;border-color:var(--good)}button.danger{background:#422124;border-color:var(--bad)}
+.page{display:none}.page.active{display:block}.grid{display:grid;gap:12px}.g4{grid-template-columns:repeat(4,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:repeat(2,1fr)}@media(max-width:760px){.g4,.g3,.g2{grid-template-columns:1fr 1fr}}@media(max-width:500px){.g4,.g3,.g2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px}.kpi small{color:var(--muted);display:block}.kpi strong{font-size:22px;display:block;margin-top:4px}.pill{display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:99px;color:var(--muted);font-size:12px}.ok{color:var(--good)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+h2{font-size:18px;margin:0 0 5px}.muted{color:var(--muted);font-size:13px}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.stack>*+*{margin-top:10px}
+label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}input,select{width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--text)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);font-size:13px}th{color:var(--muted)}
+canvas{width:100%;height:260px;background:var(--card2);border-radius:10px}
+.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:15px}.modal.show{display:flex}.modalbox{width:min(560px,100%);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+.alert{padding:12px;border-radius:11px;background:var(--card2);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div><div class="title">Miracolo Lab</div><div class="sub">Laboratorio personale · V1 · nessun collegamento esterno</div></div>
+    <span class="pill">🧪 PAPER</span>
+  </div>
+  <nav>
+    <button class="tab active" data-page="home">🏠 Home</button>
+    <button class="tab" data-page="trading">🧠 Trading</button>
+    <button class="tab" data-page="long">🏦 Long Term</button>
+    <button class="tab" data-page="crypto">₿ Crypto</button>
+    <button class="tab" data-page="black">🚨 Black Swan</button>
+    <button class="tab" data-page="news">📡 Radar</button><button class="tab" data-page="sim">🧪 Simulazioni</button><button class="tab" data-page="settings">⚙️ Impostazioni</button>
+  </nav>
+
+  <section id="home" class="page active stack">
+    <div class="grid g4">
+      <div class="card kpi"><small>Patrimonio monitorato</small><strong id="total">€0</strong></div>
+      <div class="card kpi"><small>Long Term</small><strong id="longTotal">€0</strong></div>
+      <div class="card kpi"><small>Crypto</small><strong id="cryptoTotal">€0</strong></div>
+      <div class="card kpi"><small>Trading</small><strong>€2.000</strong></div>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <h2>🎛️ Stato</h2><div class="muted">Tu decidi. Il sistema osserva, aggiorna e spiega.</div>
+        <div class="alert" style="margin-top:12px"><b>🚨 Black Swan</b><br><span class="muted">Nessun evento configurato. Il monitor diventerà attivo quando collegheremo fonti dati.</span></div>
+      </div>
+      <div class="card">
+        <h2>⚡ Azioni rapide</h2>
+        <div class="grid g2" style="margin-top:12px">
+          <button class="primary" onclick="openAsset('long')">➕ Aggiungi ETF/Oro</button>
+          <button class="primary" onclick="openAsset('crypto')">➕ Aggiungi Crypto</button>
+          <button onclick="go('trading')">🧪 Simula trading</button>
+          <button onclick="go('settings')">⚙️ Configura</button>
+        </div>
+      </div>
+    </div>
+    <div class="card"><h2>📈 Rendimenti</h2><div class="muted">Il grafico si alimenterà automaticamente quando inserirai gli investimenti e costruiremo lo storico dei valori.</div><canvas id="homeChart" width="900" height="260"></canvas></div>
+  </section>
+
+  <section id="trading" class="page stack">
+    <div class="grid g4">
+      <div class="card kpi"><small>Capitale paper</small><strong>€2.000</strong></div>
+      <div class="card kpi"><small>Focus</small><strong>70 / 30</strong></div>
+      <div class="card kpi"><small>Orizzonte</small><strong>1–3 gg</strong></div>
+      <div class="card kpi"><small>Stato</small><strong class="ok">NO TRADE</strong></div>
+    </div>
+    <div class="card">
+      <h2>🎯 Miracolo Lab</h2><div class="muted">Motore iniziale: simulazione. Nessun ordine reale.</div>
+      <div class="grid g3" style="margin-top:12px">
+        <div><label>Preset</label><select id="preset"><option>Bilanciato</option><option>Conservativo</option><option>Aggressivo</option><option>Personalizzato</option></select></div>
+        <div><label>Focus</label><select id="focus"><option>70% Stock / 30% Crypto</option><option>80% Stock / 20% Crypto</option><option>60% Stock / 40% Crypto</option><option>50% Stock / 50% Crypto</option></select></div>
+        <div><label>Intensità</label><select><option>Relax</option><option selected>Bilanciato</option><option>Attivo</option><option>Esploratore</option></select></div>
+      </div>
+      <button class="primary" style="margin-top:12px" onclick="alert('Il motore reale verrà collegato ai dati storici nella prossima versione. Per ora nessun dato esterno viene usato.')">▶ Avvia simulazione</button>
+    </div>
+    <div class="card"><h2>🔔 Regola alert</h2><div class="muted">Solo segnali forti. Ogni proposta dovrà spiegare: cosa è successo → perché entrare → rischio → cosa invalida la tesi → perché potremmo NON fare il trade.</div></div>
+  </section>
+
+  <section id="long" class="page stack">
+    <div class="row"><div><h2>🏦 Long Term</h2><div class="muted">World · Emerging Markets · Oro · monitoraggio, non trading.</div></div><button class="primary" onclick="openAsset('long')">➕ Aggiungi</button></div>
+    <div class="grid g4"><div class="card kpi"><small>Valore</small><strong id="longVal">€0</strong></div><div class="card kpi"><small>Investito</small><strong id="longInv">€0</strong></div><div class="card kpi"><small>P&L</small><strong id="longPnl">€0</strong></div><div class="card kpi"><small>Rendimento</small><strong id="longPct">0%</strong></div></div>
+    <div class="card"><canvas id="longChart" width="900" height="260"></canvas></div>
+    <div class="card"><table><thead><tr><th>Strumento</th><th>Quantità</th><th>Investito</th><th>Valore</th><th>P&L</th></tr></thead><tbody id="longTable"></tbody></table></div>
+  </section>
+
+  <section id="crypto" class="page stack">
+    <div class="row"><div><h2>₿ Crypto</h2><div class="muted">Monitoraggio del tuo portafoglio. Nessun alert operativo.</div></div><button class="primary" onclick="openAsset('crypto')">➕ Aggiungi</button></div>
+    <div class="grid g4"><div class="card kpi"><small>Valore</small><strong id="cryVal">€0</strong></div><div class="card kpi"><small>Investito</small><strong id="cryInv">€0</strong></div><div class="card kpi"><small>P&L</small><strong id="cryPnl">€0</strong></div><div class="card kpi"><small>Rendimento</small><strong id="cryPct">0%</strong></div></div>
+    <div class="card"><canvas id="cryptoChart" width="900" height="260"></canvas></div>
+    <div class="card"><table><thead><tr><th>Asset</th><th>Quantità</th><th>Investito</th><th>Valore</th><th>P&L</th></tr></thead><tbody id="cryptoTable"></tbody></table></div>
+  </section>
+
+  <section id="black" class="page stack">
+    <div class="card"><h2>🚨 Black Swan Monitor</h2><div class="muted">Niente alert per la normale volatilità crypto o per normali correzioni degli ETF.</div></div>
+    <div class="grid g3">
+      <div class="card"><b>🟢 Normale</b><div class="muted" style="margin-top:7px">Movimenti compatibili con la volatilità storica.</div></div>
+      <div class="card"><b class="warn">🟠 Stress</b><div class="muted" style="margin-top:7px">Più segnali di rischio convergono. Visibile in dashboard.</div></div>
+      <div class="card"><b class="bad">🔴 Evento sistemico</b><div class="muted" style="margin-top:7px">Solo qui invieremo un alert importante.</div></div>
+    </div>
+    <div class="card"><h2>Regola</h2><div class="muted">Un calo del 10–20% di una crypto non genera automaticamente un Black Swan. Cercheremo contesto, ampiezza, velocità, liquidità e conferme tra mercati.</div></div>
+  </section>
+
+
+  <section id="news" class="page stack">
+    <div class="row"><div><h2>📡 Miracolo Radar</h2><div class="muted">News e fonti online. V3: backend locale + SEC/EDGAR pubblico, senza account.</div></div><button class="primary" onclick="loadNews()">🔄 Aggiorna notizie</button></div>
+    <div class="grid g3">
+      <div class="card kpi"><small>Fonti</small><strong>SEC / EDGAR</strong></div>
+      <div class="card kpi"><small>Tipo</small><strong>RSS pubblico</strong></div>
+      <div class="card kpi"><small>Stato</small><strong id="newsStatus" class="ok">PRONTO</strong></div>
+    </div>
+    <div class="card"><h2>📰 Ultime segnalazioni</h2><div id="newsList" class="stack" style="margin-top:10px"><div class="muted">Premi “Aggiorna notizie”.</div></div></div>
+    <div class="card"><div class="muted">Il browser può bloccare alcune richieste RSS per CORS. In quel caso il prossimo step sarà un piccolo backend/proxy del progetto. Nessuna registrazione o API key viene usata in questa V3.</div></div>
+  </section>
+
+  <section id="sim" class="page stack">
+    <div class="row"><div><h2>🧪 Simulazioni</h2><div class="muted">Il sistema registra le idee e costruisce uno storico. Per ora usa segnali demo; il prossimo step sostituirà il generatore con dati di mercato reali.</div></div><button class="primary" onclick="runSim()">▶ Genera simulazione</button></div>
+    <div class="grid g4">
+      <div class="card kpi"><small>Simulazioni</small><strong id="simCount">0</strong></div>
+      <div class="card kpi"><small>Win rate</small><strong id="simWin">0%</strong></div>
+      <div class="card kpi"><small>P&L</small><strong id="simPnl">€0</strong></div>
+      <div class="card kpi"><small>Decisione</small><strong id="simDecision">NO TRADE</strong></div>
+    </div>
+    <div class="card"><h2>Storico</h2><table><thead><tr><th>Ora</th><th>Asset</th><th>Idea</th><th>Score</th><th>Risultato</th></tr></thead><tbody id="simTable"></tbody></table></div>
+  </section>
+
+  <section id="settings" class="page stack">
+    <div class="card"><h2>⚙️ Impostazioni semplici</h2>
+      <div class="grid g2" style="margin-top:12px">
+        <div><label>Stock / Crypto</label><select><option selected>70% / 30%</option><option>80% / 20%</option><option>60% / 40%</option><option>50% / 50%</option><option>Personalizzato</option></select></div>
+        <div><label>Alert trading</label><select><option selected>Solo segnali forti</option><option>Tutti</option><option>Nessuno</option></select></div>
+        <div><label>Long Term alert</label><select><option selected>Solo Black Swan</option><option>Black Swan + stress</option></select></div>
+        <div><label>Crypto alert</label><select><option selected>Solo Black Swan</option><option>Black Swan + stress</option></select></div>
+      </div>
+    </div>
+    <div class="card"><h2>🔐 Privacy e autorizzazioni</h2><div class="muted">V1: nessuna API, nessun account esterno, nessuna email, nessun accesso Fineco/Binance. Qualsiasi collegamento futuro richiederà prima la tua approvazione esplicita.</div></div>
+  </section>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modalbox">
+    <h2 id="modalTitle">Aggiungi investimento</h2>
+    <div class="muted">Inserisci solo ciò che conosci. I dati di mercato verranno automatizzati quando collegheremo le fonti.</div>
+    <div class="grid g2" style="margin-top:14px">
+      <div><label>Asset</label><input id="aName" placeholder="es. VWCE / BTC / Oro"></div>
+      <div><label>Categoria</label><select id="aCat"><option value="long">Long Term</option><option value="crypto">Crypto</option></select></div>
+      <div><label>Quantità</label><input id="aQty" type="number" step="any" min="0"></div>
+      <div><label>Prezzo medio di carico (€)</label><input id="aPrice" type="number" step="any" min="0"></div>
+    </div>
+    <div class="row" style="margin-top:15px"><button onclick="closeModal()">Annulla</button><button class="primary" onclick="saveAsset()">Salva</button></div>
+  </div>
+</div>
+
+<script>
+const KEY='marketScoutV1';
+let state=JSON.parse(localStorage.getItem(KEY)||'{"assets":[],"history":[]}');
+const eur=n=>new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR',maximumFractionDigits:2}).format(n||0);
+function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}
+function go(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(p).classList.add('active');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.page===p));render()}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>go(b.dataset.page));
+function openAsset(cat){document.getElementById('modal').classList.add('show');document.getElementById('aCat').value=cat;document.getElementById('aName').value='';document.getElementById('aQty').value='';document.getElementById('aPrice').value=''}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+function saveAsset(){let name=document.getElementById('aName').value.trim(),cat=document.getElementById('aCat').value,qty=+document.getElementById('aQty').value,price=+document.getElementById('aPrice').value;if(!name||qty<=0||price<0){alert('Inserisci asset, quantità e prezzo medio.');return}state.assets.push({id:Date.now(),name,cat,qty,price});closeModal();save()}
+function sums(cat){let a=state.assets.filter(x=>x.cat===cat),inv=a.reduce((s,x)=>s+x.qty*x.price,0);return {a,inv,val:inv,pnl:0}}
+function render(){
+ let L=sums('long'),C=sums('crypto'),T=L.val+C.val;
+ ['total','longTotal'].forEach(id=>document.getElementById(id).textContent=eur(id==='total'?T:L.val));
+ document.getElementById('cryptoTotal').textContent=eur(C.val);
+ document.getElementById('longVal').textContent=eur(L.val);document.getElementById('longInv').textContent=eur(L.inv);document.getElementById('longPnl').textContent=eur(L.pnl);document.getElementById('longPct').textContent='0%';
+ document.getElementById('cryVal').textContent=eur(C.val);document.getElementById('cryInv').textContent=eur(C.inv);document.getElementById('cryPnl').textContent=eur(C.pnl);document.getElementById('cryPct').textContent='0%';
+ document.getElementById('longTable').innerHTML=L.a.map(x=>`<tr><td>${x.name}</td><td>${x.qty}</td><td>${eur(x.qty*x.price)}</td><td>${eur(x.qty*x.price)}</td><td>—</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nessun investimento inserito.</td></tr>';
+ document.getElementById('cryptoTable').innerHTML=C.a.map(x=>`<tr><td>${x.name}</td><td>${x.qty}</td><td>${eur(x.qty*x.price)}</td><td>${eur(x.qty*x.price)}</td><td>—</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nessuna crypto inserita.</td></tr>';
+ draw('homeChart',[T,T,T,T]);draw('longChart',[L.val,L.val,L.val,L.val]);draw('cryptoChart',[C.val,C.val,C.val,C.val])
+}
+function draw(id,vals){let c=document.getElementById(id),ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);ctx.strokeStyle='#28303a';for(let y=30;y<h-25;y+=45){ctx.beginPath();ctx.moveTo(35,y);ctx.lineTo(w-20,y);ctx.stroke()}ctx.strokeStyle='#7aa7ff';ctx.lineWidth=3;let max=Math.max(...vals,1),min=Math.min(...vals,0),range=Math.max(max-min,1);ctx.beginPath();vals.forEach((v,i)=>{let x=40+i*(w-80)/(vals.length-1),y=h-35-(v-min)/range*(h-70);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();ctx.fillStyle='#9aa3ad';ctx.font='13px system-ui';ctx.fillText('Lo storico reale verrà costruito automaticamente',45,22)}
+
+async function loadNews(){
+  const st=document.getElementById('newsStatus'), list=document.getElementById('newsList');
+  st.textContent='SCANSIONE...'; st.className='warn';
+  list.innerHTML='<div class="muted">Cerco aggiornamenti SEC/EDGAR…</div>';
+  try{
+    const r=await fetch('/api/sec/tickers');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const payload=await r.json();
+    if(payload.error) throw new Error(payload.error);
+    const rows=payload.items.slice(0,8);
+    list.innerHTML=rows.map(x=>`<div class="alert"><b>${x.ticker||''} · ${x.title||'Società'}</b><div class="muted">Fonte: SEC EDGAR · identificativo CIK ${x.cik_str||''}</div></div>`).join('');
+    st.textContent='COLLEGATO'; st.className='ok';
+  }catch(e){
+    st.textContent='RICHIEDE BACKEND'; st.className='warn';
+    list.innerHTML='<div class="alert"><b>⚠️ Il browser ha bloccato la lettura diretta.</b><div class="muted">Nessun dato è stato inventato. Nella prossima versione useremo il backend di Miracolo Lab per leggere RSS/API senza chiederti di fare nulla.</div></div>';
+  }
+}
+function runSim(){
+  const assets=['NVDA','BTC','MSFT','ETH','QQQ','AMD','SPY','SOL'];
+  const a=assets[Math.floor(Math.random()*assets.length)];
+  const score=Math.floor(78+Math.random()*19);
+  const win=Math.random()<.55;
+  const result=win?(1+Math.random()*4):-(.7+Math.random()*2.2);
+  const rec={time:new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}),asset:a,score,result};
+  state.history=state.history||[]; state.history.unshift(rec); if(state.history.length>100)state.history.pop();
+  save();
+  document.getElementById('simCount').textContent=state.history.length;
+  const wins=state.history.filter(x=>x.result>0).length;
+  document.getElementById('simWin').textContent=(wins/state.history.length*100).toFixed(0)+'%';
+  document.getElementById('simPnl').textContent=state.history.reduce((s,x)=>s+x.result,0).toFixed(2)+'%';
+  document.getElementById('simDecision').textContent=score>=80?'PROPOSTA':'NO TRADE';
+  renderSimTable();
+}
+function renderSimTable(){
+ const tb=document.getElementById('simTable'); if(!tb)return;
+ tb.innerHTML=(state.history||[]).map(x=>`<tr><td>${x.time}</td><td>${x.asset}</td><td>${x.result>0?'BUY / LONG':'NO TRADE / STOP'}</td><td>${x.score}/100</td><td class="${x.result>0?'ok':'bad'}">${x.result>0?'+':''}${x.result.toFixed(2)}%</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nessuna simulazione ancora.</td></tr>';
+}
+renderSimTable();
+render();
+</script>
+</body>
+</html>
