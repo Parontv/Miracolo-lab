@@ -4,68 +4,88 @@ const HTML = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Miracolo Lab — News Radar</title>
+
 <style>
 :root{
-  font-family:system-ui,-apple-system,Segoe UI,sans-serif;
-  background:#0b0f14;
-  color:#f5f7fa
+font-family:system-ui,-apple-system,Segoe UI,sans-serif;
+background:#0b0f14;
+color:#f5f7fa
 }
+
 *{box-sizing:border-box}
-body{margin:0;background:#0b0f14}
-.wrap{max-width:1050px;margin:auto;padding:18px}
-.top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:12px;
-  flex-wrap:wrap
+
+body{
+margin:0;
+background:#0b0f14
 }
-h1{font-size:27px;margin:4px 0}
-.sub,.small{color:#98a2ad;font-size:13px}
+
+.wrap{
+max-width:1050px;
+margin:auto;
+padding:18px
+}
+
+.top{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:12px;
+flex-wrap:wrap
+}
+
+h1{
+font-size:27px;
+margin:4px 0
+}
+
+.sub,.small{
+color:#98a2ad;
+font-size:13px
+}
 
 button{
-  border:1px solid #334155;
-  border-radius:12px;
-  padding:12px 16px;
-  font-weight:800;
-  background:#17202b;
-  color:#fff;
-  cursor:pointer
+border:1px solid #334155;
+border-radius:12px;
+padding:12px 16px;
+font-weight:800;
+background:#17202b;
+color:#fff;
+cursor:pointer
 }
 
 button.primary{
-  background:#2563eb;
-  border-color:#3b82f6;
+background:#2563eb;
+border-color:#3b82f6
 }
 
 button:disabled{
-  opacity:.6;
-  cursor:wait
+opacity:.6;
+cursor:wait
 }
 
 .grid{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:12px;
-  margin:16px 0
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:12px;
+margin:16px 0
 }
 
 .card{
-  background:#121923;
-  border:1px solid #263241;
-  border-radius:16px;
-  padding:16px
+background:#121923;
+border:1px solid #263241;
+border-radius:16px;
+padding:16px
 }
 
 .k{
-  font-size:12px;
-  color:#98a2ad
+font-size:12px;
+color:#98a2ad
 }
 
 .v{
-  font-size:24px;
-  font-weight:850;
-  margin-top:4px
+font-size:24px;
+font-weight:850;
+margin-top:4px
 }
 
 .ok{color:#71e3a5}
@@ -73,65 +93,72 @@ button:disabled{
 .bad{color:#ff8585}
 
 .tabs{
-  display:flex;
-  gap:8px;
-  overflow:auto;
-  margin:14px 0
+display:flex;
+gap:8px;
+overflow:auto;
+margin:14px 0
 }
 
 .tabs button{
-  white-space:nowrap;
-  padding:9px 12px
+white-space:nowrap;
+padding:9px 12px
 }
 
 .item{
-  padding:14px 0;
-  border-top:1px solid #263241
+padding:14px 0;
+border-top:1px solid #263241
 }
 
 .item:first-child{
-  border-top:0
+border-top:0
 }
 
 .item a{
-  color:#93c5fd;
-  text-decoration:none;
-  font-weight:800
+color:#93c5fd;
+text-decoration:none;
+font-weight:800
 }
 
 .badge{
-  display:inline-block;
-  padding:4px 8px;
-  border-radius:99px;
-  background:#253041;
-  color:#cbd5e1;
-  font-size:11px;
-  margin-right:6px
+display:inline-block;
+padding:4px 8px;
+border-radius:99px;
+background:#253041;
+color:#cbd5e1;
+font-size:11px;
+margin-right:6px
 }
 
 .score{
-  float:right;
-  font-weight:900
+float:right;
+font-weight:900
 }
 
 .meta{
-  margin-top:6px
+margin-top:6px
 }
 
 .notice{
-  padding:12px;
-  border-radius:12px;
-  background:#0e151e;
-  border:1px solid #263241
+padding:12px;
+border-radius:12px;
+background:#0e151e;
+border:1px solid #263241
 }
 
 @media(max-width:760px){
-  .grid{grid-template-columns:1fr 1fr}
+.grid{
+grid-template-columns:1fr 1fr
+}
 }
 
 @media(max-width:500px){
-  .grid{grid-template-columns:1fr}
-  .wrap{padding:12px}
+.grid{
+grid-template-columns:1fr
+}
+
+.wrap{
+padding:12px
+}
 }
 </style>
 </head>
@@ -143,44 +170,99 @@ button:disabled{
 <div class="top">
 
 <div>
+
 <h1>🪄 Miracolo Lab</h1>
+
 <div class="sub">
 Radar investibile · News + Social · nessun ordine reale
 </div>
+
 </div>
 
 <button
 id="scanBtn"
 class="primary"
 onclick="scanNews()">
+
 🔎 SCANSIONA NEWS
+
 </button>
 
 </div>
 
+
 <div class="grid">
 
 <div class="card">
-<div class="k">STATO</div>
-<div id="status" class="v ok">PRONTO</div>
+
+<div class="k">
+STATO
 </div>
+
+<div
+id="status"
+class="v ok">
+
+PRONTO
+
+</div>
+
+</div>
+
 
 <div class="card">
-<div class="k">NEWS</div>
-<div id="newsCount" class="v">—</div>
+
+<div class="k">
+NEWS
 </div>
+
+<div
+id="newsCount"
+class="v">
+
+—
+
+</div>
+
+</div>
+
 
 <div class="card">
-<div class="k">SOCIAL</div>
-<div id="socialCount" class="v">—</div>
+
+<div class="k">
+SOCIAL
 </div>
+
+<div
+id="socialCount"
+class="v">
+
+—
+
+</div>
+
+</div>
+
 
 <div class="card">
-<div class="k">ULTIMO SCAN</div>
-<div id="updated" class="v" style="font-size:18px">—</div>
+
+<div class="k">
+ULTIMO SCAN
+</div>
+
+<div
+id="updated"
+class="v"
+style="font-size:18px">
+
+—
+
 </div>
 
 </div>
+
+</div>
+
 
 <div class="tabs">
 
@@ -202,65 +284,113 @@ Tutti
 
 </div>
 
+
 <div class="card">
 
 <div class="top">
 
 <div>
+
 <h2 style="margin:0">
 📡 Segnali rilevati
 </h2>
 
-<div id="sourceLine" class="small">
+<div
+id="sourceLine"
+class="small">
+
 Premi il pulsante per avviare una scansione reale.
-</div>
 
 </div>
 
 </div>
 
-<div id="list" style="margin-top:8px">
+</div>
+
+
+<div
+id="list"
+style="margin-top:8px">
 
 <div class="notice">
+
 Il radar è pronto.
-Premi <b>SCANSIONA NEWS</b> per raccogliere
-news e social.
-</div>
+
+Premi <b>SCANSIONA NEWS</b>
+per raccogliere news e social.
 
 </div>
 
 </div>
 
 </div>
+
+</div>
+
 
 <script>
 
 let DATA=[];
 let CURRENT='all';
 
+
 function esc(s){
-return String(s ?? '').replace(/[&<>"]/g,c=>({
+
+return String(s==null?'':s)
+.replace(/[&<>"]/g,function(c){
+
+return {
 '&':'&amp;',
 '<':'&lt;',
 '>':'&gt;',
 '"':'&quot;'
-}[c]));
+}[c];
+
+});
+
 }
+
 
 function render(){
 
 let rows=DATA.slice();
 
-if(CURRENT==='news')
-rows=rows.filter(x=>x.kind!=='social');
 
-if(CURRENT==='social')
-rows=rows.filter(x=>x.kind==='social');
+if(CURRENT==='news'){
 
-if(CURRENT==='strong')
-rows=rows.filter(x=>(Number(x.score)||0)>=5);
+rows=rows.filter(function(x){
+
+return x.kind!=='social';
+
+});
+
+}
+
+
+if(CURRENT==='social'){
+
+rows=rows.filter(function(x){
+
+return x.kind==='social';
+
+});
+
+}
+
+
+if(CURRENT==='strong'){
+
+rows=rows.filter(function(x){
+
+return (Number(x.score)||0)>=5;
+
+});
+
+}
+
 
 const list=document.getElementById('list');
+
 
 if(!rows.length){
 
@@ -270,184 +400,325 @@ list.innerHTML=
 '</div>';
 
 return;
+
 }
 
-list.innerHTML=rows.map(x=>{
+
+list.innerHTML=rows.map(function(x){
 
 const score=Number(x.score)||0;
 
 const cls=
-score>=5 ? 'ok' :
-score>=3 ? 'warn' :
-'';
+score>=5
+?'ok'
+:score>=3
+?'warn'
+:'';
 
-return `
-<div class="item">
 
-<span class="badge">
-${esc(x.source||'Fonte')}
-</span>
+return (
 
-${x.kind==='social'
-?'<span class="badge">SOCIAL</span>'
-:''}
+'<div class="item">'+
 
-<span class="score ${cls}">
-Score ${score}
-</span>
+'<span class="badge">'+
+esc(x.source||'Fonte')+
+'</span>'+
 
-<a
-href="${esc(x.link||'#')}"
-target="_blank"
-rel="noopener">
-${esc(x.title||'Senza titolo')}
-</a>
+(
+x.kind==='social'
+?
+'<span class="badge">SOCIAL</span>'
+:
+''
+)+
 
-<div class="small meta">
-${esc(x.description||'')}
-</div>
+'<span class="score '+cls+'">'+
+'Score '+score+
+'</span>'+
 
-<div class="small meta">
-${esc(x.published||x.date||'')}
-</div>
+'<a href="'+
+esc(x.link||'#')+
+'" target="_blank" rel="noopener">'+
+esc(x.title||'Senza titolo')+
+'</a>'+
 
-</div>
-`;
+'<div class="small meta">'+
+esc(x.description||'')+
+'</div>'+
+
+'<div class="small meta">'+
+esc(x.published||x.date||'')+
+'</div>'+
+
+'</div>'
+
+);
 
 }).join('');
+
 }
 
+
 function filterNews(x){
+
 CURRENT=x;
+
 render();
+
 }
+
 
 async function scanNews(){
 
-const btn=document.getElementById('scanBtn');
-const status=document.getElementById('status');
+const btn=
+document.getElementById('scanBtn');
+
+const status=
+document.getElementById('status');
+
 
 btn.disabled=true;
 
-status.textContent='SCANSIONE…';
+status.textContent='SCANSIONE...';
+
 status.className='v warn';
+
 
 document.getElementById('list').innerHTML=
 '<div class="notice">'+
-'🔄 Raccolta news e social in corso…'+
+'🔄 Raccolta news e social in corso...'+
 '</div>';
+
 
 try{
 
-let r=await fetch(
+
+let r=
+await fetch(
 '/api/full-scan',
-{cache:'no-store'}
+{
+cache:'no-store'
+}
 );
+
 
 if(!r.ok){
 
-r=await fetch(
+r=
+await fetch(
 '/api/news',
-{cache:'no-store'}
+{
+cache:'no-store'
+}
 );
 
 }
 
-if(!r.ok)
-throw new Error('HTTP '+r.status);
 
-const p=await r.json();
+if(!r.ok){
 
-if(Array.isArray(p.top_signals)){
+throw new Error(
+'HTTP '+r.status
+);
 
-DATA=p.top_signals.map(x=>({
+}
 
-...x,
 
+const p=
+await r.json();
+
+
+if(
+Array.isArray(
+p.top_signals
+)
+){
+
+
+DATA=
+p.top_signals.map(
+function(x){
+
+return Object.assign(
+{},
+x,
+{
 kind:
 x.source &&
-x.source.toLowerCase().includes('reddit')
-?'social'
-:'news'
+x.source
+.toLowerCase()
+.indexOf('reddit')>=0
+?
+'social'
+:
+'news'
+}
+);
 
-}));
+});
 
-document.getElementById('newsCount').textContent=
-p.summary?.news ??
-DATA.filter(x=>x.kind==='news').length;
 
-document.getElementById('socialCount').textContent=
-p.summary?.social ??
-DATA.filter(x=>x.kind==='social').length;
+document.getElementById(
+'newsCount'
+).textContent=
 
-document.getElementById('sourceLine').textContent=
-`${p.summary?.workingSources ?? '—'} fonti operative · `+
-`${p.summary?.failedSources ?? '0'} non disponibili`;
+p.summary &&
+p.summary.news!=null
+?
+p.summary.news
+:
+DATA.filter(
+function(x){
+return x.kind==='news';
+}
+).length;
+
+
+document.getElementById(
+'socialCount'
+).textContent=
+
+p.summary &&
+p.summary.social!=null
+?
+p.summary.social
+:
+DATA.filter(
+function(x){
+return x.kind==='social';
+}
+).length;
+
+
+document.getElementById(
+'sourceLine'
+).textContent=
+
+(
+p.summary &&
+p.summary.workingSources!=null
+?
+p.summary.workingSources
+:
+'—'
+)+
+' fonti operative · '+
+(
+p.summary &&
+p.summary.failedSources!=null
+?
+p.summary.failedSources
+:
+'0'
+)+
+' non disponibili';
+
 
 }else{
 
-DATA=(p.items||[]).map(x=>({
 
-...x,
+DATA=
+(p.items||[]).map(
+function(x){
 
+return Object.assign(
+{},
+x,
+{
 kind:
 (x.source||'')
 .toLowerCase()
-.includes('reddit')
-?'social'
-:'news'
+.indexOf('reddit')>=0
+?
+'social'
+:
+'news'
+}
+);
 
-}));
+});
 
-document.getElementById('newsCount').textContent=
-DATA.filter(x=>x.kind==='news').length;
 
-document.getElementById('socialCount').textContent=
-DATA.filter(x=>x.kind==='social').length;
+document.getElementById(
+'newsCount'
+).textContent=
 
-document.getElementById('sourceLine').textContent=
+DATA.filter(
+function(x){
+return x.kind==='news';
+}
+).length;
+
+
+document.getElementById(
+'socialCount'
+).textContent=
+
+DATA.filter(
+function(x){
+return x.kind==='social';
+}
+).length;
+
+
+document.getElementById(
+'sourceLine'
+).textContent=
 'Scansione completata dal backend';
 
 }
 
-document.getElementById('updated').textContent=
-new Date().toLocaleTimeString('it-IT');
+
+document.getElementById(
+'updated'
+).textContent=
+new Date()
+.toLocaleTimeString('it-IT');
+
 
 status.textContent='ONLINE';
+
 status.className='v ok';
 
 CURRENT='all';
 
 render();
 
+
 }catch(e){
+
 
 console.error(e);
 
+
 status.textContent='ERRORE';
+
 status.className='v bad';
 
-document.getElementById('list').innerHTML=
-`
-<div class="notice">
 
-<b>⚠️ Scansione non riuscita.</b>
+document.getElementById(
+'list'
+).innerHTML=
 
-<div class="small" style="margin-top:6px">
+'<div class="notice">'+
 
-Il frontend è pronto, ma il backend di scansione
-non ha risposto.
+'<b>⚠️ Scansione non riuscita.</b>'+
 
-Controlla il deploy del Worker.
+'<div class="small" style="margin-top:6px">'+
 
-</div>
+'Il frontend è pronto, ma il backend di scansione non ha risposto. '+
+'Controlla il deploy del Worker.'+
 
-</div>
-`;
+'</div>'+
+
+'</div>';
+
 
 }finally{
 
+
 btn.disabled=false;
+
 
 }
 
@@ -459,51 +730,76 @@ btn.disabled=false;
 </html>`;
 
 
-/* ================================
-   RSS PARSER
-================================ */
+/* =========================
+   RSS
+========================= */
 
 function xmlText(s,tag){
 
-const m=s.match(
+const m=
+s.match(
 new RegExp(
-'<'+tag+'[^>]*>([\\\\s\\\\S]*?)</'+tag+'>',
+'<'+tag+
+'[^>]*>([\\\\s\\\\S]*?)</'+
+tag+
+'>',
 'i'
 )
 );
 
 return m
-? m[1]
-.replace(/<!\\[CDATA\\[|\\]\\]>/g,'')
-.replace(/<[^>]+>/g,'')
+?
+m[1]
+.replace(
+/<!\\[CDATA\\[|\\]\\]>/g,
+''
+)
+.replace(
+/<[^>]+>/g,
+''
+)
 .trim()
-:'';
+:
+'';
 
 }
+
 
 function parseRSS(text,source){
 
 const chunks=
-text.match(/<item[\\s\\S]*?<\\/item>/gi)
+text.match(
+/<item[\\s\\S]*?<\\/item>/gi
+)
 ||
-text.match(/<entry[\\s\\S]*?<\\/entry>/gi)
+text.match(
+/<entry[\\s\\S]*?<\\/entry>/gi
+)
 ||
 [];
 
+
 return chunks
-.map(x=>({
+.map(function(x){
 
-title:xmlText(x,'title'),
+return {
 
-link:(()=>{
+title:
+xmlText(x,'title'),
 
-const a=x.match(
+link:
+(function(){
+
+const a=
+x.match(
 /<link[^>]*href=["']([^"']+)/i
 );
 
 return a
-?a[1]
-:xmlText(x,'link');
+?
+a[1]
+:
+xmlText(x,'link');
 
 })(),
 
@@ -519,41 +815,57 @@ xmlText(x,'description')
 ||
 xmlText(x,'summary'),
 
-source
+source:source
 
-}))
-.filter(x=>x.title && x.link);
+};
+
+})
+.filter(function(x){
+
+return x.title &&
+x.link;
+
+});
 
 }
 
 
-/* ================================
+/* =========================
    FETCH
-================================ */
+========================= */
 
-async function get(url,headers={}){
+async function get(url,headers){
 
-const r=await fetch(
+const r=
+await fetch(
 url,
 {
-headers:{
-'User-Agent':'MiracoloLab/2.0',
-...headers
-}
+headers:Object.assign(
+{
+'User-Agent':
+'MiracoloLab/2.0'
+},
+headers||{}
+)
 }
 );
 
-if(!r.ok)
-throw new Error(String(r.status));
+if(!r.ok){
+
+throw new Error(
+String(r.status)
+);
+
+}
 
 return r;
 
 }
 
 
-/* ================================
-   SIGNAL SCORE
-================================ */
+/* =========================
+   SCORE
+========================= */
 
 function scoreItem(x){
 
@@ -564,10 +876,11 @@ x.title+
 (x.description||'')
 ).toLowerCase();
 
+
 let s=1;
 
-const keys=[
 
+[
 'nvidia',
 'nvda',
 'bitcoin',
@@ -589,15 +902,19 @@ const keys=[
 'broadcom',
 'semiconductor',
 'crypto'
+]
+.forEach(function(k){
 
-];
+if(
+t.indexOf(k)>=0
+){
 
-keys.forEach(k=>{
-
-if(t.includes(k))
 s+=0.35;
 
+}
+
 });
+
 
 if(
 /plunge|drop|surge|jumps|rally|crash|warning|record|beat|miss/
@@ -608,6 +925,7 @@ s+=1;
 
 }
 
+
 return Math.min(
 6,
 Math.round(s)
@@ -616,9 +934,9 @@ Math.round(s)
 }
 
 
-/* ================================
+/* =========================
    WORKER
-================================ */
+========================= */
 
 export default {
 
@@ -630,7 +948,9 @@ new URL(request.url);
 
 /* HOME */
 
-if(u.pathname==='/'){
+if(
+u.pathname==='/' 
+){
 
 return new Response(
 HTML,
@@ -645,9 +965,9 @@ headers:{
 }
 
 
-/* ================================
-   FULL SCAN
-================================ */
+/* =========================
+   SCAN
+========================= */
 
 if(
 u.pathname==='/api/news'
@@ -655,27 +975,33 @@ u.pathname==='/api/news'
 u.pathname==='/api/full-scan'
 ){
 
+
 const feeds=[
+
 
 [
 'Google News',
 'https://news.google.com/rss/search?q=stock%20market%20OR%20finance%20OR%20Federal%20Reserve%20OR%20Nvidia%20OR%20Bitcoin&hl=en-US&gl=US&ceid=US:en'
 ],
 
+
 [
 'GDELT',
 'https://api.gdeltproject.org/api/v2/doc/doc?query=(stock%20OR%20markets%20OR%20finance%20OR%20Nvidia%20OR%20Bitcoin)%20sourcelang:english&mode=artlist&maxrecords=30&format=rss'
 ],
+
 
 [
 'Reddit Investing',
 'https://www.reddit.com/r/investing/.rss?limit=25'
 ],
 
+
 [
 'Reddit Stocks',
 'https://www.reddit.com/r/stocks/.rss?limit=25'
 ],
+
 
 [
 'Reddit WallStreetBets',
@@ -684,18 +1010,26 @@ const feeds=[
 
 ];
 
+
 const all=[];
+
 const sourceStatus=[];
 
-
-/* SCANSIONE PARALLELA */
 
 await Promise.all(
 
 feeds.map(
-async ([name,url])=>{
+async function(feed){
+
+const name=
+feed[0];
+
+const url=
+feed[1];
+
 
 try{
+
 
 const r=
 await get(
@@ -706,32 +1040,46 @@ url,
 }
 );
 
+
 const items=
 parseRSS(
 await r.text(),
 name
 );
 
-all.push(...items);
+
+all.push.apply(
+all,
+items
+);
+
 
 sourceStatus.push({
 
-name,
+name:name,
+
 status:'ok',
+
 count:items.length
 
 });
 
+
 }catch(e){
+
 
 sourceStatus.push({
 
-name,
+name:name,
+
 status:'error',
+
 error:String(e),
+
 count:0
 
 });
+
 
 }
 
@@ -744,20 +1092,30 @@ count:0
 /* SCORE */
 
 all.forEach(
-x=>x.score=scoreItem(x)
+function(x){
+
+x.score=
+scoreItem(x);
+
+}
 );
 
 
 /* ORDINA */
 
 all.sort(
-(a,b)=>
-(b.score-a.score)
+function(a,b){
+
+return (
+b.score-a.score
+)
 ||
 String(b.date)
 .localeCompare(
 String(a.date)
-)
+);
+
+}
 );
 
 
@@ -765,11 +1123,16 @@ String(a.date)
 
 const news=
 all.filter(
-x=>
-!x.source
+function(x){
+
+return
+x.source
 .toLowerCase()
-.includes('reddit')
+.indexOf('reddit')<0;
+
+}
 ).length;
+
 
 const social=
 all.length-news;
@@ -788,46 +1151,62 @@ new Date().toISOString(),
 
 summary:{
 
-news,
+news:news,
 
-social,
+social:social,
 
 total:all.length,
 
 workingSources:
 sourceStatus.filter(
-x=>x.status==='ok'
+function(x){
+
+return x.status==='ok';
+
+}
 ).length,
 
 failedSources:
 sourceStatus.filter(
-x=>x.status!=='ok'
+function(x){
+
+return x.status!=='ok';
+
+}
 ).length
 
 },
 
+
 top_signals:
 all.slice(0,40),
 
-news:
-all
-.filter(
-x=>
-!x.source
-.toLowerCase()
-.includes('reddit')
-)
-.slice(0,40),
 
-social:
-all
-.filter(
-x=>
+news:
+all.filter(
+function(x){
+
+return
 x.source
 .toLowerCase()
-.includes('reddit')
-)
-.slice(0,25),
+.indexOf('reddit')<0;
+
+}
+).slice(0,40),
+
+
+social:
+all.filter(
+function(x){
+
+return
+x.source
+.toLowerCase()
+.indexOf('reddit')>=0;
+
+}
+).slice(0,25),
+
 
 sources:
 sourceStatus
@@ -850,17 +1229,18 @@ headers:{
 }
 
 }
-
 );
 
 }
 
 
-/* NOT FOUND */
+/* 404 */
 
 return new Response(
 'Not found',
-{status:404}
+{
+status:404
+}
 );
 
 }
