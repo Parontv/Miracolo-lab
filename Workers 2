@@ -1,0 +1,441 @@
+const NEWS_FEEDS = [
+  {
+    name: "Mercati",
+    url: "https://news.google.com/rss/search?q=borsa%20mercati%20finanza&hl=it&gl=IT&ceid=IT:it"
+  },
+  {
+    name: "Azioni",
+    url: "https://news.google.com/rss/search?q=azioni%20borsa%20Wall%20Street&hl=it&gl=IT&ceid=IT:it"
+  },
+  {
+    name: "Bitcoin",
+    url: "https://news.google.com/rss/search?q=bitcoin%20crypto&hl=it&gl=IT&ceid=IT:it"
+  },
+  {
+    name: "Economia",
+    url: "https://news.google.com/rss/search?q=economia%20inflazione%20FED%20BCE&hl=it&gl=IT&ceid=IT:it"
+  }
+];
+
+const SOCIAL_FEEDS = [
+  {
+    name: "Reddit Stocks",
+    url: "https://www.reddit.com/r/stocks/.rss"
+  },
+  {
+    name: "Reddit Investing",
+    url: "https://www.reddit.com/r/investing/.rss"
+  },
+  {
+    name: "Reddit WallStreetBets",
+    url: "https://www.reddit.com/r/wallstreetbets/.rss"
+  },
+  {
+    name: "Reddit Bitcoin",
+    url: "https://www.reddit.com/r/Bitcoin/.rss"
+  }
+];
+
+function cleanText(text) {
+  if (!text) return "";
+
+  return text
+    .replace(/<!\[CDATA\[/g, "")
+    .replace(/\]\]>/g, "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getTag(block, tag) {
+  const regex = new RegExp(
+    `<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`,
+    "i"
+  );
+
+  const match = block.match(regex);
+
+  return match ? cleanText(match[1]) : "";
+}
+
+function getLink(block) {
+  let match = block.match(
+    /<link[^>]*href=["']([^"']+)["'][^>]*\/?>/i
+  );
+
+  if (match) return match[1];
+
+  match = block.match(
+    /<link[^>]*>([\s\S]*?)<\/link>/i
+  );
+
+  return match ? cleanText(match[1]) : "";
+}
+
+function parseRSS(xml, source) {
+  const results = [];
+
+  const blocks =
+    xml.match(/<item[\s\S]*?<\/item>/gi) ||
+    xml.match(/<entry[\s\S]*?<\/entry>/gi) ||
+    [];
+
+  for (const block of blocks) {
+    const title =
+      getTag(block, "title") ||
+      getTag(block, "name");
+
+    const description =
+      getTag(block, "description") ||
+      getTag(block, "summary") ||
+      getTag(block, "content");
+
+    const link = getLink(block);
+
+    const published =
+      getTag(block, "pubDate") ||
+      getTag(block, "published") ||
+      getTag(block, "updated");
+
+    if (!title) continue;
+
+    results.push({
+      source,
+      title,
+      description,
+      link,
+      published
+    });
+  }
+
+  return results;
+}
+
+async function fetchFeed(feed) {
+  try {
+    const response = await fetch(feed.url, {
+      headers: {
+        "User-Agent": "InvestimentiBot/1.0"
+      }
+    });
+
+    if (!response.ok) {
+      return {
+        source: feed.name,
+        error: `HTTP ${response.status}`,
+        items: []
+      };
+    }
+
+    const text = await response.text();
+
+    return {
+      source: feed.name,
+      error: null,
+      items: parseRSS(text, feed.name)
+    };
+  } catch (error) {
+    return {
+      source: feed.name,
+      error: error.message,
+      items: []
+    };
+  }
+}
+
+async function collectFeeds(feeds) {
+  const responses = await Promise.all(
+    feeds.map(feed => fetchFeed(feed))
+  );
+
+  return responses;
+}
+
+function deduplicate(items) {
+  const seen = new Set();
+  const output = [];
+
+  for (const item of items) {
+    const key =
+      item.link ||
+      `${item.source}-${item.title}`;
+
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    output.push(item);
+  }
+
+  return output;
+}
+
+function scoreItem(item) {
+  const text = (
+    `${item.title} ${item.description}`
+  ).toLowerCase();
+
+  let score = 0;
+
+  const importantWords = [
+    "fed",
+    "bce",
+    "inflazione",
+    "tassi",
+    "recessione",
+    "earnings",
+    "utile",
+    "ricavi",
+    "guidance",
+    "acquisizione",
+    "fusione",
+    "profit",
+    "bitcoin",
+    "ethereum",
+    "nasdaq",
+    "s&p",
+    "wall street",
+    "borsa",
+    "crash",
+    "rally"
+  ];
+
+  for (const word of importantWords) {
+    if (text.includes(word)) {
+      score += 1;
+    }
+  }
+
+  return score;
+}
+
+function analyzeItems(items) {
+  return items
+    .map(item => ({
+      ...item,
+      score: scoreItem(item)
+    }))
+    .sort((a, b) => b.score - a.score);
+}
+
+function jsonResponse(data) {
+  return new Response(
+    JSON.stringify(data, null, 2),
+    {
+      headers: {
+        "content-type": "application/json; charset=UTF-8",
+        "access-control-allow-origin": "*"
+      }
+    }
+  );
+}
+
+function htmlResponse() {
+  return new Response(
+    `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Investimenti Bot</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #111827;
+  color: #f9fafb;
+  padding: 30px;
+  max-width: 800px;
+  margin: auto;
+}
+.card {
+  background: #1f2937;
+  padding: 20px;
+  border-radius: 14px;
+  margin-bottom: 15px;
+}
+a {
+  color: #60a5fa;
+}
+button {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<h1>📊 Investimenti Bot</h1>
+
+<div class="card">
+  <h2>Stato</h2>
+  <p>🟢 Worker online</p>
+  <p>News + Social RSS attivi</p>
+</div>
+
+<div class="card">
+  <h2>Test</h2>
+  <p>
+    <a href="/news">📰 Apri News</a>
+  </p>
+  <p>
+    <a href="/social">💬 Apri Social</a>
+  </p>
+  <p>
+    <a href="/scan">🔎 Esegui Scan completo</a>
+  </p>
+  <p>
+    <a href="/health">❤️ Health check</a>
+  </p>
+</div>
+
+</body>
+</html>`,
+    {
+      headers: {
+        "content-type": "text/html; charset=UTF-8"
+      }
+    }
+  );
+}
+
+async function handleRequest(request) {
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET, OPTIONS",
+        "access-control-allow-headers": "Content-Type"
+      }
+    });
+  }
+
+  if (path === "/" || path === "") {
+    return htmlResponse();
+  }
+
+  if (path === "/health") {
+    return jsonResponse({
+      ok: true,
+      bot: "Investimenti Bot",
+      status: "online",
+      timestamp: new Date().toISOString(),
+      version: "1.0.0"
+    });
+  }
+
+  if (path === "/news") {
+    const feeds = await collectFeeds(NEWS_FEEDS);
+
+    const items = deduplicate(
+      feeds.flatMap(result => result.items)
+    );
+
+    const analyzed = analyzeItems(items);
+
+    return jsonResponse({
+      ok: true,
+      type: "news",
+      count: analyzed.length,
+      feeds,
+      items: analyzed.slice(0, 50)
+    });
+  }
+
+  if (path === "/social") {
+    const feeds = await collectFeeds(SOCIAL_FEEDS);
+
+    const items = deduplicate(
+      feeds.flatMap(result => result.items)
+    );
+
+    const analyzed = analyzeItems(items);
+
+    return jsonResponse({
+      ok: true,
+      type: "social",
+      count: analyzed.length,
+      feeds,
+      items: analyzed.slice(0, 50)
+    });
+  }
+
+  if (path === "/scan") {
+    const [newsFeeds, socialFeeds] =
+      await Promise.all([
+        collectFeeds(NEWS_FEEDS),
+        collectFeeds(SOCIAL_FEEDS)
+      ]);
+
+    const news = analyzeItems(
+      deduplicate(
+        newsFeeds.flatMap(result => result.items)
+      )
+    );
+
+    const social = analyzeItems(
+      deduplicate(
+        socialFeeds.flatMap(result => result.items)
+      )
+    );
+
+    const all = analyzeItems(
+      deduplicate([
+        ...news,
+        ...social
+      ])
+    );
+
+    return jsonResponse({
+      ok: true,
+      type: "full_scan",
+      timestamp: new Date().toISOString(),
+
+      summary: {
+        news: news.length,
+        social: social.length,
+        total: all.length
+      },
+
+      top_signals: all.slice(0, 20),
+
+      news: news.slice(0, 30),
+
+      social: social.slice(0, 30)
+    });
+  }
+
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      error: "Endpoint non trovato",
+      available: [
+        "/",
+        "/health",
+        "/news",
+        "/social",
+        "/scan"
+      ]
+    }, null, 2),
+    {
+      status: 404,
+      headers: {
+        "content-type": "application/json; charset=UTF-8"
+      }
+    }
+  );
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    return handleRequest(request);
+  }
+};
