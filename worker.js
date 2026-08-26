@@ -1,45 +1,101 @@
-const NEWS_FEEDS = [
+const SOURCES = [
   {
-    name: "Mercati",
-    url: "https://news.google.com/rss/search?q=borsa%20mercati%20finanza&hl=it&gl=IT&ceid=IT:it"
+    id: "cnbc_finance",
+    name: "CNBC Finance",
+    type: "news",
+    url: "https://www.cnbc.com/id/10000664/device/rss/rss.html"
   },
   {
-    name: "Wall Street",
-    url: "https://news.google.com/rss/search?q=Wall%20Street%20azioni&hl=it&gl=IT&ceid=IT:it"
+    id: "cnbc_investing",
+    name: "CNBC Investing",
+    type: "news",
+    url: "https://www.cnbc.com/id/15839069/device/rss/rss.html"
   },
   {
-    name: "Bitcoin",
-    url: "https://news.google.com/rss/search?q=bitcoin%20crypto&hl=it&gl=IT&ceid=IT:it"
+    id: "cnbc_markets",
+    name: "CNBC Markets",
+    type: "news",
+    url: "https://www.cnbc.com/id/20910258/device/rss/rss.html"
   },
   {
-    name: "Economia",
-    url: "https://news.google.com/rss/search?q=inflazione%20FED%20BCE%20tassi&hl=it&gl=IT&ceid=IT:it"
-  }
-];
-
-const SOCIAL_FEEDS = [
+    id: "cnbc_earnings",
+    name: "CNBC Earnings",
+    type: "news",
+    url: "https://www.cnbc.com/id/15839135/device/rss/rss.html"
+  },
   {
+    id: "reddit_stocks",
     name: "Reddit Stocks",
+    type: "social",
     url: "https://www.reddit.com/r/stocks/.rss"
   },
   {
+    id: "reddit_investing",
     name: "Reddit Investing",
+    type: "social",
     url: "https://www.reddit.com/r/investing/.rss"
   },
   {
+    id: "reddit_wallstreetbets",
     name: "Reddit WallStreetBets",
+    type: "social",
     url: "https://www.reddit.com/r/wallstreetbets/.rss"
   },
   {
+    id: "reddit_bitcoin",
     name: "Reddit Bitcoin",
+    type: "social",
     url: "https://www.reddit.com/r/Bitcoin/.rss"
   }
+];
+
+const KEYWORDS = [
+  "fed",
+  "federal reserve",
+  "ecb",
+  "bce",
+  "inflation",
+  "inflazione",
+  "interest rate",
+  "tassi",
+  "recession",
+  "recessione",
+  "earnings",
+  "revenue",
+  "profit",
+  "utile",
+  "ricavi",
+  "guidance",
+  "forecast",
+  "acquisition",
+  "acquisizione",
+  "merger",
+  "fusione",
+  "nasdaq",
+  "s&p 500",
+  "dow jones",
+  "wall street",
+  "stocks",
+  "shares",
+  "azioni",
+  "bitcoin",
+  "ethereum",
+  "crypto",
+  "oil",
+  "petrolio",
+  "gold",
+  "oro",
+  "crash",
+  "rally",
+  "selloff",
+  "bull",
+  "bear"
 ];
 
 function cleanText(value) {
   if (!value) return "";
 
-  let text = value;
+  let text = String(value);
 
   text = text.replaceAll("<![CDATA[", "");
   text = text.replaceAll("]]>", "");
@@ -48,6 +104,7 @@ function cleanText(value) {
   text = text.replaceAll("&gt;", ">");
   text = text.replaceAll("&quot;", '"');
   text = text.replaceAll("&#39;", "'");
+  text = text.replaceAll("&nbsp;", " ");
 
   while (text.includes("<")) {
     const start = text.indexOf("<");
@@ -65,92 +122,111 @@ function cleanText(value) {
     .replaceAll("\n", " ")
     .replaceAll("\r", " ")
     .replaceAll("\t", " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-function getTag(text, tag) {
+function getTag(block, tag) {
   const open = "<" + tag;
   const close = "</" + tag + ">";
 
-  const startTag = text.indexOf(open);
+  const startTag = block.indexOf(open);
 
   if (startTag === -1) return "";
 
-  const startContent = text.indexOf(">", startTag);
+  const startContent = block.indexOf(">", startTag);
 
   if (startContent === -1) return "";
 
-  const endContent = text.indexOf(
-    close,
-    startContent
-  );
+  const endContent =
+    block.indexOf(close, startContent);
 
   if (endContent === -1) return "";
 
   return cleanText(
-    text.substring(
+    block.substring(
       startContent + 1,
       endContent
     )
   );
 }
 
-function getLink(text) {
-  const href = 'href="';
-  const hrefStart = text.indexOf(href);
+function getLink(block) {
+  let position = 0;
 
-  if (hrefStart !== -1) {
-    const start = hrefStart + href.length;
-    const end = text.indexOf('"', start);
+  while (true) {
+    const start = block.indexOf("<link", position);
 
-    if (end !== -1) {
-      return text.substring(start, end);
+    if (start === -1) break;
+
+    const end = block.indexOf(">", start);
+
+    if (end === -1) break;
+
+    const tag = block.substring(
+      start,
+      end + 1
+    );
+
+    const hrefIndex =
+      tag.indexOf('href="');
+
+    if (hrefIndex !== -1) {
+      const valueStart =
+        hrefIndex + 6;
+
+      const valueEnd =
+        tag.indexOf('"', valueStart);
+
+      if (valueEnd !== -1) {
+        return tag.substring(
+          valueStart,
+          valueEnd
+        );
+      }
     }
+
+    position = end + 1;
   }
 
-  const linkStart = text.indexOf("<link>");
+  const link =
+    getTag(block, "link");
 
-  if (linkStart !== -1) {
-    const start = linkStart + 6;
-    const end = text.indexOf("</link>", start);
-
-    if (end !== -1) {
-      return cleanText(
-        text.substring(start, end)
-      );
-    }
-  }
-
-  return "";
+  return link || "";
 }
 
 function parseRSS(xml, source) {
-  const results = [];
+  const items = [];
 
   let position = 0;
 
   while (true) {
-    let start = xml.indexOf("<item", position);
-    let endTag = "</item>";
+    let start =
+      xml.indexOf("<item", position);
+
+    let closing =
+      "</item>";
 
     if (start === -1) {
-      start = xml.indexOf("<entry", position);
-      endTag = "</entry>";
+      start =
+        xml.indexOf("<entry", position);
+
+      closing =
+        "</entry>";
     }
 
     if (start === -1) break;
 
-    const end = xml.indexOf(
-      endTag,
-      start
-    );
+    const end =
+      xml.indexOf(closing, start);
 
     if (end === -1) break;
 
-    const block = xml.substring(
-      start,
-      end + endTag.length
-    );
+    const block =
+      xml.substring(
+        start,
+        end + closing.length
+      );
 
     const title =
       getTag(block, "title");
@@ -160,7 +236,8 @@ function parseRSS(xml, source) {
       getTag(block, "summary") ||
       getTag(block, "content");
 
-    const link = getLink(block);
+    const link =
+      getLink(block);
 
     const published =
       getTag(block, "pubDate") ||
@@ -168,7 +245,7 @@ function parseRSS(xml, source) {
       getTag(block, "updated");
 
     if (title) {
-      results.push({
+      items.push({
         source,
         title,
         description,
@@ -177,83 +254,123 @@ function parseRSS(xml, source) {
       });
     }
 
-    position = end + endTag.length;
+    position =
+      end + closing.length;
   }
 
-  return results;
+  return items;
 }
 
-async function fetchFeed(feed) {
+async function fetchSource(source) {
+  const started =
+    Date.now();
+
   try {
-    const response = await fetch(
-      feed.url,
-      {
-        headers: {
-          "User-Agent":
-            "InvestimentiBot/1.0"
+    const response =
+      await fetch(
+        source.url,
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 InvestimentiBot/1.0",
+            "Accept":
+              "application/rss+xml, application/xml, text/xml, */*"
+          }
         }
-      }
-    );
+      );
+
+    const responseTime =
+      Date.now() - started;
 
     if (!response.ok) {
       return {
-        source: feed.name,
+        id: source.id,
+        name: source.name,
+        type: source.type,
+        status: "error",
+        httpStatus:
+          response.status,
+        responseTime,
+        count: 0,
         error:
-          "HTTP " + response.status,
+          "HTTP " +
+          response.status,
         items: []
       };
     }
 
-    const text =
+    const xml =
       await response.text();
 
+    const items =
+      parseRSS(
+        xml,
+        source.name
+      );
+
     return {
-      source: feed.name,
+      id: source.id,
+      name: source.name,
+      type: source.type,
+      status:
+        items.length > 0
+          ? "ok"
+          : "empty",
+      httpStatus:
+        response.status,
+      responseTime,
+      count: items.length,
       error: null,
-      items: parseRSS(
-        text,
-        feed.name
-      )
+      items
     };
 
   } catch (error) {
     return {
-      source: feed.name,
-      error: error.message,
+      id: source.id,
+      name: source.name,
+      type: source.type,
+      status: "error",
+      httpStatus: null,
+      responseTime:
+        Date.now() - started,
+      count: 0,
+      error:
+        error.message ||
+        "Unknown error",
       items: []
     };
   }
 }
 
-async function collectFeeds(feeds) {
-  const results =
-    await Promise.all(
-      feeds.map(fetchFeed)
-    );
-
-  return results;
+async function collectSources() {
+  return Promise.all(
+    SOURCES.map(
+      source =>
+        fetchSource(source)
+    )
+  );
 }
 
 function deduplicate(items) {
-  const seen = new Set();
-  const output = [];
+  const seen =
+    new Set();
+
+  const result = [];
 
   for (const item of items) {
     const key =
       item.link ||
-      item.source +
-      "|" +
-      item.title;
+      item.title.toLowerCase();
 
     if (seen.has(key)) {
       continue;
     }
 
     seen.add(key);
-    output.push(item);
+    result.push(item);
   }
 
-  return output;
+  return result;
 }
 
 function scoreItem(item) {
@@ -263,32 +380,29 @@ function scoreItem(item) {
     item.description
   ).toLowerCase();
 
-  const keywords = [
-    "fed",
-    "bce",
-    "inflazione",
-    "tassi",
-    "recessione",
-    "earnings",
-    "utile",
-    "ricavi",
-    "guidance",
-    "acquisizione",
-    "fusione",
-    "bitcoin",
-    "ethereum",
-    "nasdaq",
-    "wall street",
-    "borsa",
-    "crash",
-    "rally"
-  ];
-
   let score = 0;
 
-  for (const keyword of keywords) {
+  for (const keyword of KEYWORDS) {
     if (text.includes(keyword)) {
-      score++;
+      score += 1;
+    }
+  }
+
+  const urgent = [
+    "breaking",
+    "crash",
+    "plunge",
+    "surge",
+    "rally",
+    "emergency",
+    "unexpected",
+    "downgrade",
+    "upgrade"
+  ];
+
+  for (const word of urgent) {
+    if (text.includes(word)) {
+      score += 2;
     }
   }
 
@@ -299,7 +413,8 @@ function analyze(items) {
   return items
     .map(item => ({
       ...item,
-      score: scoreItem(item)
+      score:
+        scoreItem(item)
     }))
     .sort(
       (a, b) =>
@@ -307,7 +422,10 @@ function analyze(items) {
     );
 }
 
-function json(data, status = 200) {
+function jsonResponse(
+  data,
+  status = 200
+) {
   return new Response(
     JSON.stringify(
       data,
@@ -320,13 +438,15 @@ function json(data, status = 200) {
         "content-type":
           "application/json; charset=UTF-8",
         "access-control-allow-origin":
-          "*"
+          "*",
+        "cache-control":
+          "no-store"
       }
     }
   );
 }
 
-function home() {
+function homeResponse() {
   return new Response(
     `<!DOCTYPE html>
 <html lang="it">
@@ -335,19 +455,24 @@ function home() {
 <meta name="viewport"
 content="width=device-width,initial-scale=1">
 <title>Investimenti Bot</title>
+
 <style>
 body {
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background: #111827;
   color: white;
   padding: 25px;
+  max-width: 800px;
+  margin: auto;
 }
+
 .card {
   background: #1f2937;
   padding: 20px;
   margin: 15px 0;
-  border-radius: 12px;
+  border-radius: 14px;
 }
+
 a {
   color: #60a5fa;
   font-size: 18px;
@@ -360,16 +485,23 @@ a {
 <h1>📊 Investimenti Bot</h1>
 
 <div class="card">
-<h2>🟢 Online</h2>
-<p>Il Worker è operativo.</p>
+<h2>🟢 Worker online</h2>
+<p>Motore di raccolta dati attivo.</p>
 </div>
 
 <div class="card">
+
 <h2>Test</h2>
 
 <p>
 <a href="/health">
 ❤️ Health
+</a>
+</p>
+
+<p>
+<a href="/status">
+📡 Stato fonti
 </a>
 </p>
 
@@ -404,14 +536,19 @@ a {
   );
 }
 
-async function handle(request) {
+async function handleRequest(
+  request
+) {
   const url =
     new URL(request.url);
 
   const path =
     url.pathname;
 
-  if (request.method === "OPTIONS") {
+  if (
+    request.method ===
+    "OPTIONS"
+  ) {
     return new Response(
       null,
       {
@@ -431,101 +568,214 @@ async function handle(request) {
     path === "/" ||
     path === ""
   ) {
-    return home();
+    return homeResponse();
   }
 
   if (path === "/health") {
-    return json({
+    return jsonResponse({
       ok: true,
       bot:
         "Investimenti Bot",
-      status: "online",
-      version: "1.0.1",
+      status:
+        "online",
+      version:
+        "2.0.0",
       timestamp:
         new Date().toISOString()
     });
   }
 
+  if (path === "/status") {
+    const sources =
+      await collectSources();
+
+    return jsonResponse({
+      ok: true,
+      timestamp:
+        new Date().toISOString(),
+
+      sources:
+        sources.map(source => ({
+          id: source.id,
+          name: source.name,
+          type: source.type,
+          status: source.status,
+          httpStatus:
+            source.httpStatus,
+          responseTime:
+            source.responseTime,
+          count:
+            source.count,
+          error:
+            source.error
+        })),
+
+      summary: {
+        total:
+          sources.length,
+
+        working:
+          sources.filter(
+            s =>
+              s.status === "ok"
+          ).length,
+
+        errors:
+          sources.filter(
+            s =>
+              s.status === "error"
+          ).length,
+
+        empty:
+          sources.filter(
+            s =>
+              s.status === "empty"
+          ).length
+      }
+    });
+  }
+
   if (path === "/news") {
-    const feeds =
-      await collectFeeds(
-        NEWS_FEEDS
-      );
+    const sources =
+      await collectSources();
 
     const items =
-      deduplicate(
-        feeds.flatMap(
-          feed => feed.items
+      sources
+        .filter(
+          source =>
+            source.type ===
+            "news"
         )
-      );
+        .flatMap(
+          source =>
+            source.items
+        );
 
-    return json({
+    const unique =
+      deduplicate(items);
+
+    const analyzed =
+      analyze(unique);
+
+    return jsonResponse({
       ok: true,
-      type: "news",
-      count: items.length,
+      type:
+        "news",
+
+      count:
+        analyzed.length,
+
       items:
-        analyze(items).slice(
+        analyzed.slice(
           0,
-          50
+          100
         ),
-      feeds
+
+      sources:
+        sources.map(
+          source => ({
+            name:
+              source.name,
+            status:
+              source.status,
+            httpStatus:
+              source.httpStatus,
+            count:
+              source.count,
+            error:
+              source.error
+          })
+        )
     });
   }
 
   if (path === "/social") {
-    const feeds =
-      await collectFeeds(
-        SOCIAL_FEEDS
-      );
+    const sources =
+      await collectSources();
 
     const items =
-      deduplicate(
-        feeds.flatMap(
-          feed => feed.items
+      sources
+        .filter(
+          source =>
+            source.type ===
+            "social"
         )
-      );
+        .flatMap(
+          source =>
+            source.items
+        );
 
-    return json({
+    const unique =
+      deduplicate(items);
+
+    const analyzed =
+      analyze(unique);
+
+    return jsonResponse({
       ok: true,
-      type: "social",
-      count: items.length,
+      type:
+        "social",
+
+      count:
+        analyzed.length,
+
       items:
-        analyze(items).slice(
+        analyzed.slice(
           0,
-          50
+          100
         ),
-      feeds
+
+      sources:
+        sources.map(
+          source => ({
+            name:
+              source.name,
+            status:
+              source.status,
+            httpStatus:
+              source.httpStatus,
+            count:
+              source.count,
+            error:
+              source.error
+          })
+        )
     });
   }
 
   if (path === "/scan") {
-    const [
-      newsFeeds,
-      socialFeeds
-    ] = await Promise.all([
-      collectFeeds(
-        NEWS_FEEDS
-      ),
-      collectFeeds(
-        SOCIAL_FEEDS
-      )
-    ]);
+    const sources =
+      await collectSources();
 
     const news =
       analyze(
         deduplicate(
-          newsFeeds.flatMap(
-            feed => feed.items
-          )
+          sources
+            .filter(
+              source =>
+                source.type ===
+                "news"
+            )
+            .flatMap(
+              source =>
+                source.items
+            )
         )
       );
 
     const social =
       analyze(
         deduplicate(
-          socialFeeds.flatMap(
-            feed => feed.items
-          )
+          sources
+            .filter(
+              source =>
+                source.type ===
+                "social"
+            )
+            .flatMap(
+              source =>
+                source.items
+            )
         )
       );
 
@@ -537,41 +787,88 @@ async function handle(request) {
         ])
       );
 
-    return json({
+    return jsonResponse({
       ok: true,
+
       type:
         "full_scan",
+
       timestamp:
         new Date().toISOString(),
 
       summary: {
         news:
           news.length,
+
         social:
           social.length,
+
         total:
-          all.length
+          all.length,
+
+        workingSources:
+          sources.filter(
+            source =>
+              source.status ===
+              "ok"
+          ).length,
+
+        failedSources:
+          sources.filter(
+            source =>
+              source.status ===
+              "error"
+          ).length
       },
 
       top_signals:
-        all.slice(0, 20),
+        all.slice(
+          0,
+          30
+        ),
 
       news:
-        news.slice(0, 30),
+        news.slice(
+          0,
+          50
+        ),
 
       social:
-        social.slice(0, 30)
+        social.slice(
+          0,
+          50
+        ),
+
+      sources:
+        sources.map(
+          source => ({
+            name:
+              source.name,
+            type:
+              source.type,
+            status:
+              source.status,
+            httpStatus:
+              source.httpStatus,
+            count:
+              source.count,
+            error:
+              source.error
+          })
+        )
     });
   }
 
-  return json(
+  return jsonResponse(
     {
       ok: false,
       error:
         "Endpoint non trovato",
-      endpoints: [
+
+      available: [
         "/",
         "/health",
+        "/status",
         "/news",
         "/social",
         "/scan"
@@ -587,6 +884,8 @@ export default {
     env,
     ctx
   ) {
-    return handle(request);
+    return handleRequest(
+      request
+    );
   }
 };
