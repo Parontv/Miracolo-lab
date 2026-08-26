@@ -1,187 +1,225 @@
-const HTML = `<!doctype html>
+const HTML = `<!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Miracolo Lab — News Radar</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Miracolo Lab - News Radar</title>
 
 <style>
-:root{
-font-family:system-ui,-apple-system,Segoe UI,sans-serif;
-background:#0b0f14;
-color:#f5f7fa
+
+* {
+  box-sizing: border-box;
 }
 
-*{box-sizing:border-box}
-
-body{
-margin:0;
-background:#0b0f14
+body {
+  margin: 0;
+  background: #0b0f14;
+  color: #f5f7fa;
+  font-family: Arial, sans-serif;
 }
 
-.wrap{
-max-width:1050px;
-margin:auto;
-padding:18px
+.container {
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px;
 }
 
-.top{
-display:flex;
-justify-content:space-between;
-align-items:center;
-gap:12px;
-flex-wrap:wrap
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
 }
 
-h1{
-font-size:27px;
-margin:4px 0
+h1 {
+  margin: 0;
+  font-size: 28px;
 }
 
-.sub,.small{
-color:#98a2ad;
-font-size:13px
+.subtitle {
+  color: #9aa4af;
+  margin-top: 5px;
+  font-size: 14px;
 }
 
-button{
-border:1px solid #334155;
-border-radius:12px;
-padding:12px 16px;
-font-weight:800;
-background:#17202b;
-color:#fff;
-cursor:pointer
+.scan-button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 15px 22px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
 }
 
-button.primary{
-background:#2563eb;
-border-color:#3b82f6
+.scan-button:hover {
+  background: #1d4ed8;
 }
 
-button:disabled{
-opacity:.6;
-cursor:wait
+.scan-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
-.grid{
-display:grid;
-grid-template-columns:repeat(4,1fr);
-gap:12px;
-margin:16px 0
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 20px;
 }
 
-.card{
-background:#121923;
-border:1px solid #263241;
-border-radius:16px;
-padding:16px
+.stat {
+  background: #121923;
+  border: 1px solid #263241;
+  border-radius: 15px;
+  padding: 18px;
 }
 
-.k{
-font-size:12px;
-color:#98a2ad
+.stat-title {
+  color: #8f9aa6;
+  font-size: 12px;
 }
 
-.v{
-font-size:24px;
-font-weight:850;
-margin-top:4px
+.stat-value {
+  font-size: 25px;
+  font-weight: bold;
+  margin-top: 5px;
 }
 
-.ok{color:#71e3a5}
-.warn{color:#f5c76a}
-.bad{color:#ff8585}
-
-.tabs{
-display:flex;
-gap:8px;
-overflow:auto;
-margin:14px 0
+.green {
+  color: #67e8a5;
 }
 
-.tabs button{
-white-space:nowrap;
-padding:9px 12px
+.yellow {
+  color: #f5c76a;
 }
 
-.item{
-padding:14px 0;
-border-top:1px solid #263241
+.red {
+  color: #ff7777;
 }
 
-.item:first-child{
-border-top:0
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  overflow-x: auto;
 }
 
-.item a{
-color:#93c5fd;
-text-decoration:none;
-font-weight:800
+.tab {
+  background: #17202b;
+  color: white;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
 }
 
-.badge{
-display:inline-block;
-padding:4px 8px;
-border-radius:99px;
-background:#253041;
-color:#cbd5e1;
-font-size:11px;
-margin-right:6px
+.panel {
+  margin-top: 15px;
+  background: #121923;
+  border: 1px solid #263241;
+  border-radius: 15px;
+  padding: 18px;
 }
 
-.score{
-float:right;
-font-weight:900
+.signal {
+  border-top: 1px solid #263241;
+  padding: 16px 0;
 }
 
-.meta{
-margin-top:6px
+.signal:first-child {
+  border-top: none;
 }
 
-.notice{
-padding:12px;
-border-radius:12px;
-background:#0e151e;
-border:1px solid #263241
+.signal-title {
+  color: #93c5fd;
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 16px;
 }
 
-@media(max-width:760px){
-.grid{
-grid-template-columns:1fr 1fr
-}
+.badge {
+  display: inline-block;
+  background: #253041;
+  color: #dbe4ee;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  margin-right: 6px;
 }
 
-@media(max-width:500px){
-.grid{
-grid-template-columns:1fr
+.score {
+  float: right;
+  font-weight: bold;
 }
 
-.wrap{
-padding:12px
+.description {
+  color: #aeb8c3;
+  font-size: 13px;
+  margin-top: 7px;
+  line-height: 1.5;
 }
+
+.date {
+  color: #737f8d;
+  font-size: 12px;
+  margin-top: 6px;
 }
+
+.message {
+  background: #0e151e;
+  border: 1px solid #263241;
+  padding: 15px;
+  border-radius: 10px;
+  color: #b8c1cc;
+}
+
+@media (max-width: 750px) {
+
+  .stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+}
+
+@media (max-width: 500px) {
+
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .container {
+    padding: 12px;
+  }
+
+}
+
 </style>
+
 </head>
 
 <body>
 
-<div class="wrap">
+<div class="container">
 
-<div class="top">
+<div class="header">
 
 <div>
 
 <h1>🪄 Miracolo Lab</h1>
 
-<div class="sub">
-Radar investibile · News + Social · nessun ordine reale
+<div class="subtitle">
+Radar investibile - News + Social
 </div>
 
 </div>
 
 <button
-id="scanBtn"
-class="primary"
+id="scanButton"
+class="scan-button"
 onclick="scanNews()">
 
 🔎 SCANSIONA NEWS
@@ -191,17 +229,17 @@ onclick="scanNews()">
 </div>
 
 
-<div class="grid">
+<div class="stats">
 
-<div class="card">
+<div class="stat">
 
-<div class="k">
+<div class="stat-title">
 STATO
 </div>
 
 <div
 id="status"
-class="v ok">
+class="stat-value green">
 
 PRONTO
 
@@ -210,15 +248,15 @@ PRONTO
 </div>
 
 
-<div class="card">
+<div class="stat">
 
-<div class="k">
+<div class="stat-title">
 NEWS
 </div>
 
 <div
 id="newsCount"
-class="v">
+class="stat-value">
 
 —
 
@@ -227,15 +265,15 @@ class="v">
 </div>
 
 
-<div class="card">
+<div class="stat">
 
-<div class="k">
+<div class="stat-title">
 SOCIAL
 </div>
 
 <div
 id="socialCount"
-class="v">
+class="stat-value">
 
 —
 
@@ -244,15 +282,15 @@ class="v">
 </div>
 
 
-<div class="card">
+<div class="stat">
 
-<div class="k">
+<div class="stat-title">
 ULTIMO SCAN
 </div>
 
 <div
-id="updated"
-class="v"
+id="lastScan"
+class="stat-value"
 style="font-size:18px">
 
 —
@@ -266,58 +304,62 @@ style="font-size:18px">
 
 <div class="tabs">
 
-<button onclick="filterNews('all')">
+<button
+class="tab"
+onclick="setFilter('all')">
+
 Tutti
+
 </button>
 
-<button onclick="filterNews('news')">
+<button
+class="tab"
+onclick="setFilter('news')">
+
 📰 News
+
 </button>
 
-<button onclick="filterNews('social')">
+<button
+class="tab"
+onclick="setFilter('social')">
+
 💬 Social
+
 </button>
 
-<button onclick="filterNews('strong')">
+<button
+class="tab"
+onclick="setFilter('strong')">
+
 🔥 Segnali forti
+
 </button>
 
 </div>
 
 
-<div class="card">
+<div class="panel">
 
-<div class="top">
-
-<div>
-
-<h2 style="margin:0">
+<h2>
 📡 Segnali rilevati
 </h2>
 
 <div
-id="sourceLine"
-class="small">
+id="sourceInfo"
+class="description">
 
-Premi il pulsante per avviare una scansione reale.
-
-</div>
+Premi SCANSIONA NEWS per iniziare.
 
 </div>
-
-</div>
-
 
 <div
-id="list"
-style="margin-top:8px">
+id="results"
+style="margin-top:15px">
 
-<div class="notice">
+<div class="message">
 
 Il radar è pronto.
-
-Premi <b>SCANSIONA NEWS</b>
-per raccogliere news e social.
 
 </div>
 
@@ -330,397 +372,339 @@ per raccogliere news e social.
 
 <script>
 
-let DATA=[];
-let CURRENT='all';
+let signals = [];
+
+let currentFilter = "all";
 
 
-function esc(s){
+function escapeHtml(value) {
 
-return String(s==null?'':s)
-.replace(/[&<>"]/g,function(c){
+  if (value === null || value === undefined) {
+    return "";
+  }
 
-return {
-'&':'&amp;',
-'<':'&lt;',
-'>':'&gt;',
-'"':'&quot;'
-}[c];
-
-});
-
-}
-
-
-function render(){
-
-let rows=DATA.slice();
-
-
-if(CURRENT==='news'){
-
-rows=rows.filter(function(x){
-
-return x.kind!=='social';
-
-});
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 
 }
 
 
-if(CURRENT==='social'){
+function setFilter(filter) {
 
-rows=rows.filter(function(x){
+  currentFilter = filter;
 
-return x.kind==='social';
-
-});
+  renderSignals();
 
 }
 
 
-if(CURRENT==='strong'){
+function renderSignals() {
 
-rows=rows.filter(function(x){
+  let list = signals.slice();
 
-return (Number(x.score)||0)>=5;
+  if (currentFilter === "news") {
 
-});
+    list = list.filter(function(item) {
 
-}
+      return item.kind !== "social";
 
+    });
 
-const list=document.getElementById('list');
+  }
 
+  if (currentFilter === "social") {
 
-if(!rows.length){
+    list = list.filter(function(item) {
 
-list.innerHTML=
-'<div class="notice">'+
-'Nessun risultato per questo filtro.'+
-'</div>';
+      return item.kind === "social";
 
-return;
+    });
 
-}
+  }
 
+  if (currentFilter === "strong") {
 
-list.innerHTML=rows.map(function(x){
+    list = list.filter(function(item) {
 
-const score=Number(x.score)||0;
+      return Number(item.score || 0) >= 5;
 
-const cls=
-score>=5
-?'ok'
-:score>=3
-?'warn'
-:'';
+    });
+
+  }
 
 
-return (
-
-'<div class="item">'+
-
-'<span class="badge">'+
-esc(x.source||'Fonte')+
-'</span>'+
-
-(
-x.kind==='social'
-?
-'<span class="badge">SOCIAL</span>'
-:
-''
-)+
-
-'<span class="score '+cls+'">'+
-'Score '+score+
-'</span>'+
-
-'<a href="'+
-esc(x.link||'#')+
-'" target="_blank" rel="noopener">'+
-esc(x.title||'Senza titolo')+
-'</a>'+
-
-'<div class="small meta">'+
-esc(x.description||'')+
-'</div>'+
-
-'<div class="small meta">'+
-esc(x.published||x.date||'')+
-'</div>'+
-
-'</div>'
-
-);
-
-}).join('');
-
-}
+  const container =
+    document.getElementById("results");
 
 
-function filterNews(x){
+  if (list.length === 0) {
 
-CURRENT=x;
+    container.innerHTML =
+      '<div class="message">Nessun segnale disponibile.</div>';
 
-render();
+    return;
 
-}
-
-
-async function scanNews(){
-
-const btn=
-document.getElementById('scanBtn');
-
-const status=
-document.getElementById('status');
+  }
 
 
-btn.disabled=true;
-
-status.textContent='SCANSIONE...';
-
-status.className='v warn';
+  let html = "";
 
 
-document.getElementById('list').innerHTML=
-'<div class="notice">'+
-'🔄 Raccolta news e social in corso...'+
-'</div>';
+  list.forEach(function(item) {
+
+    const score =
+      Number(item.score || 0);
+
+    let scoreClass = "";
+
+    if (score >= 5) {
+
+      scoreClass = "green";
+
+    } else if (score >= 3) {
+
+      scoreClass = "yellow";
+
+    }
 
 
-try{
+    html +=
+
+      '<div class="signal">' +
+
+      '<span class="badge">' +
+      escapeHtml(item.source || "Fonte") +
+      '</span>' +
+
+      (
+        item.kind === "social"
+        ?
+        '<span class="badge">SOCIAL</span>'
+        :
+        ''
+      ) +
+
+      '<span class="score ' +
+      scoreClass +
+      '">' +
+      'Score ' +
+      score +
+      '</span>' +
+
+      '<br><br>' +
+
+      '<a class="signal-title" href="' +
+      escapeHtml(item.link || "#") +
+      '" target="_blank">' +
+      escapeHtml(item.title || "Senza titolo") +
+      '</a>' +
+
+      '<div class="description">' +
+      escapeHtml(item.description || "") +
+      '</div>' +
+
+      '<div class="date">' +
+      escapeHtml(item.date || item.published || "") +
+      '</div>' +
+
+      '</div>';
+
+  });
 
 
-let r=
-await fetch(
-'/api/full-scan',
-{
-cache:'no-store'
-}
-);
-
-
-if(!r.ok){
-
-r=
-await fetch(
-'/api/news',
-{
-cache:'no-store'
-}
-);
+  container.innerHTML = html;
 
 }
 
 
-if(!r.ok){
+async function scanNews() {
 
-throw new Error(
-'HTTP '+r.status
-);
+  const button =
+    document.getElementById("scanButton");
 
-}
-
-
-const p=
-await r.json();
+  const status =
+    document.getElementById("status");
 
 
-if(
-Array.isArray(
-p.top_signals
-)
-){
+  button.disabled = true;
+
+  status.textContent = "SCANSIONE...";
+
+  status.className =
+    "stat-value yellow";
 
 
-DATA=
-p.top_signals.map(
-function(x){
-
-return Object.assign(
-{},
-x,
-{
-kind:
-x.source &&
-x.source
-.toLowerCase()
-.indexOf('reddit')>=0
-?
-'social'
-:
-'news'
-}
-);
-
-});
+  document.getElementById("results").innerHTML =
+    '<div class="message">' +
+    '🔄 Sto cercando news e social...' +
+    '</div>';
 
 
-document.getElementById(
-'newsCount'
-).textContent=
+  try {
 
-p.summary &&
-p.summary.news!=null
-?
-p.summary.news
-:
-DATA.filter(
-function(x){
-return x.kind==='news';
-}
-).length;
+    const response =
+      await fetch(
+        "/api/full-scan",
+        {
+          cache: "no-store"
+        }
+      );
 
 
-document.getElementById(
-'socialCount'
-).textContent=
+    if (!response.ok) {
 
-p.summary &&
-p.summary.social!=null
-?
-p.summary.social
-:
-DATA.filter(
-function(x){
-return x.kind==='social';
-}
-).length;
+      throw new Error(
+        "HTTP " + response.status
+      );
+
+    }
 
 
-document.getElementById(
-'sourceLine'
-).textContent=
-
-(
-p.summary &&
-p.summary.workingSources!=null
-?
-p.summary.workingSources
-:
-'—'
-)+
-' fonti operative · '+
-(
-p.summary &&
-p.summary.failedSources!=null
-?
-p.summary.failedSources
-:
-'0'
-)+
-' non disponibili';
+    const data =
+      await response.json();
 
 
-}else{
+    if (
+      !data ||
+      !Array.isArray(data.top_signals)
+    ) {
+
+      throw new Error(
+        "Risposta del server non valida"
+      );
+
+    }
 
 
-DATA=
-(p.items||[]).map(
-function(x){
+    signals =
+      data.top_signals.map(
+        function(item) {
 
-return Object.assign(
-{},
-x,
-{
-kind:
-(x.source||'')
-.toLowerCase()
-.indexOf('reddit')>=0
-?
-'social'
-:
-'news'
-}
-);
-
-});
+          const source =
+            String(
+              item.source || ""
+            ).toLowerCase();
 
 
-document.getElementById(
-'newsCount'
-).textContent=
+          return Object.assign(
+            {},
+            item,
+            {
+              kind:
+                source.includes("reddit")
+                ?
+                "social"
+                :
+                "news"
+            }
+          );
 
-DATA.filter(
-function(x){
-return x.kind==='news';
-}
-).length;
-
-
-document.getElementById(
-'socialCount'
-).textContent=
-
-DATA.filter(
-function(x){
-return x.kind==='social';
-}
-).length;
+        }
+      );
 
 
-document.getElementById(
-'sourceLine'
-).textContent=
-'Scansione completata dal backend';
-
-}
-
-
-document.getElementById(
-'updated'
-).textContent=
-new Date()
-.toLocaleTimeString('it-IT');
-
-
-status.textContent='ONLINE';
-
-status.className='v ok';
-
-CURRENT='all';
-
-render();
+    document.getElementById(
+      "newsCount"
+    ).textContent =
+      data.summary &&
+      data.summary.news !== undefined
+      ?
+      data.summary.news
+      :
+      signals.filter(
+        function(x) {
+          return x.kind === "news";
+        }
+      ).length;
 
 
-}catch(e){
+    document.getElementById(
+      "socialCount"
+    ).textContent =
+      data.summary &&
+      data.summary.social !== undefined
+      ?
+      data.summary.social
+      :
+      signals.filter(
+        function(x) {
+          return x.kind === "social";
+        }
+      ).length;
 
 
-console.error(e);
+    const working =
+      data.summary &&
+      data.summary.workingSources !== undefined
+      ?
+      data.summary.workingSources
+      :
+      0;
 
 
-status.textContent='ERRORE';
-
-status.className='v bad';
-
-
-document.getElementById(
-'list'
-).innerHTML=
-
-'<div class="notice">'+
-
-'<b>⚠️ Scansione non riuscita.</b>'+
-
-'<div class="small" style="margin-top:6px">'+
-
-'Il frontend è pronto, ma il backend di scansione non ha risposto. '+
-'Controlla il deploy del Worker.'+
-
-'</div>'+
-
-'</div>';
+    const failed =
+      data.summary &&
+      data.summary.failedSources !== undefined
+      ?
+      data.summary.failedSources
+      :
+      0;
 
 
-}finally{
+    document.getElementById(
+      "sourceInfo"
+    ).textContent =
+      working +
+      " fonti operative - " +
+      failed +
+      " fonti non disponibili";
 
 
-btn.disabled=false;
+    document.getElementById(
+      "lastScan"
+    ).textContent =
+      new Date().toLocaleTimeString("it-IT");
 
 
-}
+    status.textContent = "ONLINE";
+
+    status.className =
+      "stat-value green";
+
+
+    currentFilter = "all";
+
+    renderSignals();
+
+
+  } catch (error) {
+
+    console.error(error);
+
+
+    status.textContent = "ERRORE";
+
+    status.className =
+      "stat-value red";
+
+
+    document.getElementById(
+      "results"
+    ).innerHTML =
+      '<div class="message">' +
+      '<b>⚠️ Scansione non riuscita.</b><br><br>' +
+      escapeHtml(error.message) +
+      '</div>';
+
+
+  } finally {
+
+    button.disabled = false;
+
+  }
 
 }
 
@@ -730,519 +714,728 @@ btn.disabled=false;
 </html>`;
 
 
-/* =========================
-   RSS
-========================= */
-
-function xmlText(s,tag){
-
-const m=
-s.match(
-new RegExp(
-'<'+tag+
-'[^>]*>([\\\\s\\\\S]*?)</'+
-tag+
-'>',
-'i'
-)
-);
-
-return m
-?
-m[1]
-.replace(
-/<!\\[CDATA\\[|\\]\\]>/g,
-''
-)
-.replace(
-/<[^>]+>/g,
-''
-)
-.trim()
-:
-'';
-
-}
+/* =========================================================
+   XML UTILITIES
+========================================================= */
 
 
-function parseRSS(text,source){
+function getTagValue(text, tag) {
 
-const chunks=
-text.match(
-/<item[\\s\\S]*?<\\/item>/gi
-)
-||
-text.match(
-/<entry[\\s\\S]*?<\\/entry>/gi
-)
-||
-[];
+  const startTag =
+    "<" + tag;
+
+  const start =
+    text.indexOf(startTag);
+
+  if (start === -1) {
+    return "";
+  }
 
 
-return chunks
-.map(function(x){
+  const openEnd =
+    text.indexOf(">", start);
 
-return {
+  if (openEnd === -1) {
+    return "";
+  }
 
-title:
-xmlText(x,'title'),
 
-link:
-(function(){
+  const closeTag =
+    "</" + tag + ">";
 
-const a=
-x.match(
-/<link[^>]*href=["']([^"']+)/i
-);
+  const end =
+    text.indexOf(
+      closeTag,
+      openEnd + 1
+    );
 
-return a
-?
-a[1]
-:
-xmlText(x,'link');
+  if (end === -1) {
+    return "";
+  }
 
-})(),
 
-date:
-xmlText(x,'pubDate')
-||
-xmlText(x,'published')
-||
-xmlText(x,'updated'),
+  let value =
+    text.substring(
+      openEnd + 1,
+      end
+    );
 
-description:
-xmlText(x,'description')
-||
-xmlText(x,'summary'),
 
-source:source
+  value =
+    value.replace(
+      "<![CDATA[",
+      ""
+    );
 
-};
 
-})
-.filter(function(x){
+  value =
+    value.replace(
+      "]]>",
+      ""
+    );
 
-return x.title &&
-x.link;
 
-});
+  value =
+    value.replace(
+      /<[^>]*>/g,
+      ""
+    );
+
+
+  return value.trim();
 
 }
 
 
-/* =========================
-   FETCH
-========================= */
+/* =========================================================
+   RSS PARSER
+========================================================= */
 
-async function get(url,headers){
 
-const r=
-await fetch(
-url,
-{
-headers:Object.assign(
-{
-'User-Agent':
-'MiracoloLab/2.0'
-},
-headers||{}
-)
+function parseRSS(text, source) {
+
+  const results = [];
+
+  let position = 0;
+
+
+  while (true) {
+
+    const itemStart =
+      text.indexOf(
+        "<item",
+        position
+      );
+
+
+    if (itemStart === -1) {
+      break;
+    }
+
+
+    const itemEnd =
+      text.indexOf(
+        "</item>",
+        itemStart
+      );
+
+
+    if (itemEnd === -1) {
+      break;
+    }
+
+
+    const item =
+      text.substring(
+        itemStart,
+        itemEnd + 7
+      );
+
+
+    const title =
+      getTagValue(
+        item,
+        "title"
+      );
+
+
+    const description =
+      getTagValue(
+        item,
+        "description"
+      );
+
+
+    const date =
+      getTagValue(
+        item,
+        "pubDate"
+      );
+
+
+    let link =
+      getTagValue(
+        item,
+        "link"
+      );
+
+
+    if (!link) {
+
+      const hrefPosition =
+        item.indexOf(
+          "href="
+        );
+
+
+      if (hrefPosition !== -1) {
+
+        const quote =
+          item.charAt(
+            hrefPosition + 5
+          );
+
+
+        const hrefStart =
+          hrefPosition + 6;
+
+
+        const hrefEnd =
+          item.indexOf(
+            quote,
+            hrefStart
+          );
+
+
+        if (hrefEnd !== -1) {
+
+          link =
+            item.substring(
+              hrefStart,
+              hrefEnd
+            );
+
+        }
+
+      }
+
+    }
+
+
+    if (title && link) {
+
+      results.push({
+
+        title: title,
+
+        description: description,
+
+        date: date,
+
+        link: link,
+
+        source: source
+
+      });
+
+    }
+
+
+    position =
+      itemEnd + 7;
+
+  }
+
+
+  return results;
+
 }
-);
-
-if(!r.ok){
-
-throw new Error(
-String(r.status)
-);
-
-}
-
-return r;
-
-}
 
 
-/* =========================
-   SCORE
-========================= */
-
-function scoreItem(x){
-
-const t=
-(
-x.title+
-' '+
-(x.description||'')
-).toLowerCase();
+/* =========================================================
+   HTTP
+========================================================= */
 
 
-let s=1;
+async function fetchFeed(url) {
+
+  const response =
+    await fetch(
+      url,
+      {
+        headers: {
+          "User-Agent":
+            "Miracolo-Lab-News-Radar/1.0",
+          "Accept":
+            "application/rss+xml,application/xml,text/xml"
+        }
+      }
+    );
 
 
-[
-'nvidia',
-'nvda',
-'bitcoin',
-'btc',
-'fed',
-'inflation',
-'earnings',
-'guidance',
-'upgrade',
-'downgrade',
-'ai',
-'tariff',
-'recession',
-'gold',
-'copper',
-'tsmc',
-'crowdstrike',
-'amd',
-'broadcom',
-'semiconductor',
-'crypto'
-]
-.forEach(function(k){
+  if (!response.ok) {
 
-if(
-t.indexOf(k)>=0
-){
+    throw new Error(
+      "HTTP " + response.status
+    );
 
-s+=0.35;
-
-}
-
-});
+  }
 
 
-if(
-/plunge|drop|surge|jumps|rally|crash|warning|record|beat|miss/
-.test(t)
-){
-
-s+=1;
+  return await response.text();
 
 }
 
 
-return Math.min(
-6,
-Math.round(s)
-);
+/* =========================================================
+   SIGNAL SCORE
+========================================================= */
+
+
+function calculateScore(item) {
+
+  const text =
+    (
+      (item.title || "") +
+      " " +
+      (item.description || "")
+    ).toLowerCase();
+
+
+  let score = 1;
+
+
+  const keywords = [
+
+    "nvidia",
+    "nvda",
+    "bitcoin",
+    "btc",
+    "ethereum",
+    "crypto",
+    "ai",
+    "artificial intelligence",
+    "semiconductor",
+    "tsmc",
+    "amd",
+    "broadcom",
+    "crowdstrike",
+    "fed",
+    "federal reserve",
+    "inflation",
+    "earnings",
+    "guidance",
+    "upgrade",
+    "downgrade",
+    "tariff",
+    "recession",
+    "gold",
+    "copper",
+    "oil",
+    "treasury",
+    "interest rate"
+
+  ];
+
+
+  keywords.forEach(
+    function(keyword) {
+
+      if (
+        text.includes(keyword)
+      ) {
+
+        score += 0.35;
+
+      }
+
+    }
+  );
+
+
+  const strongWords = [
+
+    "surge",
+    "rally",
+    "plunge",
+    "crash",
+    "record",
+    "warning",
+    "beat",
+    "miss",
+    "jumps",
+    "drops"
+
+  ];
+
+
+  strongWords.forEach(
+    function(word) {
+
+      if (
+        text.includes(word)
+      ) {
+
+        score += 0.7;
+
+      }
+
+    }
+  );
+
+
+  return Math.min(
+    6,
+    Math.round(score)
+  );
 
 }
 
 
-/* =========================
+/* =========================================================
    WORKER
-========================= */
+========================================================= */
+
 
 export default {
 
-async fetch(request,env){
+  async fetch(request, env) {
 
-const u=
-new URL(request.url);
+    const url =
+      new URL(request.url);
 
 
-/* HOME */
+    /* HOME */
 
-if(
-u.pathname==='/' 
-){
+    if (
+      url.pathname === "/"
+    ) {
 
-return new Response(
-HTML,
-{
-headers:{
-'content-type':
-'text/html;charset=UTF-8'
-}
-}
-);
+      return new Response(
+        HTML,
+        {
+          headers: {
+            "Content-Type":
+              "text/html;charset=UTF-8"
+          }
+        }
+      );
 
-}
+    }
 
 
-/* =========================
-   SCAN
-========================= */
+    /* HEALTH CHECK */
 
-if(
-u.pathname==='/api/news'
-||
-u.pathname==='/api/full-scan'
-){
+    if (
+      url.pathname === "/api/health"
+    ) {
 
+      return Response.json({
 
-const feeds=[
+        ok: true,
 
+        service:
+          "Miracolo Lab News Radar",
 
-[
-'Google News',
-'https://news.google.com/rss/search?q=stock%20market%20OR%20finance%20OR%20Federal%20Reserve%20OR%20Nvidia%20OR%20Bitcoin&hl=en-US&gl=US&ceid=US:en'
-],
+        timestamp:
+          new Date().toISOString()
 
+      });
 
-[
-'GDELT',
-'https://api.gdeltproject.org/api/v2/doc/doc?query=(stock%20OR%20markets%20OR%20finance%20OR%20Nvidia%20OR%20Bitcoin)%20sourcelang:english&mode=artlist&maxrecords=30&format=rss'
-],
+    }
 
 
-[
-'Reddit Investing',
-'https://www.reddit.com/r/investing/.rss?limit=25'
-],
+    /* FULL NEWS SCAN */
 
+    if (
+      url.pathname === "/api/full-scan"
+    ) {
 
-[
-'Reddit Stocks',
-'https://www.reddit.com/r/stocks/.rss?limit=25'
-],
 
+      const feeds = [
 
-[
-'Reddit WallStreetBets',
-'https://www.reddit.com/r/wallstreetbets/.rss?limit=25'
-]
+        {
+          name:
+            "Google News",
 
-];
+          url:
+            "https://news.google.com/rss/search?q=stock%20market%20OR%20finance%20OR%20Federal%20Reserve%20OR%20Nvidia%20OR%20Bitcoin%20OR%20AI&hl=en-US&gl=US&ceid=US:en"
 
+        },
 
-const all=[];
+        {
+          name:
+            "GDELT",
 
-const sourceStatus=[];
+          url:
+            "https://api.gdeltproject.org/api/v2/doc/doc?query=stock%20OR%20markets%20OR%20finance%20OR%20Nvidia%20OR%20Bitcoin&mode=artlist&maxrecords=30&format=rss"
 
+        },
 
-await Promise.all(
+        {
+          name:
+            "Reddit Investing",
 
-feeds.map(
-async function(feed){
+          url:
+            "https://www.reddit.com/r/investing/.rss?limit=25"
 
-const name=
-feed[0];
+        },
 
-const url=
-feed[1];
+        {
+          name:
+            "Reddit Stocks",
 
+          url:
+            "https://www.reddit.com/r/stocks/.rss?limit=25"
 
-try{
+        },
 
+        {
+          name:
+            "Reddit WallStreetBets",
 
-const r=
-await get(
-url,
-{
-'Accept':
-'application/rss+xml,application/xml,text/xml'
-}
-);
+          url:
+            "https://www.reddit.com/r/wallstreetbets/.rss?limit=25"
 
+        }
 
-const items=
-parseRSS(
-await r.text(),
-name
-);
+      ];
 
 
-all.push.apply(
-all,
-items
-);
+      const allItems = [];
 
+      const sources = [];
 
-sourceStatus.push({
 
-name:name,
+      /* SCANSIONE PARALLELA */
 
-status:'ok',
+      await Promise.all(
 
-count:items.length
+        feeds.map(
+          async function(feed) {
 
-});
+            try {
 
+              const text =
+                await fetchFeed(
+                  feed.url
+                );
 
-}catch(e){
 
+              const items =
+                parseRSS(
+                  text,
+                  feed.name
+                );
 
-sourceStatus.push({
 
-name:name,
+              items.forEach(
+                function(item) {
 
-status:'error',
+                  item.score =
+                    calculateScore(
+                      item
+                    );
 
-error:String(e),
+                }
+              );
 
-count:0
 
-});
+              allItems.push(
+                ...items
+              );
 
 
-}
+              sources.push({
 
-}
-)
+                name:
+                  feed.name,
 
-);
+                type:
+                  feed.name
+                    .toLowerCase()
+                    .includes("reddit")
+                    ?
+                    "social"
+                    :
+                    "news",
 
+                status:
+                  "ok",
 
-/* SCORE */
+                count:
+                  items.length,
 
-all.forEach(
-function(x){
+                error:
+                  null
 
-x.score=
-scoreItem(x);
+              });
 
-}
-);
 
+            } catch (error) {
 
-/* ORDINA */
 
-all.sort(
-function(a,b){
+              sources.push({
 
-return (
-b.score-a.score
-)
-||
-String(b.date)
-.localeCompare(
-String(a.date)
-);
+                name:
+                  feed.name,
 
-}
-);
+                type:
+                  feed.name
+                    .toLowerCase()
+                    .includes("reddit")
+                    ?
+                    "social"
+                    :
+                    "news",
 
+                status:
+                  "error",
 
-/* CONTEGGI */
+                count:
+                  0,
 
-const news=
-all.filter(
-function(x){
+                error:
+                  String(error)
 
-return
-x.source
-.toLowerCase()
-.indexOf('reddit')<0;
+              });
 
-}
-).length;
+            }
 
+          }
+        )
 
-const social=
-all.length-news;
+      );
 
 
-/* RISPOSTA */
+      /* ORDINA PER SCORE */
 
-const payload={
+      allItems.sort(
+        function(a,b) {
 
-ok:true,
+          return (
+            Number(b.score || 0) -
+            Number(a.score || 0)
+          );
 
-type:'full_scan',
+        }
+      );
 
-timestamp:
-new Date().toISOString(),
 
-summary:{
+      /* NEWS */
 
-news:news,
+      const news =
+        allItems.filter(
+          function(item) {
 
-social:social,
+            return !String(
+              item.source
+            )
+            .toLowerCase()
+            .includes(
+              "reddit"
+            );
 
-total:all.length,
+          }
+        );
 
-workingSources:
-sourceStatus.filter(
-function(x){
 
-return x.status==='ok';
+      /* SOCIAL */
 
-}
-).length,
+      const social =
+        allItems.filter(
+          function(item) {
 
-failedSources:
-sourceStatus.filter(
-function(x){
+            return String(
+              item.source
+            )
+            .toLowerCase()
+            .includes(
+              "reddit"
+            );
 
-return x.status!=='ok';
+          }
+        );
 
-}
-).length
 
-},
+      const response = {
 
+        ok: true,
 
-top_signals:
-all.slice(0,40),
+        type:
+          "full_scan",
 
+        timestamp:
+          new Date().toISOString(),
 
-news:
-all.filter(
-function(x){
+        summary: {
 
-return
-x.source
-.toLowerCase()
-.indexOf('reddit')<0;
+          news:
+            news.length,
 
-}
-).slice(0,40),
+          social:
+            social.length,
 
+          total:
+            allItems.length,
 
-social:
-all.filter(
-function(x){
+          workingSources:
+            sources.filter(
+              function(s) {
+                return s.status === "ok";
+              }
+            ).length,
 
-return
-x.source
-.toLowerCase()
-.indexOf('reddit')>=0;
+          failedSources:
+            sources.filter(
+              function(s) {
+                return s.status !== "ok";
+              }
+            ).length
 
-}
-).slice(0,25),
+        },
 
+        top_signals:
+          allItems.slice(
+            0,
+            40
+          ),
 
-sources:
-sourceStatus
+        news:
+          news.slice(
+            0,
+            40
+          ),
 
-};
+        social:
+          social.slice(
+            0,
+            25
+          ),
 
+        sources:
+          sources
 
-return Response.json(
+      };
 
-payload,
 
-{
-headers:{
+      return Response.json(
+        response,
+        {
+          headers: {
+            "Cache-Control":
+              "no-store"
+          }
+        }
+      );
 
-'Access-Control-Allow-Origin':'*',
+    }
 
-'Cache-Control':
-'no-store'
 
-}
+    /* OLD API COMPATIBILITY */
 
-}
-);
+    if (
+      url.pathname === "/api/news"
+    ) {
 
-}
+      return Response.redirect(
+        new URL(
+          "/api/full-scan",
+          url
+        ),
+        307
+      );
 
+    }
 
-/* 404 */
 
-return new Response(
-'Not found',
-{
-status:404
-}
-);
+    return new Response(
+      "Not found",
+      {
+        status: 404
+      }
+    );
 
-}
+  }
 
 };
