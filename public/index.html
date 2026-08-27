@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Miracolo Lab — Investment Intelligence</title>
-<meta name="description" content="Piattaforma di intelligence finanziaria: radar notizie, crypto live, ETF portfolio, trading bot simulato e black swan monitor.">
+<meta name="description" content="AI-driven investment intelligence: radar notizie, prezzi live, trading bot con AI Gemini, alert Telegram e Black Swan monitor.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -13,77 +13,128 @@
 <body>
 
 <!-- BLACK SWAN OVERLAY -->
-<div id="bsOverlay" class="bs-overlay hidden" role="alertdialog" aria-modal="true">
+<div id="bsOverlay" class="bs-overlay hidden">
   <div class="bs-modal">
     <div class="bs-modal-anim">🚨</div>
     <div class="bs-modal-level" id="bsOverlayLevel">CRITICAL ALERT</div>
     <h2 class="bs-modal-title">BLACK SWAN RILEVATO</h2>
-    <p class="bs-modal-desc">Instabilità critica rilevata sui mercati. Monitora i tuoi ETF.</p>
+    <p class="bs-modal-desc">Instabilità critica sui mercati. Proteggi i tuoi ETF.</p>
     <div class="bs-triggers-wrap" id="bsTriggersList"></div>
     <div class="bs-advice">
       <div class="advice-item">⚠️ Considera stop-loss sugli ETF</div>
       <div class="advice-item">📊 Monitora il VIX (Fear Index)</div>
-      <div class="advice-item">💵 Tieni liquidità disponibile</div>
+      <div class="advice-item">💵 Mantieni liquidità disponibile</div>
     </div>
     <button class="bs-dismiss-btn" onclick="dismissBsOverlay()">Ho capito — Continua a monitorare</button>
+  </div>
+</div>
+
+<!-- TRADE APPROVAL MODAL -->
+<div id="tradeModal" class="modal-overlay hidden">
+  <div class="trade-modal">
+    <div class="tm-header">
+      <div class="tm-asset-wrap">
+        <div class="tm-asset" id="tmAsset">BTC</div>
+        <div class="tm-action-badge" id="tmActionBadge">BUY</div>
+      </div>
+      <div class="tm-right">
+        <div class="tm-confidence" id="tmConfidence">—%</div>
+        <div class="tm-conf-label">Confidenza AI</div>
+      </div>
+    </div>
+    <div class="tm-info-grid">
+      <div class="tm-info-item"><span>💰 Prezzo</span><b id="tmPrice">—</b></div>
+      <div class="tm-info-item"><span>💵 Importo</span><b id="tmAmount">—</b></div>
+      <div class="tm-info-item"><span>📅 Timeframe</span><b id="tmTimeframe">—</b></div>
+      <div class="tm-info-item"><span>🛑 Stop</span><b id="tmSL">—</b></div>
+      <div class="tm-info-item"><span>🎯 Target</span><b id="tmTP">—</b></div>
+      <div class="tm-info-item"><span>📊 Score</span><b id="tmScore">—</b></div>
+    </div>
+
+    <div class="tm-ai-box">
+      <div class="tm-ai-loading" id="tmAiLoading">
+        <span class="ai-spin">🤖</span> Analisi AI in corso...
+      </div>
+      <div class="tm-ai-content hidden" id="tmAiContent">
+        <div class="tm-ai-section">
+          <div class="tm-ai-title">🧠 Perché questa operazione?</div>
+          <div class="tm-ai-text" id="tmWhy"></div>
+        </div>
+        <div class="tm-ai-section">
+          <div class="tm-ai-title">⚠️ Rischi principali</div>
+          <div class="tm-ai-text" id="tmRisks"></div>
+        </div>
+        <div class="tm-learn-box">
+          <div class="tm-ai-title">💡 Concetto da imparare</div>
+          <div class="tm-ai-text" id="tmLearn"></div>
+        </div>
+      </div>
+      <div class="tm-ai-error hidden" id="tmAiError">
+        🔑 Inserisci la chiave Gemini in Impostazioni per analisi AI
+      </div>
+    </div>
+
+    <div class="tm-buttons">
+      <button class="tm-btn skip" onclick="handleTradeDecision('skip')">⏭ Salta</button>
+      <button class="tm-btn wait" onclick="handleTradeDecision('wait')">⏸ Aspetta</button>
+      <button class="tm-btn approve" onclick="handleTradeDecision('approve')">✅ Approva</button>
+    </div>
+    <div class="tm-disclaimer">⚠️ Simulazione — nessuna operazione reale</div>
   </div>
 </div>
 
 <!-- TOAST -->
 <div id="toastContainer"></div>
 
-<!-- APP LAYOUT -->
+<!-- APP -->
 <div class="app-layout">
-
   <!-- HEADER -->
   <header class="app-header">
     <div class="header-brand">
       <span class="brand-magic">🪄</span>
       <div class="brand-text">
         <span class="brand-name">Miracolo Lab</span>
-        <span class="brand-tagline">Investment Intelligence Platform</span>
+        <span class="brand-tagline">AI Investment Intelligence</span>
       </div>
     </div>
-
     <div class="header-status">
-      <div class="status-chip" id="statusChip">
+      <div class="status-chip">
         <span class="status-dot" id="statusDot"></span>
         <span id="statusLabel">PRONTO</span>
       </div>
       <div class="header-stats">
-        <span class="hstat" title="News">📰 <b id="hNews">—</b></span>
-        <span class="hstat" title="Social">💬 <b id="hSocial">—</b></span>
-        <span class="hstat" title="Forti">🔥 <b id="hStrong">—</b></span>
-        <span class="hstat" title="Ultimo scan">🕐 <b id="hTime">—</b></span>
+        <span class="hstat">📰 <b id="hNews">—</b></span>
+        <span class="hstat">💬 <b id="hSocial">—</b></span>
+        <span class="hstat">🔥 <b id="hStrong">—</b></span>
+        <span class="hstat">🕐 <b id="hTime">—</b></span>
       </div>
     </div>
-
     <div class="header-actions">
-      <label class="auto-label" title="Auto-refresh ogni 5 minuti">
+      <label class="auto-label">
         <span class="auto-text">Auto</span>
-        <div class="toggle-switch">
-          <input type="checkbox" id="autoToggle">
-          <span class="toggle-knob"></span>
-        </div>
+        <div class="toggle-switch"><input type="checkbox" id="autoToggle"><span class="toggle-knob"></span></div>
         <span class="countdown-badge" id="countdownBadge"></span>
       </label>
       <button class="scan-btn" id="scanBtn" onclick="doScan()">
-        <span id="scanIcon">🔎</span>
-        <span>Scansiona</span>
+        <span id="scanIcon">🔎</span><span>Scansiona</span>
       </button>
     </div>
   </header>
 
+  <!-- PRICE TICKER -->
+  <div class="price-ticker-wrap" id="tickerWrap">
+    <div class="price-ticker" id="priceTicker">
+      <span class="ticker-loading">Caricamento prezzi...</span>
+    </div>
+  </div>
+
   <!-- BODY -->
   <div class="app-body">
-
     <!-- FEED COLUMN -->
     <div class="feed-col" id="feedCol">
-
-      <!-- Sources -->
       <div id="sourceGrid" class="source-grid"></div>
 
-      <!-- Black Swan Banner -->
+      <!-- BS Banner -->
       <div id="bsBanner" class="bs-banner hidden">
         <div class="bs-banner-left">
           <span class="bs-banner-icon">🚨</span>
@@ -95,20 +146,20 @@
         <button class="bs-banner-btn" onclick="setPanel('blackswan')">Dettagli →</button>
       </div>
 
-      <!-- Bot Status Bar -->
+      <!-- Bot bar -->
       <div id="botBar" class="bot-bar hidden">
         <div class="bot-bar-left">
           <span id="botBarIcon">🤖</span>
           <div>
-            <div class="bot-bar-title">Trading Bot · <span id="botBarStatus">ATTIVO</span></div>
-            <div class="bot-bar-sub">Portfolio: <b id="botBarValue">2.000,00€</b> · P&L: <b id="botBarPnl">+0,00€</b></div>
+            <div class="bot-bar-title">Bot · <span id="botBarStatus">ATTIVO</span> · Acc. <span id="botBarAcc">—</span></div>
+            <div class="bot-bar-sub">Portfolio: <b id="botBarValue">2.000€</b> · P&L: <b id="botBarPnl">+0€</b> · <b id="botBarPending">0 suggerimenti</b></div>
           </div>
         </div>
         <button class="bot-bar-btn" onclick="setPanel('bot')">Gestisci →</button>
       </div>
 
-      <!-- Filter tabs -->
-      <div class="feed-filters" role="tablist">
+      <!-- Filters -->
+      <div class="feed-filters">
         <button class="ff-btn active" data-filter="all" onclick="setFilter(this)">Tutti</button>
         <button class="ff-btn" data-filter="news" onclick="setFilter(this)">📰 News</button>
         <button class="ff-btn" data-filter="social" onclick="setFilter(this)">💬 Social</button>
@@ -117,64 +168,38 @@
         <button class="ff-btn" data-filter="strong" onclick="setFilter(this)">🔥 Forti</button>
       </div>
 
-      <!-- Feed head -->
       <div class="feed-head">
         <h1>📡 Segnali rilevati</h1>
         <p id="feedInfo">Premi Scansiona per avviare il radar</p>
       </div>
 
-      <!-- Results -->
       <div id="results">
         <div class="empty-state">
           <div class="empty-icon">📡</div>
           <div class="empty-title">Il radar è pronto</div>
-          <div class="empty-sub">Premi Scansiona per cercare segnali dai mercati</div>
+          <div class="empty-sub">Premi Scansiona per cercare segnali</div>
         </div>
       </div>
+    </div>
 
-    </div><!-- /feed-col -->
-
-    <!-- SIDE COLUMN -->
+    <!-- SIDE -->
     <div class="side-col">
-      <!-- Active panel -->
       <div class="side-panel" id="sidePanel">
-        <div class="panel-placeholder">
-          <div class="pp-icon">👈</div>
-          <div>Seleziona una sezione dalla barra laterale</div>
-        </div>
+        <div class="panel-placeholder"><div class="pp-icon">👈</div><div>Seleziona una sezione</div></div>
       </div>
-
-      <!-- Tab rail -->
-      <nav class="tab-rail" aria-label="Pannelli laterali">
-        <button class="rail-btn active" data-panel="radar" onclick="setPanel('radar')" title="Radar Info">
-          <span class="rail-icon">📡</span>
-          <span class="rail-lbl">Radar</span>
-        </button>
-        <button class="rail-btn" data-panel="etf" onclick="setPanel('etf')" title="Portfolio ETF">
-          <span class="rail-icon">📈</span>
-          <span class="rail-lbl">ETF</span>
-        </button>
-        <button class="rail-btn" data-panel="crypto" onclick="setPanel('crypto')" title="Crypto Monitor">
-          <span class="rail-icon">₿</span>
-          <span class="rail-lbl">Crypto</span>
-        </button>
-        <button class="rail-btn" data-panel="bot" onclick="setPanel('bot')" title="Trading Bot">
-          <span class="rail-icon">🤖</span>
-          <span class="rail-lbl">Bot</span>
-        </button>
-        <button class="rail-btn" data-panel="blackswan" onclick="setPanel('blackswan')" title="Black Swan Monitor">
-          <span class="rail-icon">🚨</span>
-          <span class="rail-lbl">Alert</span>
-        </button>
-        <button class="rail-btn" data-panel="settings" onclick="setPanel('settings')" title="Impostazioni">
-          <span class="rail-icon">⚙️</span>
-          <span class="rail-lbl">Config</span>
-        </button>
+      <nav class="tab-rail">
+        <button class="rail-btn active" data-panel="radar"     onclick="setPanel('radar')"     title="Radar"><span class="rail-icon">📡</span><span class="rail-lbl">Radar</span></button>
+        <button class="rail-btn"        data-panel="prices"    onclick="setPanel('prices')"    title="Prezzi Live"><span class="rail-icon">📊</span><span class="rail-lbl">Prezzi</span></button>
+        <button class="rail-btn"        data-panel="etf"       onclick="setPanel('etf')"       title="ETF Portfolio"><span class="rail-icon">📈</span><span class="rail-lbl">ETF</span></button>
+        <button class="rail-btn"        data-panel="crypto"    onclick="setPanel('crypto')"    title="Crypto"><span class="rail-icon">₿</span><span class="rail-lbl">Crypto</span></button>
+        <button class="rail-btn"        data-panel="bot"       onclick="setPanel('bot')"       title="Trading Bot"><span class="rail-icon">🤖</span><span class="rail-lbl">Bot</span></button>
+        <button class="rail-btn"        data-panel="learning"  onclick="setPanel('learning')"  title="Apprendimento"><span class="rail-icon">🧠</span><span class="rail-lbl">Impara</span></button>
+        <button class="rail-btn"        data-panel="blackswan" onclick="setPanel('blackswan')" title="Black Swan"><span class="rail-icon">🚨</span><span class="rail-lbl">Alert</span></button>
+        <button class="rail-btn"        data-panel="settings"  onclick="setPanel('settings')"  title="Impostazioni"><span class="rail-icon">⚙️</span><span class="rail-lbl">Config</span></button>
       </nav>
-    </div><!-- /side-col -->
-
-  </div><!-- /app-body -->
-</div><!-- /app-layout -->
+    </div>
+  </div>
+</div>
 
 <script src="/app.js"></script>
 </body>
