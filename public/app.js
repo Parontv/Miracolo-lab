@@ -248,7 +248,7 @@ function renderSources(sources = []) {
 /* ===== RENDER FEED ===== */
 function renderFeed() {
   let list = S.signals.slice();
-  if (S.filter === 'news')   list = list.filter(x => x.kind === 'news');
+  if (S.filter === 'news')   list = list.filter(x => x.kind === 'news' && x.cat !== 'crypto');
   if (S.filter === 'social') list = list.filter(x => x.kind === 'social');
   if (S.filter === 'macro')  list = list.filter(x => x.cat === 'macro');
   if (S.filter === 'crypto') list = list.filter(x => x.cat === 'crypto');
@@ -259,24 +259,50 @@ function renderFeed() {
     return;
   }
 
-  $('results').innerHTML = list.map((x, i) => {
-    const sc = Number(x.score || 0);
-    const scoreCls = sc >= 5 ? 'score-green' : sc >= 3 ? 'score-yellow' : 'score-dim';
-    const scoreIcon = sc >= 5 ? '🔥' : sc >= 3 ? '⚡' : '·';
-    const catBadge = x.cat === 'crypto' ? 'badge-crypto' : x.cat === 'macro' ? 'badge-macro' : x.kind === 'social' ? 'badge-social' : 'badge-news';
-    const catLabel = x.cat === 'crypto' ? '₿ Crypto' : x.cat === 'macro' ? '🌍 Macro' : x.kind === 'social' ? '💬 Social' : '📰 News';
-    return `<article class="signal" style="animation-delay:${i * 25}ms">
-      <div class="sig-meta">
-        <span class="badge">${esc(x.source || 'Fonte')}</span>
-        <span class="badge ${catBadge}">${catLabel}</span>
-        ${x.cryptoAsset ? `<span class="badge badge-crypto">${x.cryptoAsset}</span>` : ''}
-        <span class="score-badge ${scoreCls}">${scoreIcon} ${sc}/6</span>
-      </div>
-      <a class="sig-title" href="${esc(x.link || '#')}" target="_blank" rel="noopener">${esc(x.title || 'Senza titolo')}</a>
-      ${x.description ? `<div class="sig-desc">${esc(x.description)}</div>` : ''}
-      ${x.date ? `<div class="sig-date">🕐 ${esc(x.date)}</div>` : ''}
-    </article>`;
-  }).join('');
+  // In modalita "Tutti": raggruppa per categoria con intestazioni
+  if (S.filter === 'all') {
+    const groups = [
+      { icon: '🔥', label: 'Segnali Forti',    items: list.filter(x => Number(x.score||0) >= 5) },
+      { icon: '🌍', label: 'Macro & Economia', items: list.filter(x => x.cat === 'macro'  && Number(x.score||0) < 5) },
+      { icon: '📰', label: 'Mercati & Finance', items: list.filter(x => x.cat === 'news' && x.kind === 'news' && Number(x.score||0) < 5) },
+      { icon: '₿',  label: 'Crypto News',      items: list.filter(x => x.cat === 'crypto' && Number(x.score||0) < 5) },
+      { icon: '💬', label: 'Social & Reddit',  items: list.filter(x => x.kind === 'social' && Number(x.score||0) < 5) },
+    ].filter(g => g.items.length > 0);
+
+    let html = '';
+    let delay = 0;
+    for (const g of groups) {
+      html += `<div class="cat-header">
+        <span class="cat-icon">${g.icon}</span>
+        <span class="cat-label">${g.label}</span>
+        <span class="cat-count">${g.items.length}</span>
+      </div>`;
+      html += g.items.slice(0, 15).map(x => signalCard(x, delay++)).join('');
+    }
+    $('results').innerHTML = html;
+    return;
+  }
+
+  $('results').innerHTML = list.map((x, i) => signalCard(x, i)).join('');
+}
+
+function signalCard(x, i) {
+  const sc = Number(x.score || 0);
+  const scoreCls = sc >= 5 ? 'score-green' : sc >= 3 ? 'score-yellow' : 'score-dim';
+  const scoreIcon = sc >= 5 ? '🔥' : sc >= 3 ? '⚡' : '·';
+  const catBadge = x.cat === 'crypto' ? 'badge-crypto' : x.cat === 'macro' ? 'badge-macro' : x.kind === 'social' ? 'badge-social' : 'badge-news';
+  const catLabel = x.cat === 'crypto' ? '₿ Crypto' : x.cat === 'macro' ? '🌍 Macro' : x.kind === 'social' ? '💬 Social' : '📰 News';
+  return `<article class="signal" style="animation-delay:${i * 20}ms">
+    <div class="sig-meta">
+      <span class="badge">${esc(x.source || 'Fonte')}</span>
+      <span class="badge ${catBadge}">${catLabel}</span>
+      ${x.cryptoAsset ? `<span class="badge badge-crypto">${x.cryptoAsset}</span>` : ''}
+      <span class="score-badge ${scoreCls}">${scoreIcon} ${sc}/6</span>
+    </div>
+    <a class="sig-title" href="${esc(x.link || '#')}" target="_blank" rel="noopener">${esc(x.title || 'Senza titolo')}</a>
+    ${x.description ? `<div class="sig-desc">${esc(x.description)}</div>` : ''}
+    ${x.date ? `<div class="sig-date">🕐 ${esc(x.date)}</div>` : ''}
+  </article>`;
 }
 
 /* ===== FILTER ===== */
