@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Miracolo Lab — Investment Radar</title>
-<meta name="description" content="Investment Radar con news, social, indici globali, quotazioni, indicatori tecnici e strategia paper trading.">
+<title>Miracolo Lab — Investment Dashboard</title>
+<meta name="description" content="Investment Dashboard con mercato, crypto, news, social, analisi e paper trading.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -15,15 +15,33 @@
 <link rel="stylesheet" href="/market.css">
 <link rel="stylesheet" href="/binance-ui.css">
 <link rel="stylesheet" href="/recap-ui.css">
+<style>
+.build-badge{display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:4px 9px;border:1px solid #334155;border-radius:999px;background:#111827;color:#93c5fd;font-size:10px;font-weight:800;letter-spacing:.04em;vertical-align:middle}
+.auto-label{font-size:11px;color:#94a3b8;margin-right:6px}
+@media(max-width:700px){.top{align-items:flex-start!important}.brand{font-size:20px}.build-badge{display:block;width:max-content;margin:6px 0 0}.header-actions{width:100%;justify-content:space-between}.btn-text{display:inline!important}.auto-label{font-size:9px}.primary{padding:11px 13px!important}.tabs{padding-bottom:4px}.panel{padding:14px!important}}
+</style>
 </head>
 <body>
 <div id="toast-container"></div>
 <main class="app">
-<header class="top"><div class="brand-wrap"><div class="brand"><span class="brand-icon">🪄</span> Miracolo Lab</div><div class="sub">Investment Radar · Market Intelligence · Paper Trading</div></div><div class="header-actions"><div class="auto-refresh-wrap"><label class="toggle-label" for="autoRefresh"><span class="toggle-text">Auto</span><div class="toggle-switch"><input type="checkbox" id="autoRefresh"><span class="toggle-slider"></span></div></label><span id="countdownDisplay" class="countdown-display"></span></div><button id="scan" class="primary"><span class="btn-icon">🔎</span><span class="btn-text">Scansiona</span></button></div></header>
+<header class="top">
+  <div class="brand-wrap">
+    <div class="brand"><span class="brand-icon">🪄</span> Miracolo Lab <span class="build-badge">V3 BASE · NEWS AUTO · 27/08/2026</span></div>
+    <div class="sub">Investment Dashboard · Market Intelligence · Paper Trading</div>
+  </div>
+  <div class="header-actions">
+    <div class="auto-refresh-wrap">
+      <span class="auto-label">AUTO 20 MIN</span>
+      <label class="toggle-label" for="autoRefresh"><span class="toggle-text">ON</span><div class="toggle-switch"><input type="checkbox" id="autoRefresh" checked><span class="toggle-slider"></span></div></label>
+      <span id="countdownDisplay" class="countdown-display"></span>
+    </div>
+    <button id="scan" class="primary"><span class="btn-icon">🔎</span><span class="btn-text">Scansiona News</span></button>
+  </div>
+</header>
 <section class="stats" aria-label="Statistiche"><div class="card"><span class="card-label">STATO</span><b id="status" class="ok">PRONTO</b></div><div class="card"><span class="card-label">NEWS</span><b id="newsCount">—</b></div><div class="card"><span class="card-label">SOCIAL</span><b id="socialCount">—</b></div><div class="card"><span class="card-label">ULTIMO SCAN</span><b id="lastScan">—</b></div></section>
-<nav class="tabs" role="tablist" aria-label="Sezioni radar"><button role="tab" data-filter="all" class="active" aria-selected="true">Tutti</button><button role="tab" data-filter="news" aria-selected="false">📰 News</button><button role="tab" data-filter="social" aria-selected="false">💬 Social</button><button role="tab" data-filter="strong" aria-selected="false">🔥 Forti</button><button role="tab" data-filter="analysis" aria-selected="false">📊 Analisi</button><button role="tab" data-filter="market" aria-selected="false" id="marketTab">🧠 Strategia</button></nav>
-<section class="panel" aria-live="polite"><div class="panelHead"><div><h1 id="panelTitle">📡 Segnali rilevati</h1><p id="sourceInfo">Avvio automatico del radar…</p></div></div><div id="sources"></div><div id="analysis" hidden></div><div id="market" hidden></div><div id="results"><div class="empty"><div class="empty-icon">📡</div><div>Avvio del radar…<br><span>Recupero delle fonti online</span></div></div></div></section>
+<nav class="tabs" role="tablist" aria-label="Sezioni dashboard"><button role="tab" data-filter="all" class="active" aria-selected="true">Dashboard</button><button role="tab" data-filter="news" aria-selected="false">📰 News</button><button role="tab" data-filter="social" aria-selected="false">💬 Social</button><button role="tab" data-filter="strong" aria-selected="false">🔥 Segnali forti</button><button role="tab" data-filter="analysis" aria-selected="false">📊 Analisi</button><button role="tab" data-filter="market" aria-selected="false" id="marketTab">🧠 Strategia</button></nav>
+<section class="panel" aria-live="polite"><div class="panelHead"><div><h1 id="panelTitle">📡 Dashboard investimenti</h1><p id="sourceInfo">Scansione automatica news attiva ogni 20 minuti.</p></div></div><div id="sources"></div><div id="analysis" hidden></div><div id="market" hidden></div><div id="results"><div class="empty"><div class="empty-icon">📡</div><div>Radar pronto.<br><span>La prima scansione partirà automaticamente.</span></div></div></div></section>
 </main>
-<script src="/app.js"></script><script src="/market-ui.js"></script><script src="/binance-ui.js"></script><script src="/recap-ui.js"></script><script src="/boot.js"></script>
+<script src="/app.js"></script><script src="/market-ui.js"></script><script src="/binance-ui.js"></script><script src="/recap-ui.js"></script><script src="/boot.js"></script><script src="/version.js"></script>
 </body>
 </html>
