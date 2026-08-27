@@ -1,47 +1,24 @@
 <!doctype html>
 <html lang="it">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Miracolo Lab — Investment Dashboard</title>
-<meta name="description" content="Investment Dashboard con mercato, crypto, news, social, analisi e paper trading.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css">
-<link rel="stylesheet" href="/readability.css">
-<link rel="stylesheet" href="/accessibility.css">
-<link rel="stylesheet" href="/charts.css">
-<link rel="stylesheet" href="/market.css">
-<link rel="stylesheet" href="/binance-ui.css">
-<link rel="stylesheet" href="/recap-ui.css">
+<meta name="description" content="Investment Dashboard con mercato, crypto, news, social, sentiment e paper trading.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/readability.css"><link rel="stylesheet" href="/accessibility.css"><link rel="stylesheet" href="/charts.css"><link rel="stylesheet" href="/market.css"><link rel="stylesheet" href="/binance-ui.css"><link rel="stylesheet" href="/recap-ui.css">
 <style>
-.build-badge{display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:4px 9px;border:1px solid #334155;border-radius:999px;background:#111827;color:#93c5fd;font-size:10px;font-weight:800;letter-spacing:.04em;vertical-align:middle}
-.auto-label{font-size:11px;color:#94a3b8;margin-right:6px}
-@media(max-width:700px){.top{align-items:flex-start!important}.brand{font-size:20px}.build-badge{display:block;width:max-content;margin:6px 0 0}.header-actions{width:100%;justify-content:space-between}.btn-text{display:inline!important}.auto-label{font-size:9px}.primary{padding:11px 13px!important}.tabs{padding-bottom:4px}.panel{padding:14px!important}}
+.build-badge{display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:4px 9px;border:1px solid #334155;border-radius:999px;background:#111827;color:#93c5fd;font-size:10px;font-weight:800;vertical-align:middle}.portfolio{margin-top:14px}.portfolio-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.portfolio-head h2{font-size:17px}.portfolio-total{font-size:21px;font-weight:900}.portfolio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.holding{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(15,23,42,.78)}.holding span{display:block;color:#94a3b8;font-size:11px;margin-top:3px}.holding-del{border:0;background:transparent;color:#fca5a5;font-size:20px;cursor:pointer}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;align-items:center;justify-content:center;padding:16px}.modal.open{display:flex}.modal-box{width:min(460px,100%);background:#111827;border:1px solid #334155;border-radius:18px;padding:20px}.modal-box h3{margin:0 0 14px}.modal-box input,.modal-box select{width:100%;padding:11px;margin:6px 0 10px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:#fff}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}.secondary{border:1px solid #334155;background:#172033;color:#e5e7eb;border-radius:10px;padding:10px 14px;cursor:pointer}.portfolio-empty{color:#94a3b8;font-size:12px;padding:12px}.sentiment-strip{margin-top:12px;padding:14px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(15,23,42,.72)}.sentiment-strip b{font-size:16px}.sentiment-detail{color:#aebccc;font-size:12px;margin-top:5px}
+@media(max-width:760px){.portfolio-grid{grid-template-columns:1fr}.build-badge{display:block;width:max-content;margin:6px 0 0}.header-actions{width:100%;justify-content:space-between}.brand{font-size:21px}.top{align-items:flex-start!important}.primary{padding:11px 13px!important}}
 </style>
 </head>
 <body>
-<div id="toast-container"></div>
-<main class="app">
-<header class="top">
-  <div class="brand-wrap">
-    <div class="brand"><span class="brand-icon">🪄</span> Miracolo Lab <span class="build-badge">V3 BASE · NEWS AUTO · 27/08/2026</span></div>
-    <div class="sub">Investment Dashboard · Market Intelligence · Paper Trading</div>
-  </div>
-  <div class="header-actions">
-    <div class="auto-refresh-wrap">
-      <span class="auto-label">AUTO 20 MIN</span>
-      <label class="toggle-label" for="autoRefresh"><span class="toggle-text">ON</span><div class="toggle-switch"><input type="checkbox" id="autoRefresh" checked><span class="toggle-slider"></span></div></label>
-      <span id="countdownDisplay" class="countdown-display"></span>
-    </div>
-    <button id="scan" class="primary"><span class="btn-icon">🔎</span><span class="btn-text">Scansiona News</span></button>
-  </div>
-</header>
+<div id="toast-container"></div><main class="app">
+<header class="top"><div class="brand-wrap"><div class="brand"><span class="brand-icon">🪄</span> Miracolo Lab <span class="build-badge">V3.6 · PORTFOLIO + SENTIMENT · 27/08/2026</span></div><div class="sub">Investment Dashboard · Market Intelligence · News Radar · Paper Trading</div></div><div class="header-actions"><div class="auto-refresh-wrap"><span class="auto-label">AUTO 20 MIN</span><label class="toggle-label" for="autoRefresh"><span class="toggle-text">ON</span><div class="toggle-switch"><input type="checkbox" id="autoRefresh" checked><span class="toggle-slider"></span></div></label><span id="countdownDisplay" class="countdown-display"></span></div><button id="scan" class="primary"><span class="btn-icon">🔎</span><span class="btn-text">Scansiona News</span></button></div></header>
 <section class="stats" aria-label="Statistiche"><div class="card"><span class="card-label">STATO</span><b id="status" class="ok">PRONTO</b></div><div class="card"><span class="card-label">NEWS</span><b id="newsCount">—</b></div><div class="card"><span class="card-label">SOCIAL</span><b id="socialCount">—</b></div><div class="card"><span class="card-label">ULTIMO SCAN</span><b id="lastScan">—</b></div></section>
+<section class="panel portfolio"><div class="portfolio-head"><div><h2>💼 I miei asset</h2><p>Inserimento manuale di BTC, crypto, ETF e altri strumenti. I dati restano salvati sul dispositivo.</p></div><div><span class="portfolio-total" id="portfolioTotal">€0,00</span> <button id="portfolioAdd" class="primary" type="button">＋ Asset</button></div></div><div id="portfolioRows" class="portfolio-grid"></div></section>
 <nav class="tabs" role="tablist" aria-label="Sezioni dashboard"><button role="tab" data-filter="all" class="active" aria-selected="true">Dashboard</button><button role="tab" data-filter="news" aria-selected="false">📰 News</button><button role="tab" data-filter="social" aria-selected="false">💬 Social</button><button role="tab" data-filter="strong" aria-selected="false">🔥 Segnali forti</button><button role="tab" data-filter="analysis" aria-selected="false">📊 Analisi</button><button role="tab" data-filter="market" aria-selected="false" id="marketTab">🧠 Strategia</button></nav>
 <section class="panel" aria-live="polite"><div class="panelHead"><div><h1 id="panelTitle">📡 Dashboard investimenti</h1><p id="sourceInfo">Scansione automatica news attiva ogni 20 minuti.</p></div></div><div id="sources"></div><div id="analysis" hidden></div><div id="market" hidden></div><div id="results"><div class="empty"><div class="empty-icon">📡</div><div>Radar pronto.<br><span>La prima scansione partirà automaticamente.</span></div></div></div></section>
 </main>
-<script src="/app.js"></script><script src="/market-ui.js"></script><script src="/binance-ui.js"></script><script src="/recap-ui.js"></script><script src="/boot.js"></script><script src="/version.js"></script>
-</body>
-</html>
+<div id="portfolioModal" class="modal"><div class="modal-box"><h3>＋ Aggiungi asset</h3><label>Ticker / simbolo<input id="assetSymbol" placeholder="BTC, VWCE, QQQ…"></label><label>Nome<input id="assetName" placeholder="Bitcoin, Vanguard FTSE…"></label><label>Tipo<select id="assetType"><option>Crypto</option><option>ETF</option><option>Azione</option><option>Altro</option></select></label><label>Valore attuale (€)<input id="assetValue" type="number" min="0" step="0.01" placeholder="1000"></label><div class="modal-actions"><button id="portfolioClose" class="secondary">Annulla</button><button id="portfolioSave" class="primary">Salva asset</button></div></div></div>
+<script src="/app.js"></script><script src="/market-ui.js"></script><script src="/binance-ui.js"></script><script src="/recap-ui.js"></script><script src="/portfolio.js"></script><script src="/boot.js"></script><script src="/version.js"></script>
+</body></html>
