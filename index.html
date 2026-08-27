@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Miracolo Lab — Investment Radar</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <div>
+      <div class="brand">🪄 Miracolo Lab</div>
+      <div class="sub">Investment Radar · News + Social</div>
+    </div>
+    <button id="scan" class="primary">🔎 Scansiona news</button>
+  </header>
+
+  <section class="stats">
+    <div class="card"><span>STATO</span><b id="status" class="ok">PRONTO</b></div>
+    <div class="card"><span>NEWS</span><b id="newsCount">—</b></div>
+    <div class="card"><span>SOCIAL</span><b id="socialCount">—</b></div>
+    <div class="card"><span>ULTIMO SCAN</span><b id="lastScan">—</b></div>
+  </section>
+
+  <nav class="tabs">
+    <button data-filter="all" class="active">Tutti</button>
+    <button data-filter="news">📰 News</button>
+    <button data-filter="social">💬 Social</button>
+    <button data-filter="strong">🔥 Forti</button>
+  </nav>
+
+  <section class="panel">
+    <div class="panelHead">
+      <div>
+        <h2>📡 Segnali rilevati</h2>
+        <p id="sourceInfo">Premi “Scansiona news” per iniziare.</p>
+      </div>
+    </div>
+    <div id="sources"></div>
+    <div id="results"><div class="empty">Il radar è pronto.</div></div>
+  </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
