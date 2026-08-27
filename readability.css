@@ -1,0 +1,39 @@
+/* Miracolo Lab — high readability layer */
+html, body { font-size:16px !important; color:#fff !important; }
+.sub, .toggle-text { font-size:15px !important; font-weight:700 !important; color:#e6edf5 !important; }
+.brand { font-size:30px !important; }
+.primary { font-size:16px !important; font-weight:800 !important; padding:14px 22px !important; }
+.card-label { font-size:14px !important; font-weight:850 !important; color:#e2eaf2 !important; }
+.card b { font-size:30px !important; font-weight:900 !important; color:#fff !important; }
+.tabs button { font-size:16px !important; font-weight:800 !important; color:#f2f6fa !important; padding:12px 18px !important; }
+.panel h1 { font-size:21px !important; font-weight:850 !important; color:#fff !important; }
+.panel p { font-size:15px !important; line-height:1.55 !important; color:#dbe4ed !important; }
+.source { font-size:14px !important; line-height:1.5 !important; color:#e6edf4 !important; }
+.source strong { font-size:15px !important; color:#fff !important; font-weight:800 !important; }
+.source .sok, .source .serr { font-size:14px !important; font-weight:800 !important; }
+.signal { padding:21px 0 !important; }
+.badge { font-size:13px !important; font-weight:800 !important; color:#f2f6fa !important; padding:6px 11px !important; }
+.score { font-size:15px !important; font-weight:900 !important; padding:6px 12px !important; }
+.signal-title { font-size:20px !important; line-height:1.5 !important; font-weight:850 !important; color:#fff !important; }
+.desc { font-size:16px !important; line-height:1.7 !important; color:#e3eaf1 !important; -webkit-line-clamp:4 !important; }
+.date { font-size:14px !important; line-height:1.5 !important; font-weight:650 !important; color:#cbd6e1 !important; }
+.empty { font-size:17px !important; color:#e5ecf3 !important; line-height:1.75 !important; }
+.empty span { font-size:15px !important; color:#cbd6e1 !important; }
+.error { font-size:16px !important; line-height:1.65 !important; color:#ffe5e5 !important; }
+@media (max-width:760px) {
+  .brand { font-size:27px !important; }
+  .card-label { font-size:13px !important; }
+  .card b { font-size:27px !important; }
+  .tabs button { font-size:15px !important; }
+  .signal-title { font-size:19px !important; }
+  .desc { font-size:15px !important; }
+  .date { font-size:13px !important; }
+}
+@media (max-width:480px) {
+  .brand { font-size:25px !important; }
+  .sub, .toggle-text { font-size:14px !important; }
+  .card-label { font-size:12px !important; }
+  .card b { font-size:25px !important; }
+  .signal-title { font-size:18px !important; }
+  .desc { font-size:15px !important; }
+}
