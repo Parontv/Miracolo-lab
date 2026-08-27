@@ -1,30 +1,27 @@
-/* Miracolo Lab — worker.js v3.1 — Fixed feeds */
+/* Miracolo Lab — worker.js v4.0
+   Endpoints: /api/full-scan, /api/crypto, /api/prices
+*/
 
-// Use-Agent entries per feed type
 const UA_BROWSER = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-const UA_RSS = 'Miracolo-Lab-Reader/3.1 (+https://miracolo-lab.listaconcerti.workers.dev)';
+const UA_RSS = 'Miracolo-Lab-Reader/4.0 (+https://miracolo-lab.listaconcerti.workers.dev)';
 
 const FEEDS = [
-  // === NEWS ===
-  { name: 'Google News Finance', type: 'news', cat: 'news', url: 'https://news.google.com/rss/search?q=stock+market+OR+finance+OR+bitcoin+OR+inflation+OR+recession+OR+nasdaq&hl=en-US&gl=US&ceid=US:en', ua: UA_BROWSER },
-  { name: 'Google News Macro', type: 'news', cat: 'macro', url: 'https://news.google.com/rss/search?q=inflation+OR+%22interest+rate%22+OR+%22federal+reserve%22+OR+%22bond+yield%22+OR+CPI+OR+GDP&hl=en-US&gl=US&ceid=US:en', ua: UA_BROWSER },
-  { name: 'Google News Crypto', type: 'news', cat: 'crypto', url: 'https://news.google.com/rss/search?q=bitcoin+OR+ethereum+OR+crypto+OR+solana+OR+altcoin+OR+defi&hl=en-US&gl=US&ceid=US:en', ua: UA_BROWSER },
-  { name: 'Yahoo Finance', type: 'news', cat: 'news', url: 'https://finance.yahoo.com/news/rssindex', ua: UA_BROWSER },
-  { name: 'CoinTelegraph', type: 'news', cat: 'crypto', url: 'https://cointelegraph.com/rss', ua: UA_RSS },
-  { name: 'CoinDesk', type: 'news', cat: 'crypto', url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', ua: UA_RSS },
-  { name: 'Decrypt', type: 'news', cat: 'crypto', url: 'https://decrypt.co/feed', ua: UA_RSS },
-  { name: 'Investopedia', type: 'news', cat: 'news', url: 'https://www.investopedia.com/feedbuilder/feed/getfeed/?feedName=rss_headline', ua: UA_RSS },
-  { name: 'Seeking Alpha', type: 'news', cat: 'news', url: 'https://seekingalpha.com/market_currents.xml', ua: UA_BROWSER },
-  // === REDDIT (JSON API — piu affidabile di RSS) ===
-  { name: 'Reddit Investing', type: 'social', cat: 'social', url: 'https://www.reddit.com/r/investing/hot.json?limit=25', ua: UA_BROWSER, fmt: 'reddit' },
-  { name: 'Reddit Stocks', type: 'social', cat: 'social', url: 'https://www.reddit.com/r/stocks/hot.json?limit=25', ua: UA_BROWSER, fmt: 'reddit' },
-  { name: 'Reddit WSB', type: 'social', cat: 'social', url: 'https://www.reddit.com/r/wallstreetbets/hot.json?limit=25', ua: UA_BROWSER, fmt: 'reddit' },
-  { name: 'Reddit Crypto', type: 'social', cat: 'crypto', url: 'https://www.reddit.com/r/CryptoCurrency/hot.json?limit=25', ua: UA_BROWSER, fmt: 'reddit' },
-  { name: 'Reddit Bitcoin', type: 'social', cat: 'crypto', url: 'https://www.reddit.com/r/Bitcoin/hot.json?limit=20', ua: UA_BROWSER, fmt: 'reddit' },
-  { name: 'Reddit Ethereum', type: 'social', cat: 'crypto', url: 'https://www.reddit.com/r/ethereum/hot.json?limit=20', ua: UA_BROWSER, fmt: 'reddit' },
+  { name: 'Google News Finance', type: 'news', cat: 'news',   url: 'https://news.google.com/rss/search?q=stock+market+OR+finance+OR+nasdaq+OR+sp500+OR+earnings&hl=en-US&gl=US&ceid=US:en', ua: UA_BROWSER },
+  { name: 'Google News Macro',   type: 'news', cat: 'macro',  url: 'https://news.google.com/rss/search?q=inflation+OR+%22interest+rate%22+OR+%22federal+reserve%22+OR+%22bond+yield%22+OR+CPI+OR+GDP&hl=en-US&gl=US&ceid=US:en', ua: UA_BROWSER },
+  { name: 'Google News Crypto',  type: 'news', cat: 'crypto', url: 'https://news.google.com/rss/search?q=bitcoin+OR+ethereum+OR+crypto+OR+solana+OR+defi+OR+altcoin&hl=en-US&gl=US&ceid=US:en', ua: UA_BROWSER },
+  { name: 'Yahoo Finance',       type: 'news', cat: 'news',   url: 'https://finance.yahoo.com/news/rssindex', ua: UA_BROWSER },
+  { name: 'CoinTelegraph',       type: 'news', cat: 'crypto', url: 'https://cointelegraph.com/rss', ua: UA_RSS },
+  { name: 'CoinDesk',            type: 'news', cat: 'crypto', url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', ua: UA_RSS },
+  { name: 'Decrypt',             type: 'news', cat: 'crypto', url: 'https://decrypt.co/feed', ua: UA_RSS },
+  { name: 'Investopedia',        type: 'news', cat: 'news',   url: 'https://www.investopedia.com/feedbuilder/feed/getfeed/?feedName=rss_headline', ua: UA_RSS },
+  { name: 'Seeking Alpha',       type: 'news', cat: 'news',   url: 'https://seekingalpha.com/market_currents.xml', ua: UA_BROWSER },
+  { name: 'Reddit Investing',    type: 'social', cat: 'social', url: 'https://www.reddit.com/r/investing/hot.json?limit=25', ua: UA_BROWSER, fmt: 'reddit' },
+  { name: 'Reddit Stocks',       type: 'social', cat: 'social', url: 'https://www.reddit.com/r/stocks/hot.json?limit=25', ua: UA_BROWSER, fmt: 'reddit' },
+  { name: 'Reddit WSB',          type: 'social', cat: 'social', url: 'https://www.reddit.com/r/wallstreetbets/hot.json?limit=25', ua: UA_BROWSER, fmt: 'reddit' },
+  { name: 'Reddit Crypto',       type: 'social', cat: 'crypto', url: 'https://www.reddit.com/r/CryptoCurrency/hot.json?limit=25', ua: UA_BROWSER, fmt: 'reddit' },
+  { name: 'Reddit Bitcoin',      type: 'social', cat: 'crypto', url: 'https://www.reddit.com/r/Bitcoin/hot.json?limit=20', ua: UA_BROWSER, fmt: 'reddit' },
+  { name: 'Reddit Ethereum',     type: 'social', cat: 'crypto', url: 'https://www.reddit.com/r/ethereum/hot.json?limit=20', ua: UA_BROWSER, fmt: 'reddit' },
 ];
-
-const FH_DEFAULT = { 'User-Agent': UA_RSS, 'Accept': 'application/json,application/rss+xml,application/xml,text/xml,*/*' };
 
 const BLACK_SWAN_KW = [
   'market crash','circuit breaker','trading halt','emergency rate cut','financial crisis',
@@ -33,24 +30,20 @@ const BLACK_SWAN_KW = [
   'liquidity crisis','debt crisis','hyperinflation','default risk','credit crunch',
   'stock market crash','market meltdown','bear market crash','economic collapse'
 ];
-
-const STRONG_KW = ['surge','rally','plunge','crash','record','warning','beat','miss','jumps','drops','soars','tumbles','skyrockets','collapses','explodes','crisis','panic','fear','meltdown','spike','tank'];
-
+const STRONG_KW = ['surge','rally','plunge','crash','record','warning','beat','miss','jumps','drops','soars','tumbles','skyrockets','collapses','crisis','panic','meltdown','spike','tank'];
 const TOPIC_KW = [
   'nvidia','nvda','bitcoin','btc','ethereum','eth','crypto','ai','semiconductor','tsmc','amd',
   'broadcom','crowdstrike','fed','federal reserve','inflation','earnings','guidance','upgrade',
   'downgrade','tariff','recession','gold','copper','oil','treasury','interest rate','apple',
   'aapl','meta','google','microsoft','amazon','tesla','tsla','sp500','nasdaq','dow jones','vix',
   'bonds','yield','solana','sol','bnb','xrp','cardano','ada','avalanche','avax','polygon','matic',
-  'dogecoin','doge','shiba','pepe','defi','nft','blockchain','altcoin','bull run','bear market'
+  'dogecoin','doge','defi','nft','blockchain','altcoin','bull run','bear market','chainlink','link'
 ];
-
 const CRYPTO_MAP = {
   bitcoin:'BTC',btc:'BTC',ethereum:'ETH',eth:'ETH',solana:'SOL',sol:'SOL',
   binance:'BNB',bnb:'BNB',xrp:'XRP',ripple:'XRP',cardano:'ADA',ada:'ADA',
-  avalanche:'AVAX',avax:'AVAX',polygon:'MATIC',matic:'MATIC',dogecoin:'DOGE',
-  doge:'DOGE','shiba inu':'SHIB',shib:'SHIB',chainlink:'LINK',link:'LINK',
-  polkadot:'DOT',dot:'DOT','uniswap':'UNI',uni:'UNI'
+  avalanche:'AVAX',avax:'AVAX',polygon:'MATIC',matic:'MATIC',dogecoin:'DOGE',doge:'DOGE',
+  'shiba inu':'SHIB',shib:'SHIB',chainlink:'LINK',link:'LINK',polkadot:'DOT',dot:'DOT'
 };
 
 function strip(s) {
@@ -58,12 +51,10 @@ function strip(s) {
     .replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'")
     .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim();
 }
-
 function tag(x, n) {
   const m = x.match(new RegExp('<'+n+'(?:\\s[^>]*)?>([\\s\\S]*?)</'+n+'>','i'));
   return m ? strip(m[1]) : '';
 }
-
 function scoreSignal(item) {
   const t = (item.title+' '+item.description).toLowerCase();
   let s = 1;
@@ -71,146 +62,126 @@ function scoreSignal(item) {
   STRONG_KW.forEach(k => { if (t.includes(k)) s += 0.7; });
   return Math.min(6, Math.round(s));
 }
-
 function detectCryptoAsset(text) {
   const t = text.toLowerCase();
-  for (const [kw, sym] of Object.entries(CRYPTO_MAP)) {
-    if (t.includes(kw)) return sym;
-  }
+  for (const [kw, sym] of Object.entries(CRYPTO_MAP)) { if (t.includes(kw)) return sym; }
   return null;
 }
-
 function blackSwanScore(signals) {
-  let score = 0;
-  const triggers = [];
+  let score = 0; const triggers = [];
   for (const sig of signals) {
     const t = (sig.title+' '+sig.description).toLowerCase();
     for (const kw of BLACK_SWAN_KW) {
-      if (t.includes(kw) && !triggers.includes(kw)) {
-        triggers.push(kw);
-        score += 2;
-      }
+      if (t.includes(kw) && !triggers.includes(kw)) { triggers.push(kw); score += 2; }
     }
   }
-  const highScoreNews = signals.filter(s => s.score >= 5 && s.cat !== 'crypto').length;
-  score += highScoreNews * 0.5;
+  score += signals.filter(s => s.score >= 5 && s.cat !== 'crypto').length * 0.5;
   const level = score >= 12 ? 'CRITICAL' : score >= 7 ? 'HIGH' : score >= 4 ? 'MEDIUM' : 'LOW';
   return { score: Math.round(score*10)/10, level, triggers: triggers.slice(0,8), active: score >= 7 };
 }
-
 function parseXML(text, feed) {
-  const out = [];
-  const re = /<(?:item|entry)(?:\s[^>]*)?>[\s\S]*?<\/(?:item|entry)>/gi;
+  const out = [], re = /<(?:item|entry)(?:\s[^>]*)?>[\s\S]*?<\/(?:item|entry)>/gi;
   let m;
   while ((m = re.exec(text)) !== null) {
-    const x = m[0];
-    const title = tag(x,'title');
-    const desc = tag(x,'description') || tag(x,'summary');
-    const date = tag(x,'pubDate') || tag(x,'published') || tag(x,'updated');
+    const x = m[0], title = tag(x,'title'), desc = tag(x,'description')||tag(x,'summary');
+    const date = tag(x,'pubDate')||tag(x,'published')||tag(x,'updated');
     let link = tag(x,'link');
     if (!link) { const a = x.match(/<link[^>]+href=["']([^"']+)["']/i); if (a) link = a[1]; }
-    if (title && link) out.push({ title, description: desc, date, link, source: feed.name, cat: feed.cat, kind: feed.type });
+    if (title && link) out.push({ title, description:desc, date, link, source:feed.name, cat:feed.cat, kind:feed.type });
   }
   return out;
 }
-
 function parseReddit(json, feed) {
   try {
-    const posts = (json.data && json.data.children) || [];
-    return posts
-      .map(p => p.data || {})
-      .filter(d => d.title && !d.stickied && !d.is_self === false || d.title)
+    return ((json.data&&json.data.children)||[])
+      .map(p => p.data||{})
+      .filter(d => d.title && !d.stickied)
       .map(d => ({
-        title: strip(d.title || ''),
-        description: strip(d.selftext || d.url || '').slice(0, 300),
-        date: d.created_utc ? new Date(d.created_utc * 1000).toUTCString() : '',
-        link: d.url && d.url.startsWith('http') ? d.url : 'https://reddit.com' + (d.permalink || ''),
+        title: strip(d.title||''),
+        description: strip(d.selftext||'').slice(0,300)||strip(d.url||''),
+        date: d.created_utc ? new Date(d.created_utc*1000).toUTCString() : '',
+        link: d.url&&d.url.startsWith('http') ? d.url : 'https://reddit.com'+(d.permalink||''),
         source: feed.name, cat: feed.cat, kind: feed.type
-      }))
-      .filter(x => x.title && x.link);
+      })).filter(x => x.title && x.link);
   } catch { return []; }
 }
-
 async function getFeed(feed) {
-  const headers = {
-    'User-Agent': feed.ua || UA_RSS,
-    'Accept': 'application/json,application/rss+xml,application/xml,text/xml,*/*'
-  };
-  const r = await fetch(feed.url, { headers, redirect: 'follow' });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const headers = { 'User-Agent': feed.ua||UA_RSS, 'Accept': 'application/json,application/rss+xml,application/xml,text/xml,*/*' };
+  const r = await fetch(feed.url, { headers, redirect:'follow' });
+  if (!r.ok) throw new Error('HTTP '+r.status);
   const text = await r.text();
-  // Reddit JSON API
   if (feed.fmt === 'reddit') {
     let j; try { j = JSON.parse(text); } catch { throw new Error('Reddit non JSON'); }
     return parseReddit(j, feed);
   }
   return parseXML(text, feed);
 }
-
 async function fullScan() {
   const settled = await Promise.all(FEEDS.map(async f => {
     try {
       const items = await getFeed(f);
-      items.forEach(x => {
-        x.score = scoreSignal(x);
-        x.cryptoAsset = detectCryptoAsset(x.title+' '+x.description);
-      });
-      return { name: f.name, cat: f.cat, type: f.type, status: 'ok', count: items.length, error: null, items };
-    } catch (e) {
-      return { name: f.name, cat: f.cat, type: f.type, status: 'error', count: 0, error: String(e.message||e), items: [] };
-    }
+      items.forEach(x => { x.score = scoreSignal(x); x.cryptoAsset = detectCryptoAsset(x.title+' '+x.description); });
+      return { name:f.name, cat:f.cat, type:f.type, status:'ok', count:items.length, error:null, items };
+    } catch(e) { return { name:f.name, cat:f.cat, type:f.type, status:'error', count:0, error:String(e.message||e), items:[] }; }
   }));
   const sources = settled.map(({ items, ...s }) => s);
   const all = settled.flatMap(x => x.items).sort((a,b) => b.score-a.score);
-  const bsAnalysis = blackSwanScore(all);
   return {
-    ok: true, timestamp: new Date().toISOString(),
-    blackSwan: bsAnalysis,
-    summary: {
-      total: all.length,
-      news: all.filter(x => x.kind === 'news').length,
-      social: all.filter(x => x.kind === 'social').length,
-      crypto: all.filter(x => x.cat === 'crypto').length,
-      strong: all.filter(x => x.score >= 5).length,
-      workingSources: sources.filter(x => x.status === 'ok').length,
-      failedSources: sources.filter(x => x.status !== 'ok').length,
-    },
-    top_signals: all.slice(0, 80),
-    sources
+    ok:true, timestamp:new Date().toISOString(), blackSwan:blackSwanScore(all),
+    summary:{ total:all.length, news:all.filter(x=>x.kind==='news').length, social:all.filter(x=>x.kind==='social').length,
+      crypto:all.filter(x=>x.cat==='crypto').length, strong:all.filter(x=>x.score>=5).length,
+      workingSources:sources.filter(x=>x.status==='ok').length, failedSources:sources.filter(x=>x.status!=='ok').length },
+    top_signals:all.slice(0,80), sources
   };
 }
-
 async function getCrypto() {
   try {
-    const r = await fetch(
-      'https://api.coingecko.com/api/v3/coins/markets?vs_currency=eur&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h',
-      { headers: { 'Accept': 'application/json' } }
-    );
+    const r = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=eur&order=market_cap_desc&per_page=25&page=1&sparkline=false&price_change_percentage=24h',{ headers:{'Accept':'application/json'} });
     if (!r.ok) throw new Error('CoinGecko HTTP '+r.status);
     const data = await r.json();
-    return {
-      ok: true, timestamp: new Date().toISOString(),
-      coins: data.map(c => ({
-        id: c.id, symbol: c.symbol.toUpperCase(), name: c.name,
-        price: c.current_price, change24h: c.price_change_percentage_24h,
-        marketCap: c.market_cap, volume24h: c.total_volume,
-        high24h: c.high_24h, low24h: c.low_24h, rank: c.market_cap_rank
-      }))
-    };
-  } catch (e) {
-    return { ok: false, error: e.message, coins: [] };
-  }
+    return { ok:true, timestamp:new Date().toISOString(), coins:data.map(c=>({ id:c.id, symbol:c.symbol.toUpperCase(), name:c.name, price:c.current_price, change24h:c.price_change_percentage_24h, marketCap:c.market_cap, volume24h:c.total_volume, high24h:c.high_24h, low24h:c.low_24h, rank:c.market_cap_rank })) };
+  } catch(e) { return { ok:false, error:e.message, coins:[] }; }
+}
+async function getPrices(symbolsStr) {
+  const symbols = (symbolsStr||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,40);
+  const results = [];
+  await Promise.all(symbols.map(async sym => {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=1d&interval=1d&includePrePost=false`;
+      const r = await fetch(url, { headers:{ 'User-Agent':UA_BROWSER, 'Accept':'application/json' } });
+      if (!r.ok) return;
+      const d = await r.json();
+      const meta = d.chart?.result?.[0]?.meta;
+      if (!meta) return;
+      const price = meta.regularMarketPrice||meta.chartPreviousClose||0;
+      const prev  = meta.previousClose||meta.chartPreviousClose||price;
+      results.push({
+        symbol: sym, name: meta.longName||meta.shortName||sym,
+        price, prevClose:prev,
+        change: price-prev,
+        changePct: prev ? ((price-prev)/prev)*100 : 0,
+        currency: meta.currency||'USD',
+        exchange: meta.exchangeName||'',
+        marketTime: meta.regularMarketTime||0
+      });
+    } catch {}
+  }));
+  return { ok:true, timestamp:new Date().toISOString(), prices:results };
 }
 
 export default {
   async fetch(request, env) {
     const u = new URL(request.url), p = u.pathname;
-    const cors = { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' };
-    if (p === '/api/health') return Response.json({ ok: true, service: 'Miracolo Lab v3.0', timestamp: new Date().toISOString() });
-    if (p === '/api/full-scan') return Response.json(await fullScan(), { headers: cors });
-    if (p === '/api/crypto') return Response.json(await getCrypto(), { headers: cors });
-    if (p === '/api/news') return Response.redirect(new URL('/api/full-scan', request.url), 307);
+    const cors = { 'Cache-Control':'no-store', 'Access-Control-Allow-Origin':'*' };
+    if (p === '/api/health')     return Response.json({ ok:true, service:'Miracolo Lab v4.0', timestamp:new Date().toISOString() });
+    if (p === '/api/full-scan')  return Response.json(await fullScan(), { headers:cors });
+    if (p === '/api/crypto')     return Response.json(await getCrypto(), { headers:cors });
+    if (p === '/api/prices') {
+      const syms = u.searchParams.get('symbols')||'';
+      return Response.json(await getPrices(syms), { headers:cors });
+    }
+    if (p === '/api/news') return Response.redirect(new URL('/api/full-scan',request.url), 307);
     if (env && env.ASSETS) return env.ASSETS.fetch(request);
-    return new Response('Not found', { status: 404 });
+    return new Response('Not found', { status:404 });
   }
 };
