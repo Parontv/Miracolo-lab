@@ -3,77 +3,178 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Miracolo Lab — Investment Radar</title>
-<meta name="description" content="Investment Radar in tempo reale: news finanziarie, segnali social e analisi di mercato aggregati da GDELT, Google News e Reddit.">
+<title>Miracolo Lab — Investment Intelligence</title>
+<meta name="description" content="Piattaforma di intelligence finanziaria: radar notizie, crypto live, ETF portfolio, trading bot simulato e black swan monitor.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<div id="toast-container"></div>
 
-<main class="app">
-  <header class="top">
-    <div class="brand-wrap">
-      <div class="brand"><span class="brand-icon">🪄</span> Miracolo Lab</div>
-      <div class="sub">Investment Radar · News + Social</div>
+<!-- BLACK SWAN OVERLAY -->
+<div id="bsOverlay" class="bs-overlay hidden" role="alertdialog" aria-modal="true">
+  <div class="bs-modal">
+    <div class="bs-modal-anim">🚨</div>
+    <div class="bs-modal-level" id="bsOverlayLevel">CRITICAL ALERT</div>
+    <h2 class="bs-modal-title">BLACK SWAN RILEVATO</h2>
+    <p class="bs-modal-desc">Instabilità critica rilevata sui mercati. Monitora i tuoi ETF.</p>
+    <div class="bs-triggers-wrap" id="bsTriggersList"></div>
+    <div class="bs-advice">
+      <div class="advice-item">⚠️ Considera stop-loss sugli ETF</div>
+      <div class="advice-item">📊 Monitora il VIX (Fear Index)</div>
+      <div class="advice-item">💵 Tieni liquidità disponibile</div>
     </div>
-    <div class="header-actions">
-      <div class="auto-refresh-wrap">
-        <label class="toggle-label" for="autoRefresh">
-          <span class="toggle-text">Auto</span>
-          <div class="toggle-switch">
-            <input type="checkbox" id="autoRefresh">
-            <span class="toggle-slider"></span>
-          </div>
-        </label>
-        <span id="countdownDisplay" class="countdown-display"></span>
+    <button class="bs-dismiss-btn" onclick="dismissBsOverlay()">Ho capito — Continua a monitorare</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toastContainer"></div>
+
+<!-- APP LAYOUT -->
+<div class="app-layout">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="brand-magic">🪄</span>
+      <div class="brand-text">
+        <span class="brand-name">Miracolo Lab</span>
+        <span class="brand-tagline">Investment Intelligence Platform</span>
       </div>
-      <button id="scan" class="primary">
-        <span class="btn-icon">🔎</span>
-        <span class="btn-text">Scansiona</span>
+    </div>
+
+    <div class="header-status">
+      <div class="status-chip" id="statusChip">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusLabel">PRONTO</span>
+      </div>
+      <div class="header-stats">
+        <span class="hstat" title="News">📰 <b id="hNews">—</b></span>
+        <span class="hstat" title="Social">💬 <b id="hSocial">—</b></span>
+        <span class="hstat" title="Forti">🔥 <b id="hStrong">—</b></span>
+        <span class="hstat" title="Ultimo scan">🕐 <b id="hTime">—</b></span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <label class="auto-label" title="Auto-refresh ogni 5 minuti">
+        <span class="auto-text">Auto</span>
+        <div class="toggle-switch">
+          <input type="checkbox" id="autoToggle">
+          <span class="toggle-knob"></span>
+        </div>
+        <span class="countdown-badge" id="countdownBadge"></span>
+      </label>
+      <button class="scan-btn" id="scanBtn" onclick="doScan()">
+        <span id="scanIcon">🔎</span>
+        <span>Scansiona</span>
       </button>
     </div>
   </header>
 
-  <section class="stats" aria-label="Statistiche">
-    <div class="card" id="card-stato">
-      <span class="card-label">STATO</span>
-      <b id="status" class="ok">PRONTO</b>
-    </div>
-    <div class="card" id="card-news">
-      <span class="card-label">NEWS</span>
-      <b id="newsCount">—</b>
-    </div>
-    <div class="card" id="card-social">
-      <span class="card-label">SOCIAL</span>
-      <b id="socialCount">—</b>
-    </div>
-    <div class="card" id="card-scan">
-      <span class="card-label">ULTIMO SCAN</span>
-      <b id="lastScan">—</b>
-    </div>
-  </section>
+  <!-- BODY -->
+  <div class="app-body">
 
-  <nav class="tabs" role="tablist" aria-label="Filtri segnali">
-    <button role="tab" data-filter="all" class="active" aria-selected="true">Tutti</button>
-    <button role="tab" data-filter="news" aria-selected="false">📰 News</button>
-    <button role="tab" data-filter="social" aria-selected="false">💬 Social</button>
-    <button role="tab" data-filter="strong" aria-selected="false">🔥 Forti</button>
-  </nav>
+    <!-- FEED COLUMN -->
+    <div class="feed-col" id="feedCol">
 
-  <section class="panel" aria-live="polite">
-    <div class="panelHead">
-      <div>
-        <h1>📡 Segnali rilevati</h1>
-        <p id="sourceInfo">Premi "Scansiona" per iniziare.</p>
+      <!-- Sources -->
+      <div id="sourceGrid" class="source-grid"></div>
+
+      <!-- Black Swan Banner -->
+      <div id="bsBanner" class="bs-banner hidden">
+        <div class="bs-banner-left">
+          <span class="bs-banner-icon">🚨</span>
+          <div>
+            <div class="bs-banner-title">BLACK SWAN — <span id="bsBannerLevel">LOW</span></div>
+            <div class="bs-banner-sub" id="bsBannerSub">Monitoraggio ETF attivo</div>
+          </div>
+        </div>
+        <button class="bs-banner-btn" onclick="setPanel('blackswan')">Dettagli →</button>
       </div>
-    </div>
-    <div id="sources"></div>
-    <div id="results"><div class="empty"><div class="empty-icon">📡</div><div>Il radar è pronto.<br><span>Premi Scansiona per iniziare</span></div></div></div>
-  </section>
-</main>
+
+      <!-- Bot Status Bar -->
+      <div id="botBar" class="bot-bar hidden">
+        <div class="bot-bar-left">
+          <span id="botBarIcon">🤖</span>
+          <div>
+            <div class="bot-bar-title">Trading Bot · <span id="botBarStatus">ATTIVO</span></div>
+            <div class="bot-bar-sub">Portfolio: <b id="botBarValue">2.000,00€</b> · P&L: <b id="botBarPnl">+0,00€</b></div>
+          </div>
+        </div>
+        <button class="bot-bar-btn" onclick="setPanel('bot')">Gestisci →</button>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="feed-filters" role="tablist">
+        <button class="ff-btn active" data-filter="all" onclick="setFilter(this)">Tutti</button>
+        <button class="ff-btn" data-filter="news" onclick="setFilter(this)">📰 News</button>
+        <button class="ff-btn" data-filter="social" onclick="setFilter(this)">💬 Social</button>
+        <button class="ff-btn" data-filter="macro" onclick="setFilter(this)">🌍 Macro</button>
+        <button class="ff-btn" data-filter="crypto" onclick="setFilter(this)">₿ Crypto</button>
+        <button class="ff-btn" data-filter="strong" onclick="setFilter(this)">🔥 Forti</button>
+      </div>
+
+      <!-- Feed head -->
+      <div class="feed-head">
+        <h1>📡 Segnali rilevati</h1>
+        <p id="feedInfo">Premi Scansiona per avviare il radar</p>
+      </div>
+
+      <!-- Results -->
+      <div id="results">
+        <div class="empty-state">
+          <div class="empty-icon">📡</div>
+          <div class="empty-title">Il radar è pronto</div>
+          <div class="empty-sub">Premi Scansiona per cercare segnali dai mercati</div>
+        </div>
+      </div>
+
+    </div><!-- /feed-col -->
+
+    <!-- SIDE COLUMN -->
+    <div class="side-col">
+      <!-- Active panel -->
+      <div class="side-panel" id="sidePanel">
+        <div class="panel-placeholder">
+          <div class="pp-icon">👈</div>
+          <div>Seleziona una sezione dalla barra laterale</div>
+        </div>
+      </div>
+
+      <!-- Tab rail -->
+      <nav class="tab-rail" aria-label="Pannelli laterali">
+        <button class="rail-btn active" data-panel="radar" onclick="setPanel('radar')" title="Radar Info">
+          <span class="rail-icon">📡</span>
+          <span class="rail-lbl">Radar</span>
+        </button>
+        <button class="rail-btn" data-panel="etf" onclick="setPanel('etf')" title="Portfolio ETF">
+          <span class="rail-icon">📈</span>
+          <span class="rail-lbl">ETF</span>
+        </button>
+        <button class="rail-btn" data-panel="crypto" onclick="setPanel('crypto')" title="Crypto Monitor">
+          <span class="rail-icon">₿</span>
+          <span class="rail-lbl">Crypto</span>
+        </button>
+        <button class="rail-btn" data-panel="bot" onclick="setPanel('bot')" title="Trading Bot">
+          <span class="rail-icon">🤖</span>
+          <span class="rail-lbl">Bot</span>
+        </button>
+        <button class="rail-btn" data-panel="blackswan" onclick="setPanel('blackswan')" title="Black Swan Monitor">
+          <span class="rail-icon">🚨</span>
+          <span class="rail-lbl">Alert</span>
+        </button>
+        <button class="rail-btn" data-panel="settings" onclick="setPanel('settings')" title="Impostazioni">
+          <span class="rail-icon">⚙️</span>
+          <span class="rail-lbl">Config</span>
+        </button>
+      </nav>
+    </div><!-- /side-col -->
+
+  </div><!-- /app-body -->
+</div><!-- /app-layout -->
 
 <script src="/app.js"></script>
 </body>
