@@ -1,0 +1,41 @@
+/* Miracolo Lab — readability / WCAG-inspired text layer
+   Based on WCAG contrast and text-spacing principles and MDN accessibility guidance. */
+:root{font-size:18px}
+html{font-size:18px;scroll-behavior:smooth}
+body{font-size:1rem!important;line-height:1.6!important;color:#fff!important;background:#08111f!important}
+body,.app,.top,.card,.panel,.source,.tabs button{letter-spacing:.01em}
+.sub{font-size:1rem!important;color:#eef4fa!important;font-weight:650!important}
+.toggle-text{font-size:.95rem!important;color:#fff!important;font-weight:750!important}
+.primary{font-size:1rem!important;font-weight:850!important;padding:.8rem 1.25rem!important}
+.card-label{font-size:.82rem!important;color:#f1f5f9!important;font-weight:850!important;letter-spacing:.06em!important}
+.card b{font-size:1.8rem!important;color:#fff!important;font-weight:900!important}
+.tabs button{font-size:.95rem!important;color:#fff!important;font-weight:800!important;padding:.72rem 1rem!important}
+.panel h1{font-size:1.35rem!important;color:#fff!important;font-weight:900!important}
+.panel p{font-size:.95rem!important;color:#eef3f8!important;line-height:1.65!important}
+.source{font-size:.9rem!important;color:#f1f5f9!important;line-height:1.6!important}
+.source strong{font-size:.95rem!important;color:#fff!important;font-weight:850!important}
+.badge{font-size:.78rem!important;color:#fff!important;font-weight:850!important;padding:.35rem .65rem!important}
+.score{font-size:.9rem!important;color:#fff!important;font-weight:900!important}
+.signal{padding:1.35rem 0!important}
+.signal-title{font-size:1.3rem!important;line-height:1.55!important;color:#fff!important;font-weight:900!important;letter-spacing:0!important}
+.desc{font-size:1rem!important;line-height:1.7!important;color:#f1f5f9!important;letter-spacing:.01em!important;-webkit-line-clamp:5!important}
+.date{font-size:.85rem!important;line-height:1.6!important;color:#e2e8f0!important;font-weight:650!important}
+.empty{font-size:1.05rem!important;line-height:1.8!important;color:#fff!important}.empty span{font-size:.95rem!important;color:#e5ebf2!important}
+.error{font-size:1rem!important;line-height:1.7!important;color:#fff!important}
+/* Avoid narrow, faint text and excessive uppercase compression. */
+.source,.desc,.panel p,.empty,.error{text-align:left}
+@media(max-width:760px){
+ :root,html{font-size:17px}
+ .brand{font-size:1.55rem!important}
+ .signal-title{font-size:1.18rem!important}
+ .desc{font-size:.98rem!important}
+ .card b{font-size:1.6rem!important}
+}
+@media(max-width:480px){
+ :root,html{font-size:17px}
+ .signal-title{font-size:1.12rem!important}
+ .desc{font-size:.95rem!important;line-height:1.7!important}
+ .date{font-size:.82rem!important}
+}
+/* Respect user/browser text enlargement and remove forced shrinking. */
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
