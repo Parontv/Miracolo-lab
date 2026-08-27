@@ -4,43 +4,77 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Miracolo Lab — Investment Radar</title>
+<meta name="description" content="Investment Radar in tempo reale: news finanziarie, segnali social e analisi di mercato aggregati da GDELT, Google News e Reddit.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<div id="toast-container"></div>
+
 <main class="app">
   <header class="top">
-    <div>
-      <div class="brand">🪄 Miracolo Lab</div>
+    <div class="brand-wrap">
+      <div class="brand"><span class="brand-icon">🪄</span> Miracolo Lab</div>
       <div class="sub">Investment Radar · News + Social</div>
     </div>
-    <button id="scan" class="primary">🔎 Scansiona news</button>
+    <div class="header-actions">
+      <div class="auto-refresh-wrap">
+        <label class="toggle-label" for="autoRefresh">
+          <span class="toggle-text">Auto</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="autoRefresh">
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+        <span id="countdownDisplay" class="countdown-display"></span>
+      </div>
+      <button id="scan" class="primary">
+        <span class="btn-icon">🔎</span>
+        <span class="btn-text">Scansiona</span>
+      </button>
+    </div>
   </header>
 
-  <section class="stats">
-    <div class="card"><span>STATO</span><b id="status" class="ok">PRONTO</b></div>
-    <div class="card"><span>NEWS</span><b id="newsCount">—</b></div>
-    <div class="card"><span>SOCIAL</span><b id="socialCount">—</b></div>
-    <div class="card"><span>ULTIMO SCAN</span><b id="lastScan">—</b></div>
+  <section class="stats" aria-label="Statistiche">
+    <div class="card" id="card-stato">
+      <span class="card-label">STATO</span>
+      <b id="status" class="ok">PRONTO</b>
+    </div>
+    <div class="card" id="card-news">
+      <span class="card-label">NEWS</span>
+      <b id="newsCount">—</b>
+    </div>
+    <div class="card" id="card-social">
+      <span class="card-label">SOCIAL</span>
+      <b id="socialCount">—</b>
+    </div>
+    <div class="card" id="card-scan">
+      <span class="card-label">ULTIMO SCAN</span>
+      <b id="lastScan">—</b>
+    </div>
   </section>
 
-  <nav class="tabs">
-    <button data-filter="all" class="active">Tutti</button>
-    <button data-filter="news">📰 News</button>
-    <button data-filter="social">💬 Social</button>
-    <button data-filter="strong">🔥 Forti</button>
+  <nav class="tabs" role="tablist" aria-label="Filtri segnali">
+    <button role="tab" data-filter="all" class="active" aria-selected="true">Tutti</button>
+    <button role="tab" data-filter="news" aria-selected="false">📰 News</button>
+    <button role="tab" data-filter="social" aria-selected="false">💬 Social</button>
+    <button role="tab" data-filter="strong" aria-selected="false">🔥 Forti</button>
   </nav>
 
-  <section class="panel">
+  <section class="panel" aria-live="polite">
     <div class="panelHead">
       <div>
-        <h2>📡 Segnali rilevati</h2>
-        <p id="sourceInfo">Premi “Scansiona news” per iniziare.</p>
+        <h1>📡 Segnali rilevati</h1>
+        <p id="sourceInfo">Premi "Scansiona" per iniziare.</p>
       </div>
     </div>
     <div id="sources"></div>
-    <div id="results"><div class="empty">Il radar è pronto.</div></div>
+    <div id="results"><div class="empty"><div class="empty-icon">📡</div><div>Il radar è pronto.<br><span>Premi Scansiona per iniziare</span></div></div></div>
   </section>
 </main>
+
 <script src="/app.js"></script>
 </body>
 </html>
