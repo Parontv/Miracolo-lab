@@ -169,7 +169,6 @@ body::before {
 }
 
 /* ===== READABILITY OVERRIDES ===== */
-/* The original palette was intentionally very dark; these overrides increase contrast without turning the app into a light theme. */
 .sub, .toggle-text { color: #94a3b8; }
 .card-label { color: #a8b4c4; }
 .panel p { color: #b8c4d4; }
@@ -181,3 +180,34 @@ body::before {
 .badge { color: #d5deea; }
 .empty { color: #c3cedb; }
 .empty span { color: #aebccc; }
+
+/* ===== LARGE TEXT / HIGH READABILITY ===== */
+.sub, .toggle-text { font-size: 15px; color: #d7e0ea; }
+.card-label { font-size: 13px; color: #d2dce7; }
+.card b { font-size: 27px; color: #ffffff; }
+.tabs button { font-size: 15px; padding: 11px 17px; color: #e7edf4; }
+.panel h1 { font-size: 20px; color: #ffffff; }
+.panel p { font-size: 15px; color: #d0d9e4; line-height: 1.55; }
+.source { font-size: 14px; color: #dbe4ed; }
+.source strong { font-size: 14px; color: #ffffff; }
+.badge { font-size: 12px; padding: 5px 10px; color: #e8eef5; }
+.score { font-size: 15px; padding: 5px 11px; }
+.signal-title { font-size: 18px; line-height: 1.48; color: #f0f6ff; }
+.desc { font-size: 15px; line-height: 1.65; color: #dbe3ec; -webkit-line-clamp: 3; }
+.date { font-size: 13px; color: #bcc8d5; }
+.empty { font-size: 16px; color: #d6e0ea; }
+.empty span { font-size: 14px; color: #bcc8d5; }
+.error { font-size: 15px; color: #ffd4d4; }
+@media (max-width: 760px) {
+  .brand { font-size: 25px; }
+  .signal-title { font-size: 17px; }
+  .desc { font-size: 14px; }
+}
+@media (max-width: 480px) {
+  .card-label { font-size: 12px; }
+  .card b { font-size: 23px; }
+  .panel h1 { font-size: 18px; }
+  .panel p { font-size: 14px; }
+  .signal-title { font-size: 16px; }
+  .desc { font-size: 14px; }
+}
