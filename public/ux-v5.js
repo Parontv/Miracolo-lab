@@ -1,10 +1,13 @@
-/* Miracolo Lab v5 UX layer: automatic refresh + top navigation + tab isolation */
+/* Miracolo Lab v5 UX layer: automatic refresh + tab isolation */
 (() => {
   const FIVE_MIN = 5 * 60 * 1000;
   const STYLE = `
-    .scan-btn{display:none!important}
+    /* UI requested: no manual refresh control, no auto/ticker strip */
+    #scanBtn,.scan-btn,#refreshMarket{display:none!important}
+    .auto-label,.header-actions{display:none!important}
+    .price-ticker-wrap,#tickerWrap,.price-ticker{display:none!important}
     .app-body{display:flex!important;flex-direction:column!important}
-    .side-col{display:flex!important;flex-direction:column!important;width:100%!important;order:-1}
+    .side-col{display:flex!important;flex-direction:column!important;width:100%!important;order:-1!important}
     .tab-rail{display:flex!important;flex-direction:row!important;gap:6px!important;overflow-x:auto!important;width:100%!important;order:0!important;padding:8px 10px!important;position:sticky!important;top:0!important;z-index:30!important}
     .rail-btn{flex:0 0 auto!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;min-width:72px!important}
     .side-panel{width:100%!important;order:1!important}
@@ -17,8 +20,10 @@
   function applyLayout(){
     css();
     const scan=document.getElementById('scanBtn'); if(scan)scan.remove();
+    const refresh=document.getElementById('scan'); if(refresh)refresh.remove();
     const auto=document.getElementById('autoToggle'); if(auto){auto.checked=true;auto.disabled=true;}
-    const label=document.querySelector('.auto-label'); if(label){const t=label.querySelector('.auto-text');if(t)t.textContent='Auto 5 min';}
+    const ticker=document.getElementById('tickerWrap'); if(ticker)ticker.remove();
+    const headerActions=document.querySelector('.header-actions'); if(headerActions)headerActions.remove();
   }
   function isolateTab(panel){
     const feed=document.getElementById('feedCol'),side=document.querySelector('.side-col'); if(!feed||!side)return;
