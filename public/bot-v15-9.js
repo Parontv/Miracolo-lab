@@ -1,14 +1,18 @@
-/* Miracolo Lab V15.9 — Bot controls compatibility + first operating bridge */
+/* Miracolo Lab V16.2 — real-data Bot bridge */
 (()=>{'use strict';
-function wire(){
-  const panel=document.getElementById('sidePanel'); if(!panel||document.body.dataset.activePanel!=='bot')return;
-  panel.querySelectorAll('button[onclick]').forEach(b=>{b.disabled=false;b.removeAttribute('aria-disabled')});
-  const controls=panel.querySelector('.bot-controls');
-  if(controls&&!document.getElementById('botRefreshDataBtn')){
-    const b=document.createElement('button');b.id='botRefreshDataBtn';b.className='bot-btn';b.type='button';b.textContent='↻ Aggiorna dati';
-    b.addEventListener('click',async()=>{b.disabled=true;b.textContent='⟳ Aggiornamento…';try{if(typeof fetchCrypto==='function')await fetchCrypto();if(typeof fetchAllPrices==='function')await fetchAllPrices();if(typeof doScan==='function')await doScan();if(typeof toast==='function')toast('Bot aggiornato con gli ultimi dati','success','🤖')}catch(e){console.error(e);if(typeof toast==='function')toast('Aggiornamento bot non riuscito','error')}finally{b.disabled=false;b.textContent='↻ Aggiorna dati'}});controls.prepend(b);
-  }
+async function botRealDataCycle(){
+ const btn=document.getElementById('botRealCycleBtn'); if(btn){btn.disabled=true;btn.textContent='⟳ Analisi dati reali…'}
+ try{
+  const [scanR,marketR,cryptoR]=await Promise.all([fetch('/api/full-scan?ts='+Date.now(),{cache:'no-store'}),fetch('/api/market-monitor?ts='+Date.now(),{cache:'no-store'}),fetch('/api/crypto?ts='+Date.now(),{cache:'no-store'})]);
+  const scan=await scanR.json(),market=await marketR.json(),crypto=await cryptoR.json();
+  const prices={};(crypto.coins||[]).forEach(c=>{if(c.verified&&c.price>0)prices[c.symbol]=c.price});
+  const signals=(scan.signals||scan.top_signals||[]).filter(s=>Number(s.score||0)>=3); const candidates=[];
+  for(const asset of ['BTC','ETH']){const re=asset==='BTC'?/bitcoin|btc/i:/ethereum|eth/i;const related=signals.filter(s=>re.test((s.title||'')+' '+(s.description||'')));const neg=related.filter(s=>/crash|dump|bearish|selloff|plunge|liquidat|outflow/i.test((s.title||'')+' '+(s.description||''))).length;const pos=related.filter(s=>!(/crash|dump|bearish|selloff|plunge|liquidat|outflow/i.test((s.title||'')+' '+(s.description||'')))).length;const p=prices[asset];if(!p)continue;const score=Math.max(1,Math.min(6,3+pos-neg));candidates.push({id:'real-'+asset+'-'+Date.now(),type:score>=5?'BUY':'WAIT',sym:asset,price:p,score,reason:`${related.length} segnali · ${pos} positivi · ${neg} negativi`,source:related.slice(0,5).map(s=>s.source).filter(Boolean).join(', ')||'Source Engine',timestamp:new Date().toISOString(),status:'PENDING',realData:true});}
+  window.__ML_REAL_BOT={scan,market,crypto,candidates};renderRealBotResults(candidates,scan,market);if(typeof toast==='function')toast(`Bot: ${candidates.length} asset analizzati con dati reali`,'success','🤖');
+ }catch(e){console.error(e);if(typeof toast==='function')toast('Analisi Bot non riuscita: '+(e.message||e),'error')}finally{if(btn){btn.disabled=false;btn.textContent='🤖 Analizza dati reali'}}
 }
-const oldSet=window.setPanel;window.setPanel=function(id){if(typeof oldSet==='function')oldSet(id);setTimeout(wire,0);};
-document.addEventListener('DOMContentLoaded',()=>setTimeout(wire,300));window.addEventListener('load',()=>setTimeout(wire,500));
+function renderRealBotResults(candidates,scan,market){const panel=document.getElementById('sidePanel');if(!panel)return;let box=document.getElementById('botRealResults');if(!box){box=document.createElement('div');box.id='botRealResults';box.className='panel-section';panel.appendChild(box)}box.innerHTML=`<div class="panel-section-label">Decisioni del Bot · dati reali</div><div class="p-card"><div class="stat-row"><span class="stat-key">Segnali analizzati</span><span class="stat-val">${Number(scan.summary?.total||0)}</span></div><div class="stat-row"><span class="stat-key">Regime</span><span class="stat-val">${market.regime?.label||'N/D'}</span></div>${candidates.map(c=>`<div class="bot-suggestion" style="margin-top:8px;padding:9px;border:1px solid #1e293b;border-radius:8px"><div style="display:flex;justify-content:space-between"><b>${c.sym}</b><strong>${c.type}</strong></div><div style="font-size:12px;margin-top:4px">Score ${c.score}/6 · ${c.reason}</div><div style="font-size:10px;color:#64748b;margin-top:3px">Prezzo reale: ${c.price} · ${c.source}</div><button class="bot-btn" style="width:100%;margin-top:6px" onclick="botViewRealSignal('${c.id}')">🔎 Vedi dati analizzati</button></div>`).join('')}</div>`}
+window.botViewRealSignal=id=>{const c=window.__ML_REAL_BOT?.candidates?.find(x=>x.id===id);if(!c)return;alert(`BOT ${c.sym}\nDecisione: ${c.type}\nScore: ${c.score}/6\nPrezzo reale: ${c.price}\nMotivo: ${c.reason}\nFonti: ${c.source}\n\nPaper trading: nessun ordine reale.`)};
+function install(){const panel=document.getElementById('sidePanel');if(!panel||document.body.dataset.activePanel!=='bot')return;let b=document.getElementById('botRealCycleBtn');if(!b){b=document.createElement('button');b.id='botRealCycleBtn';b.className='bot-btn';b.type='button';b.textContent='🤖 Analizza dati reali';b.onclick=botRealDataCycle;const c=panel.querySelector('.bot-controls')||panel.querySelector('.panel-body');if(c)c.prepend(b)}}
+const old=window.setPanel;window.setPanel=function(id){if(old)old(id);setTimeout(install,50)};document.addEventListener('DOMContentLoaded',()=>setTimeout(install,400));window.addEventListener('load',()=>setTimeout(install,600));
 })();
