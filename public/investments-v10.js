@@ -1,110 +1,27 @@
-/* Miracolo Lab — Investimenti V11
-   Portafoglio personale: ETF + Bitcoin/Crypto.
-   Compatibile con i dati legacy ml_portfolio_v6.
-*/
-(() => {
-  'use strict';
-  const ROOT='ml_portfolio_v6';
-  const EKEY=ROOT+'.etf', CKEY=ROOT+'.crypto';
-  const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const num=v=>{const x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)&&x>=0?x:0};
-  const eur=v=>(Number(v)||0).toLocaleString('it-IT',{style:'currency',currency:'EUR',maximumFractionDigits:2});
-  const pct=v=>(Number(v)||0).toFixed(2)+'%';
-  const load=(k,f)=>{try{const v=JSON.parse(localStorage.getItem(k)||'null');return v??f}catch{return f}};
-  const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
-
-  const defaultEtfs=[
-    {symbol:'SGLD.MI',name:'Gold',qty:0,avg:0},
-    {symbol:'SWDA.MI',name:'World',qty:0,avg:0},
-    {symbol:'EIMI.MI',name:'Emerging Markets',qty:0,avg:0}
-  ];
-  let etfs=load(EKEY,defaultEtfs);
-  let crypto=load(CKEY,{BTC:{qty:0},ETH:{qty:0}});
-  if(!Array.isArray(etfs)) etfs=defaultEtfs;
-  etfs=etfs.map(e=>({symbol:String(e.symbol||'').toUpperCase(),name:e.name||e.symbol,qty:num(e.qty),avg:num(e.avg)}));
-  if(!Array.isArray(crypto)) crypto=Object.entries(crypto||{}).map(([symbol,v])=>({symbol,name:symbol==='BTC'?'Bitcoin':symbol==='ETH'?'Ethereum':symbol,qty:num(v?.qty)}));
-  if(!crypto.length) crypto=[{symbol:'BTC',name:'Bitcoin',qty:0},{symbol:'ETH',name:'Ethereum',qty:0}];
-  crypto=crypto.map(c=>({symbol:String(c.symbol||'').toUpperCase(),name:c.name||c.symbol,qty:num(c.qty)}));
-  save(EKEY,etfs);save(CKEY,crypto);
-
-  const ep=s=>Number(window.__mlPrices?.[s]?.price||0);
-  const cp=s=>Number(window.__mlCryptoPrices?.[s]?.price||0);
-  let fetching=false;
-  function syncPrices(){
-    window.__mlPrices=window.__mlPrices||{};
-    window.__mlCryptoPrices=window.__mlCryptoPrices||{};
-    if(!fetching){
-      fetching=true;
-      const symbols=etfs.map(e=>e.symbol).filter(Boolean).join(',');
-      const jobs=[];
-      if(symbols) jobs.push(fetch('/api/prices?symbols='+encodeURIComponent(symbols)+'&t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(d=>(d.prices||[]).forEach(x=>window.__mlPrices[x.symbol]=x)).catch(()=>{}));
-      jobs.push(fetch('/api/crypto?ts='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(d=>(d.coins||[]).forEach(x=>window.__mlCryptoPrices[x.symbol]=x)).catch(()=>{}));
-      Promise.all(jobs).finally(()=>{fetching=false;render()});
-    }
-  }
-
-  function editEtf(i){
-    const e=etfs[i]; const q=prompt('Quantità posseduta — '+e.name,String(e.qty||0)); if(q===null)return;
-    const a=prompt('Prezzo medio di acquisto — '+e.name,String(e.avg||0)); if(a===null)return;
-    etfs[i]={...e,qty:num(q),avg:num(a)};save(EKEY,etfs);render();
-  }
-  function editCrypto(i){
-    const c=crypto[i]; const q=prompt('Quantità posseduta — '+c.name,String(c.qty||0)); if(q===null)return;
-    crypto[i]={...c,qty:num(q)};save(CKEY,crypto);render();
-  }
-  function addEtf(){
-    const name=prompt('Nome ETF');if(!name)return;
-    const symbol=prompt('Ticker quotato (es. SWDA.MI)');if(!symbol)return;
-    const qty=prompt('Quantità posseduta','0');if(qty===null)return;
-    const avg=prompt('Prezzo medio di acquisto','0');if(avg===null)return;
-    etfs.push({symbol:symbol.trim().toUpperCase(),name:name.trim(),qty:num(qty),avg:num(avg)});save(EKEY,etfs);syncPrices();render();
-  }
-  function addCrypto(){
-    const name=prompt('Nome crypto');if(!name)return;
-    const symbol=prompt('Simbolo (es. BTC)');if(!symbol)return;
-    const qty=prompt('Quantità posseduta','0');if(qty===null)return;
-    crypto.push({symbol:symbol.trim().toUpperCase(),name:name.trim(),qty:num(qty)});save(CKEY,crypto);syncPrices();render();
-  }
-  function delEtf(i){if(confirm('Eliminare '+etfs[i].name+' dal portafoglio?')){etfs.splice(i,1);save(EKEY,etfs);render()}}
-  function delCrypto(i){if(confirm('Eliminare '+crypto[i].name+' dal portafoglio?')){crypto.splice(i,1);save(CKEY,crypto);render()}}
-
-  function cardEtf(e,i){
-    const p=ep(e.symbol),inv=e.qty*e.avg,val=e.qty*p,pnl=val-inv,pp=inv?pnl/inv*100:0;
-    return `<article class="iv11-card"><div class="iv11-name"><strong>${esc(e.name)}</strong><small>${esc(e.symbol)} · ETF</small></div><div class="iv11-fields"><div><small>Quantità</small><b>${e.qty}</b></div><div><small>Prezzo medio</small><b>${eur(e.avg)}</b></div><div><small>Prezzo attuale</small><b>${p?eur(p):'—'}</b></div></div><div class="iv11-kpi"><span>Investito <b>${eur(inv)}</b></span><span>Valore <b>${eur(val)}</b></span><span>P/L <b class="${pnl>=0?'up':'down'}">${inv?(pnl>=0?'+':'')+eur(pnl)+' ('+pct(pp)+')':'—'}</b></span></div><div class="iv11-actions"><button data-a="ee" data-i="${i}">Modifica</button><button class="danger" data-a="de" data-i="${i}">Elimina</button></div></article>`;
-  }
-  function cardCrypto(c,i){
-    const p=cp(c.symbol),val=c.qty*p;
-    return `<article class="iv11-card"><div class="iv11-name"><strong>${esc(c.name)}</strong><small>${esc(c.symbol)} · Crypto</small></div><div class="iv11-fields"><div><small>Quantità posseduta</small><b>${c.qty}</b></div><div><small>Prezzo attuale</small><b>${p?eur(p):'—'}</b></div><div><small>Valore attuale</small><b>${eur(val)}</b></div></div><div class="iv11-actions"><button data-a="ec" data-i="${i}">Modifica</button><button class="danger" data-a="dc" data-i="${i}">Elimina</button></div></article>`;
-  }
-  function chart(){
-    const rows=[...etfs.map(e=>({name:e.name,value:e.qty*ep(e.symbol)})),...crypto.map(c=>({name:c.name,value:c.qty*cp(c.symbol)}))].filter(x=>x.value>0);
-    if(!rows.length)return '<div class="iv11-empty">Inserisci le quantità del portafoglio per visualizzare il riepilogo.</div>';
-    const max=Math.max(...rows.map(x=>x.value),1);
-    return `<div class="iv11-chart"><h4>Valore attuale per investimento</h4>${rows.map(x=>`<div class="iv11-row"><span>${esc(x.name)}</span><div><i style="width:${Math.max(3,x.value/max*100)}%"></i></div><b>${eur(x.value)}</b></div>`).join('')}</div>`;
-  }
-  function panel(){
-    const etfValue=etfs.reduce((s,e)=>s+e.qty*ep(e.symbol),0), cryptoValue=crypto.reduce((s,c)=>s+c.qty*cp(c.symbol),0), invested=etfs.reduce((s,e)=>s+e.qty*e.avg,0), pnl=etfValue-invested;
-    return `<div class="iv11-wrap"><header class="iv11-head"><div><h2>Investimenti</h2><span>Il mio portafoglio</span></div><div class="iv11-total"><small>Valore totale</small><strong>${eur(etfValue+cryptoValue)}</strong></div></header><div class="iv11-summary"><div><small>ETF</small><b>${eur(etfValue)}</b></div><div><small>Bitcoin & Crypto</small><b>${eur(cryptoValue)}</b></div><div><small>P/L ETF</small><b class="${pnl>=0?'up':'down'}">${invested?(pnl>=0?'+':'')+eur(pnl):'—'}</b></div></div><section><div class="iv11-section-head"><h3>ETF</h3><button data-a="addetf">+ Aggiungi ETF</button></div>${etfs.length?etfs.map(cardEtf).join(''):'<p class="iv11-empty">Nessun ETF inserito.</p>'}</section><section><div class="iv11-section-head"><h3>Bitcoin & Crypto</h3><button data-a="addcrypto">+ Aggiungi crypto</button></div>${crypto.length?crypto.map(cardCrypto).join(''):'<p class="iv11-empty">Nessuna crypto inserita.</p>'}</section>${chart()}</div>`;
-  }
-  function render(){if(window.__mlPanel!=='investimenti')return;const el=document.getElementById('sidePanel');if(!el)return;el.innerHTML=panel();el.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset;if(a.a==='ee')editEtf(+a.i);else if(a.a==='de')delEtf(+a.i);else if(a.a==='ec')editCrypto(+a.i);else if(a.a==='dc')delCrypto(+a.i);else if(a.a==='addetf')addEtf();else if(a.a==='addcrypto')addCrypto()}));}
-
-  function install(){
-    if(typeof window.setPanel!=='function'||window.setPanel.__iv11)return;
-    const old=window.setPanel;
-    window.setPanel=function(id){
-      if(id==='etf'||id==='crypto')id='investimenti';
-      window.__mlPanel=id;
-      old(id);
-      if(id==='investimenti'){syncPrices();render()}
-    };
-    window.setPanel.__iv11=true;
-    document.querySelectorAll('.top-tab').forEach(b=>{if(b.dataset.panel==='investimenti'){b.onclick=()=>window.setPanel('investimenti')}});
-    const rail=document.querySelector('.tab-rail');
-    if(rail){rail.querySelectorAll('[data-panel="etf"],[data-panel="crypto"]').forEach(b=>b.remove());let b=rail.querySelector('[data-panel="investimenti"]');if(!b){b=document.createElement('button');b.className='rail-btn';b.dataset.panel='investimenti';b.innerHTML='<span class="rail-icon">📊</span><span class="rail-lbl">Investimenti</span>';rail.insertBefore(b,rail.querySelector('[data-panel="bot"]'))}b.onclick=()=>window.setPanel('investimenti')}
-  }
-  const st=document.createElement('style');st.textContent=`
-    .iv11-wrap{padding:14px;color:#e2e8f0}.iv11-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:12px}.iv11-head h2{margin:0;font-size:19px}.iv11-head span,.iv11-head small,.iv11-card small,.iv11-summary small{color:#64748b;font-size:10px}.iv11-total{text-align:right}.iv11-total strong{display:block;font-size:18px;margin-top:3px}.iv11-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}.iv11-summary>div{padding:10px;border:1px solid rgba(148,163,184,.12);border-radius:10px;background:rgba(15,23,42,.7)}.iv11-summary b{display:block;margin-top:4px}.iv11-wrap section{margin:14px 0}.iv11-section-head{display:flex;justify-content:space-between;align-items:center}.iv11-section-head h3{font-size:13px;margin:8px 0}.iv11-section-head button,.iv11-actions button{border:1px solid #334155;background:#172033;color:#e2e8f0;border-radius:7px;padding:7px 10px;font-size:10px}.iv11-card{padding:12px;margin:8px 0;border:1px solid #263247;border-radius:10px;background:rgba(15,23,42,.55)}.iv11-name strong{display:block}.iv11-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.iv11-fields>div{background:rgba(15,23,42,.7);border-radius:7px;padding:8px}.iv11-fields small{display:block}.iv11-fields b{display:block;margin-top:3px;font-size:12px;color:#e2e8f0}.iv11-kpi{display:flex;gap:14px;flex-wrap:wrap;color:#64748b;font-size:10px}.iv11-kpi b{color:#e2e8f0}.iv11-actions{display:flex;gap:7px;margin-top:10px}.iv11-actions .danger{color:#fca5a5;border-color:#7f1d1d}.iv11-chart{margin-top:16px;padding:12px;border:1px solid #263247;border-radius:10px}.iv11-chart h4{font-size:12px;margin:0 0 10px}.iv11-row{display:grid;grid-template-columns:100px 1fr 80px;gap:8px;align-items:center;margin:8px 0;font-size:10px}.iv11-row>div{height:8px;background:#1e293b;border-radius:99px;overflow:hidden}.iv11-row i{display:block;height:100%;background:#60a5fa;border-radius:99px}.iv11-empty{padding:10px;color:#64748b;font-size:11px}@media(max-width:600px){.iv11-summary{grid-template-columns:1fr 1fr}.iv11-summary>div:last-child{grid-column:1/-1}.iv11-fields{grid-template-columns:1fr 1fr}.iv11-fields>div:last-child{grid-column:1/-1}.iv11-row{grid-template-columns:75px 1fr 70px}}
-  `;document.head.appendChild(st);
-  const timer=setInterval(()=>{if(document.body&&typeof window.setPanel==='function'){install();clearInterval(timer)}},100);
-  setInterval(()=>{if(window.__mlPanel==='investimenti'){syncPrices();render()}},30000);
+/* Miracolo Lab — Investimenti V12 */
+(()=>{
+'use strict';
+const ROOT='ml_portfolio_v6',EK=ROOT+'.etf',CK=ROOT+'.crypto',HK=ROOT+'.history';
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const n=v=>{let x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)&&x>=0?x:0};
+const eur=v=>(Number(v)||0).toLocaleString('it-IT',{style:'currency',currency:'EUR',maximumFractionDigits:2});
+const pct=v=>(Number(v)||0).toFixed(2)+'%';
+const load=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||'null')??f}catch{return f}};
+const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+let etfs=load(EK,[{symbol:'SGLD.MI',name:'Gold',qty:0,avg:0},{symbol:'SWDA.MI',name:'World',qty:0,avg:0},{symbol:'EIMI.MI',name:'Emerging Markets',qty:0,avg:0}]);
+let crypto=load(CK,[{symbol:'BTC',name:'Bitcoin',qty:0},{symbol:'ETH',name:'Ethereum',qty:0}]);
+if(!Array.isArray(etfs))etfs=[]; if(!Array.isArray(crypto))crypto=[];
+const history=load(HK,[]);
+let prices=window.__mlPrices||{},cprices=window.__mlCryptoPrices||{};
+const ep=s=>Number(prices[s]?.price||0),cp=s=>Number(cprices[s]?.price||0);
+function snapshot(){const v=etfs.reduce((a,e)=>a+n(e.qty)*ep(e.symbol),0)+crypto.reduce((a,c)=>a+n(c.qty)*cp(c.symbol),0);if(v>0){const d=new Date().toISOString().slice(0,10),last=history[history.length-1];if(!last||last.date!==d){history.push({date:d,value:v});save(HK,history.slice(-365))}}}
+function sync(){window.__mlPrices=prices;window.__mlCryptoPrices=cprices;const jobs=[];const s=etfs.map(e=>e.symbol).filter(Boolean).join(',');if(s)jobs.push(fetch('/api/prices?symbols='+encodeURIComponent(s)+'&t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(d=>(d.prices||[]).forEach(x=>prices[x.symbol]=x)).catch(()=>{}));jobs.push(fetch('/api/crypto?ts='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(d=>(d.coins||[]).forEach(x=>cprices[x.symbol]=x)).catch(()=>{}));Promise.all(jobs).finally(()=>{snapshot();render()})}
+function add(type){const name=prompt(type==='etf'?'Nome ETF':'Nome crypto');if(!name)return;const symbol=prompt(type==='etf'?'Ticker (es. SWDA.MI)':'Simbolo (es. BTC)');if(!symbol)return;const qty=prompt('Quantità posseduta','0');if(qty===null)return;const avg=type==='etf'?prompt('Prezzo medio di acquisto','0'):null;const x=type==='etf'?{name:name.trim(),symbol:symbol.trim().toUpperCase(),qty:n(qty),avg:n(avg)}:{name:name.trim(),symbol:symbol.trim().toUpperCase(),qty:n(qty)};(type==='etf'?etfs:crypto).push(x);save(type==='etf'?EK:CK,type==='etf'?etfs:crypto);sync()}
+function edit(type,i){const a=type==='etf'?etfs:crypto,x=a[i],q=prompt('Quantità posseduta',x.qty);if(q===null)return;x.qty=n(q);if(type==='etf'){const p=prompt('Prezzo medio di acquisto',x.avg);if(p===null)return;x.avg=n(p)}save(type==='etf'?EK:CK,a);sync()}
+function del(type,i){const a=type==='etf'?etfs:crypto;if(confirm('Eliminare questa posizione?')){a.splice(i,1);save(type==='etf'?EK:CK,a);sync()}}
+function card(x,i,type){const p=type==='etf'?ep(x.symbol):cp(x.symbol),v=n(x.qty)*p,inv=type==='etf'?n(x.qty)*n(x.avg):0,pl=type==='etf'?v-inv:0;return `<article class="iv12-card"><div><strong>${esc(x.name)}</strong><small>${esc(x.symbol)}</small></div><div class="iv12-data"><span>Quantità <b>${x.qty}</b></span>${type==='etf'?`<span>Prezzo medio <b>${eur(x.avg)}</b></span>`:''}<span>Prezzo attuale <b>${p?eur(p):'—'}</b></span><span>Valore <b>${eur(v)}</b></span>${type==='etf'?`<span>P/L <b class="${pl>=0?'up':'down'}">${inv?(pl>=0?'+':'')+eur(pl)+' ('+pct(pl/inv*100)+')':'—'}</b></span>`:''}</div><div class="iv12-actions"><button data-x="edit" data-t="${type}" data-i="${i}">Modifica</button><button data-x="del" data-t="${type}" data-i="${i}">Elimina</button></div></article>`}
+function trend(){if(history.length<2)return `<div class="iv12-empty">Lo storico inizierà a popolarsi automaticamente dopo il primo aggiornamento del portafoglio.</div>`;const vals=history.map(x=>x.value),min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;return `<div class="iv12-trend"><h3>Andamento del portafoglio</h3><svg viewBox="0 0 600 150" preserveAspectRatio="none" aria-label="Andamento storico del valore del portafoglio"><polyline fill="none" stroke="currentColor" stroke-width="3" points="${history.map((x,i)=>`${i/(history.length-1)*590+5},${145-(x.value-min)/range*130}`).join(' ')}"/></svg><div class="iv12-range"><span>${esc(history[0].date)}</span><b>${eur(history[history.length-1].value)}</b><span>${esc(history[history.length-1].date)}</span></div></div>`}
+function render(){if(window.__mlPanel!=='investimenti')return;const el=document.getElementById('sidePanel');if(!el)return;const ev=etfs.reduce((a,e)=>a+n(e.qty)*ep(e.symbol),0),cv=crypto.reduce((a,c)=>a+n(c.qty)*cp(c.symbol),0),inv=etfs.reduce((a,e)=>a+n(e.qty)*n(e.avg),0),pl=ev-inv;el.innerHTML=`<div class="iv12-wrap"><header class="iv12-total"><div><small>PORTAFOGLIO TOTALE</small><strong>${eur(ev+cv)}</strong></div><div class="iv12-pl"><span>ETF ${eur(ev)}</span><span>Crypto ${eur(cv)}</span><span class="${pl>=0?'up':'down'}">P/L ETF ${inv?(pl>=0?'+':'')+eur(pl)+' · '+pct(pl/inv*100):'—'}</span></div></header>${trend()}<section><div class="iv12-title"><h3>ETF</h3><button data-x="add" data-t="etf">+ ETF</button></div>${etfs.length?etfs.map((x,i)=>card(x,i,'etf')).join(''):'<div class="iv12-empty">Nessun ETF inserito.</div>'}</section><section><div class="iv12-title"><h3>Bitcoin & Crypto</h3><button data-x="add" data-t="crypto">+ Crypto</button></div>${crypto.length?crypto.map((x,i)=>card(x,i,'crypto')).join(''):'<div class="iv12-empty">Nessuna crypto inserita.</div>'}</section><div class="iv12-note">I dati inseriti restano salvati nel portafoglio. Puoi modificarli o cancellarli in qualsiasi momento.</div></div>`;el.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const x=b.dataset;if(x.x==='add')add(x.t);else if(x.x==='edit')edit(x.t,+x.i);else del(x.t,+x.i)})}
+function install(){if(typeof window.setPanel!=='function'||window.setPanel.__iv12)return;const old=window.setPanel;window.setPanel=function(id){window.__mlPanel=id;old(id);if(id==='investimenti'){sync();render()}};window.setPanel.__iv12=true;document.querySelectorAll('.top-tab[data-panel="investimenti"]').forEach(b=>b.onclick=()=>window.setPanel('investimenti'))}
+const st=document.createElement('style');st.textContent=`.iv12-wrap{padding:14px;color:#e2e8f0}.iv12-total{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:14px}.iv12-total strong{display:block;font-size:28px;margin-top:4px}.iv12-total small,.iv12-card small{color:#64748b;font-size:9px}.iv12-pl{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:#94a3b8}.iv12-trend{border:1px solid #263247;border-radius:10px;padding:12px;margin-bottom:14px}.iv12-trend h3{font-size:12px;margin:0 0 8px}.iv12-trend svg{width:100%;height:150px;color:#38bdf8}.iv12-range{display:flex;justify-content:space-between;font-size:9px;color:#64748b}.iv12-title{display:flex;justify-content:space-between;align-items:center}.iv12-title h3{font-size:13px}.iv12-title button,.iv12-actions button{background:#172033;color:#e2e8f0;border:1px solid #334155;border-radius:7px;padding:6px 9px;font-size:10px}.iv12-card{border:1px solid #263247;border-radius:10px;padding:11px;margin:7px 0}.iv12-card small{display:block;margin-top:2px}.iv12-data{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;color:#64748b;font-size:9px}.iv12-data b{color:#e2e8f0;margin-left:3px}.iv12-actions{display:flex;gap:6px;margin-top:9px}.iv12-empty,.iv12-note{color:#64748b;font-size:10px;padding:9px 0}.up{color:#4ade80!important}.down{color:#fb7185!important}@media(max-width:600px){.iv12-total{align-items:start;flex-direction:column}.iv12-total strong{font-size:24px}}`;document.head.appendChild(st);let tries=0;const t=setInterval(()=>{install();if(++tries>100||window.setPanel?.__iv12)clearInterval(t)},100);setInterval(()=>{if(window.__mlPanel==='investimenti')sync()},300000)
 })();
