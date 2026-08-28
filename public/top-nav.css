@@ -1,0 +1,11 @@
+/* Miracolo Lab — top navigation */
+.tab-rail{position:fixed;top:68px;left:0;right:0;height:48px;z-index:90;display:flex;flex-direction:row;align-items:stretch;justify-content:center;gap:4px;padding:5px 10px;background:rgba(6,13,26,.96);border-top:1px solid rgba(14,165,233,.08);border-bottom:1px solid rgba(14,165,233,.14);backdrop-filter:blur(16px);overflow-x:auto;scrollbar-width:none}
+.tab-rail::-webkit-scrollbar{display:none}
+.tab-rail .rail-btn{flex:0 0 auto;min-width:108px;height:36px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:7px;padding:0 13px;border:1px solid transparent;border-radius:10px;background:transparent;color:#6b8096;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.tab-rail .rail-btn:hover{color:#bae6fd;background:rgba(14,165,233,.06)}
+.tab-rail .rail-btn.active{color:#38bdf8;background:rgba(14,165,233,.12);border-color:rgba(14,165,233,.28)}
+.tab-rail .rail-icon{font-size:15px;line-height:1}
+.tab-rail .rail-lbl{font-size:11px}
+.app-body{padding-top:48px}
+.side-col{border-left:0!important}
+@media(max-width:600px){.tab-rail{top:68px;height:44px;padding:4px 6px;justify-content:flex-start}.tab-rail .rail-btn{min-width:auto;padding:0 10px;height:34px}.tab-rail .rail-lbl{font-size:10px}.app-body{padding-top:44px}}
