@@ -1,6 +1,9 @@
 name = "miracolo-lab"
-main = "worker.js"
+main = "worker-scheduled.js"
 compatibility_date = "2026-08-27"
+
+[triggers]
+crons = ["*/5 * * * *"]
 
 [assets]
 directory = "./public"
