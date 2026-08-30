@@ -5,6 +5,14 @@ compatibility_date = "2026-08-27"
 [triggers]
 crons = ["*/5 * * * *"]
 
+[vars]
+BOT_MODE = "AUTONOMOUS"
+HEARTBEAT_INTERVAL = "5m"
+
 [assets]
 directory = "./public"
 binding = "ASSETS"
+
+[[kv_namespaces]]
+binding = "STATE"
+id = "REPLACE_WITH_STATE_KV_NAMESPACE_ID"
