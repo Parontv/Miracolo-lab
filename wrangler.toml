@@ -12,7 +12,3 @@ HEARTBEAT_INTERVAL = "5m"
 [assets]
 directory = "./public"
 binding = "ASSETS"
-
-[[kv_namespaces]]
-binding = "STATE"
-id = "REPLACE_WITH_STATE_KV_NAMESPACE_ID"
