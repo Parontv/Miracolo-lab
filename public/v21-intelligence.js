@@ -59,10 +59,11 @@
       });
     }
 
+    const body = card.querySelector('.ml-ai-body');
     const html = narrative.innerHTML || '';
     const text = (narrative.innerText || narrative.textContent || '').trim();
-    if (html.trim()) card.querySelector('.ml-ai-body').innerHTML = html;
-    else if (text) card.querySelector('.ml-ai-body').textContent = text;
+    if (html.trim() && body.innerHTML !== html) body.innerHTML = html;
+    else if (!html.trim() && body.textContent !== text) body.textContent = text;
 
     saveSnapshot(narrative);
     narrative.style.display = 'none';
