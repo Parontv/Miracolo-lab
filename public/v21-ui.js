@@ -1,12 +1,12 @@
 /* Miracolo Lab V21.1 — runtime version coordinator. */
 (() => {
   'use strict';
-  const FALLBACK = '21.1.0';
+  const FALLBACK = '—';
   const PANELS = ['radar','investimenti','bot','learning','blackswan','settings'];
   let VERSION = FALLBACK;
 
   function applyVersion(v) {
-    if (!v || typeof v !== 'string') return;
+    if (!v || typeof v !== 'string' || v === '—') return;
     VERSION = v;
     document.documentElement.dataset.mlVersion = VERSION;
     document.querySelector('meta[name="version"]')?.setAttribute('content', VERSION);
@@ -24,7 +24,7 @@
       if (!d?.version) throw new Error('missing version');
       applyVersion(String(d.version));
     } catch (e) {
-      applyVersion(FALLBACK);
+      document.querySelectorAll('.build-badge').forEach(el => { el.textContent = '—'; });
       console.warn('Miracolo Lab version probe unavailable:', e.message);
     }
   }
@@ -36,7 +36,7 @@
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     document.body.dataset.activePanel = id;
-    applyVersion(VERSION);
+    if (VERSION !== FALLBACK) applyVersion(VERSION);
   }
 
   function install() {
