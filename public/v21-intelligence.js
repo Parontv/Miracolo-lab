@@ -1,7 +1,6 @@
 /* Miracolo Lab V21.1 — AI market summary and history bridge. */
 (() => {
   'use strict';
-  const VERSION = '21.1.0';
   const HISTORY_KEY = 'ml_ai_history_v21';
   const MAX_LOCAL_HISTORY = 200;
 
@@ -62,8 +61,8 @@
     });
     const snap={ts:a.updatedAt||data.timestamp||new Date().toISOString(),sentiment:a.sentiment,score:a.score,text:a.text,drivers:a.drivers||[],summary:data.summary||{}};
     saveLocal(snap);
-    document.querySelectorAll('.build-badge').forEach(x=>x.textContent=VERSION);
-    document.querySelector('meta[name="version"]')?.setAttribute('content',VERSION);
+    const v=window.ML_BUILD_VERSION;
+    if(v){document.querySelectorAll('.build-badge').forEach(x=>x.textContent=v);document.querySelector('meta[name="version"]')?.setAttribute('content',v)}
   }
 
   async function load() {
