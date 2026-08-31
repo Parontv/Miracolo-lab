@@ -1,10 +1,10 @@
-/* Miracolo Lab V21 — Worker entrypoint.
+/* Miracolo Lab V21.1 — Worker entrypoint.
    Uses the existing V20 intelligence engine as the data provider, while adding
    a single cached full-scan boundary so the frontend does not re-run the entire
    multi-source scan on every request within the 5-minute refresh window. */
 import base from './worker-v20.js';
 
-const VERSION = '21.0.0';
+const VERSION = '21.1.0';
 const SCAN_CACHE_KEY = new Request('https://miracolo-lab.local/v21/full-scan');
 const CACHE_TTL_MS = 4 * 60 * 1000;
 
