@@ -1,8 +1,8 @@
-/* Miracolo Lab V21 — single final UI coordinator.
-   Keeps functional legacy modules but removes competing tab/style controllers. */
+/* Miracolo Lab V21.1 — single final UI coordinator.
+   Keeps functional modules while removing competing tab/style controllers. */
 (() => {
   'use strict';
-  const VERSION = '21.0.0';
+  const VERSION = '21.1.0';
   const PANELS = ['radar','investimenti','bot','learning','blackswan','settings'];
 
   function syncTabs(id) {
