@@ -34,6 +34,7 @@
 
   function render(narrative) {
     const sourceGrid = document.getElementById('sourceGrid');
+    const results = document.getElementById('results');
     if (!sourceGrid || !narrative) return false;
 
     let card = document.getElementById('ml-ai-market-card');
@@ -47,7 +48,8 @@
           <span class="ml-ai-chevron" aria-hidden="true">▸</span>
         </button>
         <div class="ml-ai-body" hidden></div>`;
-      sourceGrid.parentNode.insertBefore(card, sourceGrid);
+      const anchor = results || sourceGrid;
+      anchor.parentNode.insertBefore(card, anchor);
       card.querySelector('.ml-ai-toggle').addEventListener('click', () => {
         const open = card.dataset.open === 'true';
         card.dataset.open = open ? 'false' : 'true';
