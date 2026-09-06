@@ -35,10 +35,10 @@ jobs:
         run: |
           python - <<'PY'
           import json,urllib.request
-          base='https://miracolo-lab.listaconcerti.workers.dev'
+          base='https://miracolo-lab.listaconcerti.workers.dev'; h={'User-Agent':'MiracoloLab-Diagnostic/1.0'}
           for path in ['/version','/api/live','/api/full-scan']:
             try:
-              d=json.load(urllib.request.urlopen(urllib.request.Request(base+path),timeout=60))
+              d=json.load(urllib.request.urlopen(urllib.request.Request(base+path,headers=h),timeout=60))
               if path=='/version': print('VERSION',d.get('build')); continue
               n=d.get('news') or d; s=n.get('summary') or {}; cs=n.get('categorySummary') or {}
               print(path,json.dumps({'items':len(n.get('items') or []),'reachable':s.get('reachable'),'failed':s.get('failed'),'categories':{k:v.get('count') for k,v in cs.items()}}))
