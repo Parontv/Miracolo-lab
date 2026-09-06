@@ -9,6 +9,11 @@ crons = ["*/5 * * * *"]
 BOT_MODE = "AUTONOMOUS"
 HEARTBEAT_INTERVAL = "5m"
 
+# V1 durable state: cursor, autonomous snapshot and API rate-limit counters.
+# Wrangler automatically provisions this KV namespace on deployment because no id is specified.
+[[kv_namespaces]]
+binding = "ML_KV"
+
 [assets]
 directory = "./public"
 binding = "ASSETS"
