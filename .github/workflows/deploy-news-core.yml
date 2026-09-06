@@ -13,12 +13,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Build V9 News Core
+      - name: Build V10 News Core
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('worker.js')
-          s=p.read_text().replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V9-NEWS-PARALLEL-24FEEDS';")
+          s=p.read_text().replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V10-NEWS-BING-RSS';")
           a=s.find('async function scan(){'); b=s.find('\nasync function quote(',a)
           if a<0 or b<0: raise SystemExit('scan boundaries not found')
           p.write_text(s[:a]+Path('v8-news-core.js').read_text()+s[b:])
