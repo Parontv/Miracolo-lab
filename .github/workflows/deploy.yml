@@ -10,20 +10,24 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - name: Harden News Core category coverage
+      - name: Replace News Core with 12 category feeds
+        shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           p = Path('worker.js')
           s = p.read_text()
           s = s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V6-NEWS-CATEGORY-CORE';")
-          start = s.index('async function scan(){')
-          end = s.index('\nasync function quote(', start)
+          start = s.find('async function scan(){')
+          end = s.find('\nasync function quote(', start)
+          if start < 0 or end < 0:
+              raise SystemExit('News Core scan boundaries not found')
           scan = r'''async function scan(){
 const categoryFeeds=[
 ['news','Google Market News','https://news.google.com/rss/search?q=(stock+market+OR+finance+OR+markets)+when:7d&hl=en-US&gl=US&ceid=US:en'],
@@ -49,12 +53,11 @@ const pos=items.filter(x=>x.score>0).length,neg=items.filter(x=>x.score<0).lengt
 const categorySummary=Object.fromEntries(GROUPS.map(k=>[k,{count:buckets[k].length,complete:buckets[k].length>=300}]));
 return{timestamp:new Date().toISOString(),sources:states.map(({items,...x})=>x),items,categories:buckets,categorySummary,summary:{configured:categoryFeeds.length,reachable:states.filter(x=>x.status==='ok').length,failed:states.filter(x=>x.status==='error').length,items:items.length,strong:items.filter(x=>Math.abs(x.score)>=1).length,news:items.length,social:buckets.social.length,sentiment:{positive:pos,negative:neg,neutral:items.length-pos-neg}}}}
 '''
-          s = s[:start] + scan + s[end:]
-          p.write_text(s)
-          print('News Core replaced with 12-category Google RSS core')
+          p.write_text(s[:start] + scan + s[end:])
+          print('12-category News Core installed')
           PY
 
-      - name: Install current Wrangler
+      - name: Install Wrangler
         run: npm install --no-save wrangler@4
 
       - name: Deploy Worker
