@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 10
+          fetch-depth: 0
       - name: Restore full application runtime
         run: |
           git checkout a5ef97f6ea37fd02a0868331313f639b6079b617 -- public/app.js
