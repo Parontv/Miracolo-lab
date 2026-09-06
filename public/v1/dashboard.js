@@ -4,6 +4,7 @@
   const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const num=v=>Number.isFinite(Number(v))?Number(v):0;
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+  const MAX_PER_CATEGORY=500;
   const groups=[
     ['news','Notizie','📰'],['finance','Finance','💹'],['crypto','Cripto','₿'],['macro','Macroeconomia','🌍'],
     ['rates','Obbligazioni / Tassi','💶'],['central','Banche Centrali','🏦'],['commodities','Commodities','🛢️'],
@@ -90,9 +91,9 @@
     const ma=marketAnalysis(data.market,items),buckets=Object.fromEntries(groups.map(([k])=>[k,[]]));items.forEach(x=>buckets[group(x)].push(x));
     const sourceHtml=groups.map(([k,label,icon])=>{
       const a=buckets[k],uniqueSources=[...new Set(a.map(x=>x.source||x.feed||x.publisher).filter(Boolean))],count=a.length;
-      const articles=a.length?a.slice(0,50).map(article).join(''):`<div class="v1-empty">Nessuna notizia ricevuta in questa categoria.</div>`;
+      const articles=a.length?a.slice(0,MAX_PER_CATEGORY).map(article).join(''):`<div class="v1-empty">Nessuna notizia ricevuta in questa categoria.</div>`;
       const meta=`${count} ${count===1?'notizia':'notizie'}${uniqueSources.length?` · ${uniqueSources.length} ${uniqueSources.length===1?'fonte':'fonti'}`:''}`;
-      return `<details class="v1-category" ${k==='news'||k==='finance'?'open':''}><summary>${icon} ${label}<span>${count}</span><small>${meta}</small></summary><div>${articles}</div></details>`;
+      return `<details class="v1-category" ${k==='news'||k==='finance'?'open':''}><summary>${icon} ${label}<span>${count}</span><small>${meta}</small></summary><div>${articles}${a.length>MAX_PER_CATEGORY?`<div class="v1-density-note">Visualizzate ${MAX_PER_CATEGORY} di ${a.length} notizie.</div>`:''}</div></details>`;
     }).join('');
     const okSources=sources.filter(x=>x.status==='ok').length;
     root.innerHTML=`<section class="v1-card v1-market-card"><div class="v1-card-head"><div><b>MARKET SENTIMENT</b><small>Recap AI integrato di tutte le fonti ricevute</small></div><strong>${ma?ma.score+'/100':'—'}</strong></div>${ma?`<div class="v1-market-label">${esc(ma.label)} · confidenza ${ma.confidence}%</div><div id="v1-market-content" class="v1-market-content"><div class="v1-ai-loading">Preparazione del recap AI…</div></div>`:'<div class="v1-empty">Dati di mercato non disponibili.</div>'}</section><section class="v1-card"><details class="v1-section" open><summary>📈 SENTIMENT INDICI DI BORSA <b>${ma?ma.score+'/100':'—'}</b></summary><div class="v1-index-grid">${(data.market?.indices||[]).filter(x=>x.ok).slice(0,12).map(x=>{const ch=Number(x.changePct);return`<div class="v1-index"><strong>${esc(x.name)}</strong><span>${Number.isFinite(ch)?(ch>=0?'+':'')+ch.toFixed(2)+'%':'—'}</span></div>`}).join('')||'<div class="v1-empty">Dati non disponibili.</div>'}</div></details></section><section class="v1-card"><details class="v1-section" open><summary>📚 FONTI RICEVUTE <b>${okSources} OK · ${sources.length} fonti</b></summary><div class="v1-source-groups">${sourceHtml}</div></details></section>`;
