@@ -12,23 +12,22 @@
   }
 
   async function loadScan() {
+    // Dashboard reads the persisted central dataset first. This avoids making
+    // every browser load trigger a fresh 24-feed network scan.
     try {
-      const scan = await json('/api/full-scan');
-      if (hasNews(scan)) return scan;
-      try {
-        const live = await json('/api/live');
-        const snapshot = live?.news;
-        if (hasNews(snapshot)) {
-          return { ...snapshot, ok: true, recoveredFromSnapshot: true, snapshotTimestamp: live.timestamp || snapshot.timestamp };
-        }
-      } catch (e) { console.warn('News Core snapshot fallback failed:', e.message); }
-      return scan;
-    } catch (e) {
       const live = await json('/api/live');
       const snapshot = live?.news;
       if (hasNews(snapshot)) {
         return { ...snapshot, ok: true, recoveredFromSnapshot: true, snapshotTimestamp: live.timestamp || snapshot.timestamp };
       }
+    } catch (e) { console.warn('News Core live snapshot failed:', e.message); }
+
+    // Only fall back to a fresh scan when the persisted dataset is empty.
+    try {
+      const scan = await json('/api/full-scan');
+      if (hasNews(scan)) return scan;
+      return scan;
+    } catch (e) {
       throw e;
     }
   }
