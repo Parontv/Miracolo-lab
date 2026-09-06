@@ -14,7 +14,7 @@ jobs:
           fetch-depth: 10
       - name: Restore full application runtime
         run: |
-          git checkout HEAD~3 -- public/app.js
+          git checkout a5ef97f6ea37fd02a0868331313f639b6079b617 -- public/app.js
           python - <<'PY'
           from pathlib import Path
           p=Path('public/app.js')
