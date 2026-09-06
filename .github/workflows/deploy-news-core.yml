@@ -1,62 +1,44 @@
 name: Deploy Miracolo Lab News Core
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+      - name: Build V6 News Core
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('worker.js')
+          s=p.read_text()
+          s=s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V6-NEWS-CATEGORY-CORE';")
+          start=s.find('async function scan(){')
+          end=s.find('\nasync function quote(',start)
+          if start<0 or end<0: raise SystemExit('scan boundaries not found')
+          feeds=[
+          ('news','Google Market News','stock market OR finance OR markets'),
+          ('finance','Google Finance','stocks OR equities OR Nasdaq OR S&P 500 OR Dow'),
+          ('crypto','Google Crypto','bitcoin OR ethereum OR crypto OR stablecoin OR crypto ETF'),
+          ('macro','Google Macro','inflation OR CPI OR PCE OR GDP OR PMI OR economic growth OR employment'),
+          ('rates','Google Bonds Rates','Treasury OR Bund OR BTP OR bond OR yield OR interest rate'),
+          ('central','Google Central Banks','Federal Reserve OR ECB OR BoE OR BoJ OR central bank'),
+          ('commodities','Google Commodities','oil OR Brent OR WTI OR gold OR copper OR gas OR OPEC'),
+          ('fx','Google Forex','forex OR EURUSD OR USDJPY OR GBPUSD OR DXY OR currency'),
+          ('volatility','Google Volatility','VIX OR volatility OR options OR implied volatility OR gamma'),
+          ('geopolitics','Google Geopolitics','geopolitics OR sanctions OR tariffs OR war OR conflict'),
+          ('social','Google Social Sentiment','Reddit OR WallStreetBets OR investor sentiment OR retail investors'),
+          ('company','Google Company Earnings','earnings OR revenue OR guidance OR buyback OR company results')]
+          js='async function scan(){\nconst categoryFeeds='+repr(feeds)+';\nconst states=[];\nfor(const f of categoryFeeds){try{const q=encodeURIComponent(f[2]);const url="https://news.google.com/rss/search?q="+q+"+when:7d&hl=en-US&gl=US&ceid=US:en";const got=await getFeed(url);const text=await got.r.text();const items=parse(text,[f[1],f[0],url]).map(x=>({...x,score:sentiment(x)}));states.push({name:f[1],type:f[0],url,status:"ok",count:items.length,transport:got.transport,items})}catch(e){states.push({name:f[1],type:f[0],status:"error",count:0,error:String(e.message||e),items:[]})}}\nconst buckets=Object.fromEntries(GROUPS.map(k=>[k,[]]));\nfor(const x of states.flatMap(x=>x.items))buckets[categoryOf(x)].push(x);\nfor(const k of GROUPS){const seen=new Set();buckets[k]=buckets[k].filter(x=>{const key=(x.title||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,300)}\nconst items=GROUPS.flatMap(k=>buckets[k]);\nconst pos=items.filter(x=>x.score>0).length,neg=items.filter(x=>x.score<0).length;\nconst categorySummary=Object.fromEntries(GROUPS.map(k=>[k,{count:buckets[k].length,complete:buckets[k].length>=300}]));\nreturn{timestamp:new Date().toISOString(),sources:states.map(({items,...x})=>x),items,categories:buckets,categorySummary,summary:{configured:categoryFeeds.length,reachable:states.filter(x=>x.status==="ok").length,failed:states.filter(x=>x.status==="error").length,items:items.length,strong:items.filter(x=>Math.abs(x.score)>=1).length,news:items.length,social:buckets.social.length,sentiment:{positive:pos,negative:neg,neutral:items.length-pos-neg}}}}\n'
+          p.write_text(s[:start]+js+s[end:])
+          print('V6 News Core installed')
+          PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
-
-      - name: Build V6 News Core
-        shell: python
-        run: |
-          from pathlib import Path
-          p = Path('worker.js')
-          s = p.read_text()
-          s = s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V6-NEWS-CATEGORY-CORE';")
-          start = s.find('async function scan(){')
-          end = s.find('\nasync function quote(', start)
-          if start < 0 or end < 0:
-              raise SystemExit('scan boundaries not found')
-          scan = '''async function scan(){
-const categoryFeeds=[
-['news','Google Market News','https://news.google.com/rss/search?q=(stock+market+OR+finance+OR+markets)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['finance','Google Finance','https://news.google.com/rss/search?q=(stocks+OR+equities+OR+Nasdaq+OR+S%26P+500+OR+Dow)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['crypto','Google Crypto','https://news.google.com/rss/search?q=(bitcoin+OR+ethereum+OR+crypto+OR+stablecoin+OR+crypto+ETF)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['macro','Google Macro','https://news.google.com/rss/search?q=(inflation+OR+CPI+OR+PCE+OR+GDP+OR+PMI+OR+economic+growth+OR+employment)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['rates','Google Bonds Rates','https://news.google.com/rss/search?q=(Treasury+OR+Bund+OR+BTP+OR+bond+OR+yield+OR+interest+rate)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['central','Google Central Banks','https://news.google.com/rss/search?q=(Federal+Reserve+OR+ECB+OR+BoE+OR+BoJ+OR+central+bank)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['commodities','Google Commodities','https://news.google.com/rss/search?q=(oil+OR+Brent+OR+WTI+OR+gold+OR+copper+OR+gas+OR+OPEC)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['fx','Google Forex','https://news.google.com/rss/search?q=(forex+OR+EURUSD+OR+USDJPY+OR+GBPUSD+OR+DXY+OR+currency)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['volatility','Google Volatility','https://news.google.com/rss/search?q=(VIX+OR+volatility+OR+options+OR+implied+volatility+OR+gamma)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['geopolitics','Google Geopolitics','https://news.google.com/rss/search?q=(geopolitics+OR+sanctions+OR+tariffs+OR+war+OR+conflict)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['social','Google Social Sentiment','https://news.google.com/rss/search?q=(Reddit+OR+WallStreetBets+OR+investor+sentiment+OR+retail+investors)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['company','Google Company Earnings','https://news.google.com/rss/search?q=(earnings+OR+revenue+OR+guidance+OR+buyback+OR+company+results)+when:7d&hl=en-US&gl=US&ceid=US:en']
-];
-const states=[];
-for(const f of categoryFeeds){try{const got=await getFeed(f[2]);const text=await got.r.text();const items=parse(text,[f[1],f[0],f[2]]).map(x=>({...x,score:sentiment(x)}));states.push({name:f[1],type:f[0],url:f[2],status:'ok',count:items.length,transport:got.transport,items})}catch(e){states.push({name:f[1],type:f[0],url:f[2],status:'error',count:0,error:String(e.message||e),items:[]})}}
-const buckets=Object.fromEntries(GROUPS.map(k=>[k,[]]));
-for(const x of states.flatMap(x=>x.items))buckets[categoryOf(x)].push(x);
-for(const k of GROUPS){const seen=new Set();buckets[k]=buckets[k].filter(x=>{const key=(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,300)}
-const items=GROUPS.flatMap(k=>buckets[k]);
-const pos=items.filter(x=>x.score>0).length,neg=items.filter(x=>x.score<0).length;
-const categorySummary=Object.fromEntries(GROUPS.map(k=>[k,{count:buckets[k].length,complete:buckets[k].length>=300}]));
-return{timestamp:new Date().toISOString(),sources:states.map(({items,...x})=>x),items,categories:buckets,categorySummary,summary:{configured:categoryFeeds.length,reachable:states.filter(x=>x.status==='ok').length,failed:states.filter(x=>x.status==='error').length,items:items.length,strong:items.filter(x=>Math.abs(x.score)>=1).length,news:items.length,social:buckets.social.length,sentiment:{positive:pos,negative:neg,neutral:items.length-pos-neg}}}}
-'''
-          p.write_text(s[:start] + scan + s[end:])
-          print('V6 News Core installed')
-
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
