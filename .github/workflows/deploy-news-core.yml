@@ -1,0 +1,49 @@
+name: Deploy Miracolo Lab News Core
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build V8 News Core
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('worker.js')
+          s=p.read_text()
+          s=s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V8-NEWS-SEQUENTIAL-24FEEDS';")
+          a=s.find('async function scan(){')
+          b=s.find('\nasync function quote(',a)
+          if a<0 or b<0: raise SystemExit('scan boundaries not found')
+          p.write_text(s[:a]+Path('v8-news-core.js').read_text()+s[b:])
+          print('V8 News Core installed')
+          PY
+      - name: Install Wrangler
+        run: npm install --no-save wrangler@4
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 5637f51ea89c44719b4a680b6122bf05
+          command: deploy
+      - name: Verify live Worker
+        run: |
+          python - <<'PY'
+          import json,urllib.request
+          base='https://miracolo-lab.listaconcerti.workers.dev'
+          for path in ['/version','/api/live','/api/full-scan']:
+            try:
+              d=json.load(urllib.request.urlopen(urllib.request.Request(base+path,headers={'User-Agent':'MiracoloLab-Diagnostic/1.0'}),timeout=90))
+              if path=='/version': print('VERSION',d.get('build'))
+              else:
+                s=(d.get('news') or {}).get('summary') if path=='/api/live' else d.get('summary') or {}
+                cs=(d.get('news') or {}).get('categorySummary') if path=='/api/live' else d.get('categorySummary') or {}
+                print(path,json.dumps({'items':len((d.get('news') or d).get('items') or []),'reachable':s.get('reachable'),'failed':s.get('failed'),'categories':{k:v.get('count') for k,v in (cs or {}).items()}}))
+            except Exception as e: print('ERROR',path,e)
+          PY
