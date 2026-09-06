@@ -1,13 +1,8 @@
 name: Live News Diagnostic
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 jobs:
   diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install V7 News Core
-        run: echo "Obsolete diagnostic workflow"
+      - run: echo "Use Deploy Miracolo Lab for live verification"
