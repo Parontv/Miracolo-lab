@@ -14,6 +14,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Harden News Core category coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('worker.js')
+          s = p.read_text()
+          s = s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V5-NEWS-CATEGORY-RESCUE';")
+          needle = "const items=GROUPS.flatMap(k=>buckets[k]);"
+          rescue = """const rescue=[\n['news','Rescue Investing All News','https://www.investing.com/rss/news.rss'],\n['finance','Rescue Investing Stocks','https://www.investing.com/rss/news_1063.rss'],\n['crypto','Rescue Cointelegraph','https://cointelegraph.com/rss'],\n['fx','Rescue Investing Forex','https://www.investing.com/rss/news_301.rss'],\n['commodities','Rescue Investing Commodities','https://www.investing.com/rss/news_14.rss'],\n['company','Rescue Investing Company News','https://www.investing.com/rss/news.rss'],\n['rates','Rescue Google Rates','https://news.google.com/rss/search?q=(Treasury+OR+bond+OR+yield+OR+credit+spread)+when:7d&hl=en-US&gl=US&ceid=US:en'],\n['volatility','Rescue Google Volatility','https://news.google.com/rss/search?q=(VIX+OR+volatility+OR+options+OR+gamma+OR+put+call)+when:7d&hl=en-US&gl=US&ceid=US:en'],\n['geopolitics','Rescue Google Geopolitics','https://news.google.com/rss/search?q=(geopolitics+OR+sanctions+OR+tariffs+OR+war+OR+conflict)+when:7d&hl=en-US&gl=US&ceid=US:en']\n];\nfor(const [cat,name,url] of rescue){if(buckets[cat]?.length>=5)continue;try{const got=await getFeed(url),text=await got.r.text(),extra=parse(text,[name,cat,url]).map(x=>({...x,score:sentiment(x),rescue:true}));for(const x of extra){if(buckets[cat].length>=300)break;buckets[cat].push(x)}}catch{}}\nfor(const k of GROUPS){const seen=new Set();buckets[k]=buckets[k].filter(x=>{const key=(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,300)}\nconst items=GROUPS.flatMap(k=>buckets[k]);"""
+          if needle not in s:
+              raise SystemExit('News Core insertion point not found')
+          s = s.replace(needle, rescue, 1)
+          p.write_text(s)
+          print('News Core category rescue patch applied')
+          PY
+
       - name: Install current Wrangler
         run: npm install --no-save wrangler@4
 
