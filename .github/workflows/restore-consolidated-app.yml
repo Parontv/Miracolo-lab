@@ -12,9 +12,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 10
-      - name: Restore full application runtime from pre-consolidation revision
+      - name: Restore full application runtime
         run: |
-          git checkout HEAD~2 -- public/app.js
+          git checkout HEAD~3 -- public/app.js
           python - <<'PY'
           from pathlib import Path
           p=Path('public/app.js')
