@@ -20,14 +20,31 @@ jobs:
           from pathlib import Path
           p = Path('worker.js')
           s = p.read_text()
-          s = s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V5-NEWS-CATEGORY-RESCUE';")
+          s = s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V6-NEWS-CATEGORY-STABLE';")
+          # Cloudflare Workers has a finite subrequest budget. Keep the proven first 30 feeds,
+          # then use one direct/proxy fallback per empty category instead of exhausting the budget.
+          s = s.replace("async function getFeed(url){let last='';for(let attempt=0;attempt<2;attempt++){try{const r=await get(url);if(r.ok)return{r,transport:'direct'};last='HTTP '+r.status}catch(e){last=String(e.message||e)}}try{const proxy='https://r.jina.ai/'+url;const r=await get(proxy);if(r.ok)return{r,transport:'proxy',proxy:true}}catch(e){last=String(e.message||e)}throw Error(last||'feed unavailable')}", "async function getFeed(url){let last='';try{const r=await get(url);if(r.ok)return{r,transport:'direct'};last='HTTP '+r.status}catch(e){last=String(e.message||e)}try{const proxy='https://r.jina.ai/'+url;const r=await get(proxy);if(r.ok)return{r,transport:'proxy',proxy:true}}catch(e){last=String(e.message||e)}throw Error(last||'feed unavailable')}")
+          s = s.replace("Promise.all(FEEDS.map(async f=>", "Promise.all(FEEDS.slice(0,30).map(async f=>", 1)
           needle = "const items=GROUPS.flatMap(k=>buckets[k]);"
-          rescue = """const rescue=[\n['news','Rescue Investing All News','https://www.investing.com/rss/news.rss'],\n['finance','Rescue Investing Stocks','https://www.investing.com/rss/news_1063.rss'],\n['crypto','Rescue Cointelegraph','https://cointelegraph.com/rss'],\n['fx','Rescue Investing Forex','https://www.investing.com/rss/news_301.rss'],\n['commodities','Rescue Investing Commodities','https://www.investing.com/rss/news_14.rss'],\n['company','Rescue Investing Company News','https://www.investing.com/rss/news.rss'],\n['rates','Rescue Google Rates','https://news.google.com/rss/search?q=(Treasury+OR+bond+OR+yield+OR+credit+spread)+when:7d&hl=en-US&gl=US&ceid=US:en'],\n['volatility','Rescue Google Volatility','https://news.google.com/rss/search?q=(VIX+OR+volatility+OR+options+OR+gamma+OR+put+call)+when:7d&hl=en-US&gl=US&ceid=US:en'],\n['geopolitics','Rescue Google Geopolitics','https://news.google.com/rss/search?q=(geopolitics+OR+sanctions+OR+tariffs+OR+war+OR+conflict)+when:7d&hl=en-US&gl=US&ceid=US:en']\n];\nfor(const [cat,name,url] of rescue){if(buckets[cat]?.length>=5)continue;try{const got=await getFeed(url),text=await got.r.text(),extra=parse(text,[name,cat,url]).map(x=>({...x,score:sentiment(x),rescue:true}));for(const x of extra){if(buckets[cat].length>=300)break;buckets[cat].push(x)}}catch{}}\nfor(const k of GROUPS){const seen=new Set();buckets[k]=buckets[k].filter(x=>{const key=(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,300)}\nconst items=GROUPS.flatMap(k=>buckets[k]);"""
+          rescue = """const rescue=[
+['news','Rescue Investing All News','https://www.investing.com/rss/news.rss'],
+['finance','Rescue Investing Stocks','https://www.investing.com/rss/news_1063.rss'],
+['crypto','Rescue Cointelegraph','https://cointelegraph.com/rss'],
+['fx','Rescue Investing Forex','https://www.investing.com/rss/news_301.rss'],
+['commodities','Rescue Investing Commodities','https://www.investing.com/rss/news_14.rss'],
+['company','Rescue Investing Company News','https://www.investing.com/rss/news.rss'],
+['rates','Rescue Google Rates','https://news.google.com/rss/search?q=(Treasury+OR+bond+OR+yield+OR+credit+spread)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['volatility','Rescue Google Volatility','https://news.google.com/rss/search?q=(VIX+OR+volatility+OR+options+OR+gamma+OR+put+call)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['geopolitics','Rescue Google Geopolitics','https://news.google.com/rss/search?q=(geopolitics+OR+sanctions+OR+tariffs+OR+war+OR+conflict)+when:7d&hl=en-US&gl=US&ceid=US:en']
+];
+for(const [cat,name,url] of rescue){if(buckets[cat]?.length>=5)continue;try{const got=await getFeed(url),text=await got.r.text(),extra=parse(text,[name,cat,url]).map(x=>({...x,score:sentiment(x),rescue:true}));for(const x of extra){if(buckets[cat].length>=300)break;buckets[cat].push(x)}}catch{}}
+for(const k of GROUPS){const seen=new Set();buckets[k]=buckets[k].filter(x=>{const key=(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,300)}
+const items=GROUPS.flatMap(k=>buckets[k]);"""
           if needle not in s:
               raise SystemExit('News Core insertion point not found')
           s = s.replace(needle, rescue, 1)
           p.write_text(s)
-          print('News Core category rescue patch applied')
+          print('News Core category coverage patch applied')
           PY
 
       - name: Install current Wrangler
