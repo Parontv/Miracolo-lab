@@ -1,0 +1,33 @@
+name: Restore consolidated app runtime
+on:
+  push:
+    branches: [main]
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 10
+      - name: Restore full application runtime from pre-consolidation revision
+        run: |
+          git checkout HEAD~2 -- public/app.js
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('public/app.js')
+          s=p.read_text()
+          s=s.replace('MIRACOLO LAB — app.js v4.0','Miracolo Lab V1 — consolidated application runtime')
+          s=s.replace('Gemini 1.5 Flash (gratis)','Gemini 2.5 Flash')
+          s=s.replace('gemini-1.5-flash','gemini-2.5-flash')
+          s=s.replace('<span class="stat-val">4.0</span>','<span class="stat-val">1.0</span>')
+          s=s.replace('const FEEDS_COUNT = 15;','const FEEDS_COUNT = 45;')
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/app.js
+          git commit -m 'Restore full V1 application runtime'
+          git push
