@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+concurrency:
+  group: miracolo-lab-deploy
+  cancel-in-progress: true
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -10,19 +13,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Build V8 News Core
+      - name: Build V9 News Core
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('worker.js')
           s=p.read_text()
-          s=s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V8-NEWS-SEQUENTIAL-24FEEDS';")
+          s=s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V9-NEWS-PARALLEL-24FEEDS';")
           a=s.find('async function scan(){')
           b=s.find('\nasync function quote(',a)
           if a<0 or b<0: raise SystemExit('scan boundaries not found')
-          p.write_text(s[:a]+Path('v8-news-core.js').read_text()+s[b:])
-          print('V8 News Core installed')
+          p.write_text(s[:a]+Path('v8-news-core.js').read_text().replace("async function scan(){","async function scan(){")+s[b:])
+          print('V9 News Core installed')
           PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
@@ -39,7 +42,7 @@ jobs:
           base='https://miracolo-lab.listaconcerti.workers.dev'
           for path in ['/version','/api/live','/api/full-scan']:
             try:
-              d=json.load(urllib.request.urlopen(urllib.request.Request(base+path,headers={'User-Agent':'MiracoloLab-Diagnostic/1.0'}),timeout=90))
+              d=json.load(urllib.request.urlopen(urllib.request.Request(base+path,headers={'User-Agent':'MiracoloLab-Diagnostic/1.0'}),timeout=60))
               if path=='/version': print('VERSION',d.get('build'))
               else:
                 s=(d.get('news') or {}).get('summary') if path=='/api/live' else d.get('summary') or {}
