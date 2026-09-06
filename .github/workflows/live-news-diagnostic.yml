@@ -1,0 +1,39 @@
+name: Live News Diagnostic
+on:
+  push:
+    branches: [main]
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe live Worker endpoints
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, urllib.request
+          base='https://miracolo-lab.listaconcerti.workers.dev'
+          for path in ['/version','/api/health','/api/live','/api/full-scan']:
+              req=urllib.request.Request(base+path,headers={'User-Agent':'MiracoloLab-Diagnostic/1.0','Accept':'application/json'})
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:
+                      body=r.read().decode('utf-8')
+                      print(f'ENDPOINT {path} HTTP {r.status}')
+                      try: d=json.loads(body)
+                      except: print('NON_JSON'); continue
+                      if path=='/version':
+                          print('VERSION', d.get('build'), d.get('version'), d.get('timestamp'))
+                      elif path=='/api/health':
+                          print('HEALTH', json.dumps({k:d.get(k) for k in ['ok','build','timestamp']},separators=(',',':')))
+                      elif path=='/api/live':
+                          n=d.get('news') or {}
+                          s=n.get('summary') or {}
+                          cs=n.get('categorySummary') or {}
+                          print('LIVE', json.dumps({'timestamp':d.get('timestamp'),'newsItems':len(n.get('items') or []),'summaryItems':s.get('items'),'reachable':s.get('reachable'),'failed':s.get('failed'),'categories':{k:(v.get('count') if isinstance(v,dict) else None) for k,v in cs.items()}},separators=(',',':')))
+                      else:
+                          s=d.get('summary') or {}
+                          cs=d.get('categorySummary') or {}
+                          src=d.get('sources') or []
+                          print('FULL', json.dumps({'timestamp':d.get('timestamp'),'items':len(d.get('items') or []),'summaryItems':s.get('items'),'configured':s.get('configured'),'reachable':s.get('reachable'),'failed':s.get('failed'),'categories':{k:(v.get('count') if isinstance(v,dict) else None) for k,v in cs.items()},'sources':{x.get('name'): {'status':x.get('status'),'count':x.get('count')} for x in src}},separators=(',',':')))
+              except Exception as e:
+                  print(f'ENDPOINT {path} ERROR {type(e).__name__}: {e}')
+          PY
