@@ -1,0 +1,40 @@
+name: News Source Diagnostic
+on:
+  push:
+    branches: [news-diagnostic-20260908]
+  workflow_dispatch:
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe every configured feed outside Cloudflare
+        run: |
+          python - <<'PY'
+          import re, urllib.request, concurrent.futures
+          from collections import defaultdict
+          s=open('worker.js',encoding='utf-8').read()
+          block=re.search(r'const FEEDS=\[(.*?)\];',s,re.S).group(1)
+          feeds=re.findall(r"\['([^']+)','([^']+)','([^']+)'\]",block)
+          def probe(f):
+              name,cat,url=f
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'MiracoloLab-Diagnostic/1.0','Accept':'application/rss+xml,application/atom+xml,application/xml,text/xml,text/plain,application/json'})
+                  with urllib.request.urlopen(req,timeout=15) as r: data=r.read(2_000_000).decode('utf-8','ignore'); status=r.status
+                  n=len(re.findall(r'<(?:item|entry)(?:\s[^>]*)?>',data,re.I))
+                  return f,status,n,len(data),''
+              except Exception as e:
+                  return f,0,0,0,str(e)[:160]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+              rows=list(ex.map(probe,feeds))
+          by=defaultdict(lambda:[0,0,0,0])
+          for (name,cat,url),status,n,size,err in rows:
+              x=by[cat]; x[0]+=1; x[1]+=bool(status); x[2]+=n; x[3]+=1 if not status else 0
+              print(f'{cat:13} | {name:28} | HTTP {status or "ERR":4} | items {n:4} | bytes {size:7} | {err}')
+          print('\n=== CATEGORY TOTALS ===')
+          for cat in ['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company','equity','flows','regulatory']:
+              if cat in by:
+                  c=by[cat]; print(f'{cat:13} feeds={c[0]:2} reachable={c[1]:2} items={c[2]:5} failed={c[3]:2}')
+          print(f'\nTOTAL FEEDS={len(feeds)} REACHABLE={sum(bool(r[1]) for r in rows)} RAW ITEMS={sum(r[2] for r in rows)}')
+          PY
