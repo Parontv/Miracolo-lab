@@ -1,0 +1,36 @@
+name: Deploy Jesse Lab
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'jesse-lab/**'
+      - '.github/workflows/deploy-jesse-lab.yml'
+  workflow_dispatch:
+concurrency:
+  group: jesse-lab-deploy
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Wrangler
+        run: npm install --no-save wrangler@4
+      - name: Deploy Jesse Lab
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 5637f51ea89c44719b4a680b6122bf05
+          workingDirectory: jesse-lab
+          command: deploy
+      - name: Verify Jesse Lab
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          base='https://jesse-lab.listaconcerti.workers.dev'
+          for path in ['/','/api/health']:
+            r=urllib.request.urlopen(base+path, timeout=30)
+            print(path, r.status, r.read().decode()[:500])
+          PY
