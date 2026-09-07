@@ -2,7 +2,7 @@ from pathlib import Path
 
 p = Path('worker.js')
 s = p.read_text()
-s = s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260908-V12-BATCHED-PERSISTENT-NEWS';")
+s = s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260908-V13-BATCHED-CATEGORY-RESCUE';")
 old = "async function getFeed(url){let last='';for(let attempt=0;attempt<2;attempt++){try{const r=await get(url);if(r.ok)return{r,transport:'direct'};last='HTTP '+r.status}catch(e){last=String(e.message||e)}}try{const proxy='https://r.jina.ai/'+url;const r=await get(proxy);if(r.ok)return{r,transport:'proxy',proxy:true}}catch(e){last=String(e.message||e)}throw Error(last||'feed unavailable')}"
 new = "async function getFeed(url){let last='';try{const r=await get(url);if(r.ok)return{r,transport:'direct'};last='HTTP '+r.status}catch(e){last=String(e.message||e)}try{const proxy='https://r.jina.ai/'+url;const r=await get(proxy);if(r.ok)return{r,transport:'proxy',proxy:true}}catch(e){last=String(e.message||e)}throw Error(last||'feed unavailable')}"
 if old not in s:
@@ -13,7 +13,7 @@ end = s.find('async function quote(', start)
 if start < 0 or end < 0:
     raise SystemExit('scan boundaries not found')
 scan = r'''async function scan(env){
-const BATCH=14,CURSOR_KEY='news/cursor',SNAPSHOT_KEY='news/snapshot';
+const BATCH=18,CURSOR_KEY='news/cursor',SNAPSHOT_KEY='news/snapshot';
 const RESCUE=[
 ['finance','Rescue Finance','https://news.google.com/rss/search?q=(stocks+OR+equities+OR+Nasdaq+OR+S%26P+500+OR+Wall+Street)+when:7d&hl=en-US&gl=US&ceid=US:en'],
 ['crypto','Rescue Crypto','https://www.coindesk.com/arc/outboundfeeds/rss/'],
@@ -35,7 +35,7 @@ const selected=[];for(let i=0;i<BATCH&&i<FEEDS.length;i++)selected.push(FEEDS[(s
 const states=await Promise.all(selected.map(async f=>{try{const got=await getFeed(f[2]);const text=await got.r.text();const items=parse(text,f).map(x=>({...x,score:sentiment(x)}));return{name:f[0],type:f[1],url:f[2],status:'ok',count:items.length,transport:got.transport,items}}catch(e){return{name:f[0],type:f[1],url:f[2],status:'error',count:0,error:String(e.message||e),items:[]}}}));
 const buckets=Object.fromEntries(GROUPS.map(k=>[k,Array.isArray(previous?.categories?.[k])?previous.categories[k].slice():[]]));
 for(const x of states.flatMap(x=>x.items))buckets[categoryOf(x)].push(x);
-const need=GROUPS.filter(k=>(buckets[k]?.length||0)<20).sort((a,b)=>(buckets[a]?.length||0)-(buckets[b]?.length||0)).slice(0,5);
+const need=GROUPS.filter(k=>(buckets[k]?.length||0)<20).sort((a,b)=>(buckets[a]?.length||0)-(buckets[b]?.length||0)).reverse().slice(0,5);
 for(const cat of need){const f=RESCUE.find(x=>x[0]===cat);if(!f)continue;try{const got=await getFeed(f[2]);const text=await got.r.text();const extra=parse(text,[f[1],cat,f[2]]).map(x=>({...x,score:sentiment(x),rescue:true}));buckets[cat].push(...extra)}catch{}}
 for(const k of GROUPS){const seen=new Set();buckets[k]=buckets[k].filter(x=>{const key=(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,300)}
 const sourceMap=new Map((previous?.sources||[]).map(x=>[x.name,x]));for(const x of states){const {items,...meta}=x;sourceMap.set(x.name,meta)}
@@ -47,4 +47,4 @@ await writeKV(env,CURSOR_KEY,{next:(start+BATCH)%FEEDS.length});await writeKV(en
 s = s[:start] + scan + s[end:]
 s = s.replace('await scan()', 'await scan(env)')
 p.write_text(s)
-print('Built V12 batched persistent News Core')
+print('Built V13 batched category-rescue News Core')
