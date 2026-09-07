@@ -1,1 +1,1 @@
-Deploy trigger for V8 News Core verification.
+Deploy trigger for V8 News Core verification — category recovery test 2026-09-07.
