@@ -13,35 +13,90 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Build V10 News Core
+
+      - name: Build high-density News Core
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('worker.js')
-          s=p.read_text().replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260906-V10-NEWS-BING-RSS';")
-          a=s.find('async function scan(){'); b=s.find('\nasync function quote(',a)
-          if a<0 or b<0: raise SystemExit('scan boundaries not found')
-          p.write_text(s[:a]+Path('v8-news-core.js').read_text()+s[b:])
+          p = Path('worker.js')
+          s = p.read_text()
+          s = s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260908-V11-HIGH-DENSITY-NEWS';")
+          # Keep the native multi-source worker architecture. The previous deploy step
+          # replaced it with the 24-query Bing core, which caused category starvation.
+          # Stay within the Worker subrequest budget by collecting the first 30 feeds,
+          # then use one rescue feed only for categories that are still nearly empty.
+          old = "Promise.all(FEEDS.map(async f=>"
+          new = "Promise.all(FEEDS.slice(0,30).map(async f=>"
+          if old not in s:
+              raise SystemExit('native scan boundary not found')
+          s = s.replace(old, new, 1)
+          needle = "const items=GROUPS.flatMap(k=>buckets[k]);"
+          rescue = """const rescue=[
+['news','Rescue Investing All News','https://www.investing.com/rss/news.rss'],
+['finance','Rescue Investing Stocks','https://www.investing.com/rss/news_1063.rss'],
+['crypto','Rescue Cointelegraph','https://cointelegraph.com/rss'],
+['macro','Rescue Google Macro','https://news.google.com/rss/search?q=(inflation+OR+CPI+OR+PCE+OR+GDP+OR+payrolls+OR+PMI+OR+recession)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['rates','Rescue Google Rates','https://news.google.com/rss/search?q=(Treasury+OR+bond+OR+yield+OR+credit+spread+OR+high+yield)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['central','Rescue Google Central Banks','https://news.google.com/rss/search?q=(Fed+OR+ECB+OR+BoE+OR+BoJ+OR+central+bank)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['commodities','Rescue Investing Commodities','https://www.investing.com/rss/news_14.rss'],
+['fx','Rescue Investing Forex','https://www.investing.com/rss/news_301.rss'],
+['volatility','Rescue Google Volatility','https://news.google.com/rss/search?q=(VIX+OR+volatility+OR+options+OR+gamma+OR+put+call)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['geopolitics','Rescue Google Geopolitics','https://news.google.com/rss/search?q=(geopolitics+OR+sanctions+OR+tariffs+OR+war+OR+conflict)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['social','Rescue Reddit Investing','https://www.reddit.com/r/investing/.rss'],
+['company','Rescue Investing Company News','https://www.investing.com/rss/news.rss']
+];
+for(const [cat,name,url] of rescue){
+  if((buckets[cat]?.length||0)>=50) continue;
+  try{
+    const got=await getFeed(url),text=await got.r.text();
+    const extra=parse(text,[name,cat,url]).map(x=>({...x,score:sentiment(x),rescue:true}));
+    for(const x of extra){if(buckets[cat].length>=300)break;buckets[cat].push(x)}
+  }catch{}
+}
+for(const k of GROUPS){
+  const seen=new Set();
+  buckets[k]=buckets[k].filter(x=>{const key=(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,300)
+}
+const items=GROUPS.flatMap(k=>buckets[k]);"""
+          if needle not in s:
+              raise SystemExit('News Core insertion point not found')
+          s = s.replace(needle, rescue, 1)
+          p.write_text(s)
           PY
+
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
+
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 5637f51ea89c44719b4a680b6122bf05
           command: deploy
-      - name: Verify live Worker
+
+      - name: Verify News Core coverage
         run: |
           python - <<'PY'
-          import json,urllib.request
-          base='https://miracolo-lab.listaconcerti.workers.dev'; h={'User-Agent':'MiracoloLab-Diagnostic/1.0'}
-          for path in ['/version','/api/live','/api/full-scan']:
-            try:
-              d=json.load(urllib.request.urlopen(urllib.request.Request(base+path,headers=h),timeout=60))
-              if path=='/version': print('VERSION',d.get('build')); continue
-              n=d.get('news') or d; s=n.get('summary') or {}; cs=n.get('categorySummary') or {}
-              print(path,json.dumps({'items':len(n.get('items') or []),'reachable':s.get('reachable'),'failed':s.get('failed'),'categories':{k:v.get('count') for k,v in cs.items()}}))
-              print('ERRORS',json.dumps([{'name':x.get('name'),'error':x.get('error')} for x in (n.get('sources') or []) if x.get('status')!='ok']))
-            except Exception as e: print('ERROR',path,e)
+          import json, urllib.request, sys
+          base='https://miracolo-lab.listaconcerti.workers.dev'
+          h={'User-Agent':'MiracoloLab-NewsCore-Verification/2.0'}
+          def get(path):
+              return json.load(urllib.request.urlopen(urllib.request.Request(base+path,headers=h),timeout=90))
+          v=get('/version')
+          print('VERSION',v.get('build'))
+          n=get('/api/full-scan')
+          s=n.get('summary') or {}
+          cs=n.get('categorySummary') or {}
+          counts={k:int((cs.get(k) or {}).get('count') or 0) for k in ['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']}
+          print('SUMMARY',json.dumps({'items':len(n.get('items') or []),'reachable':s.get('reachable'),'failed':s.get('failed'),'categories':counts}))
+          if len(n.get('items') or []) < 1000:
+              print('FAIL: total news density below 1000')
+              sys.exit(1)
+          if sum(1 for x in counts.values() if x < 10) > 1:
+              print('FAIL: too many nearly-empty categories')
+              sys.exit(1)
+          if s.get('failed',0) > 15:
+              print('FAIL: excessive source failures')
+              sys.exit(1)
+          print('NEWS CORE COVERAGE OK')
           PY
