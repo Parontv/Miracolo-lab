@@ -1,1 +1,12 @@
-.panel-workspace-hidden{display:none!important}.app-body.tab-inside-panel .side-col{display:block!important;grid-column:1/-1;width:100%}.app-body.tab-inside-panel .side-panel{width:100%;max-width:none}.app-body.tab-inside-panel .feed-col{display:none!important}.top-tab[aria-selected="true"]{font-weight:700}
+/* Miracolo Lab — Workspace navigation */
+.panel-workspace-hidden{display:none!important}
+.app-body.tab-inside-panel{display:block;overflow:hidden}
+.app-body.tab-inside-panel .side-col{width:100%;height:100%;min-width:0;border-left:0;display:block;overflow-y:auto;padding:14px}
+.app-body.tab-inside-panel .side-panel{width:100%;max-width:1180px;margin:0 auto;min-height:100%;overflow:visible}
+.top-tab{transition:background .18s ease,border-color .18s ease,color .18s ease,transform .12s ease}
+.top-tab:hover{transform:translateY(-1px)}
+.top-tab[aria-selected="true"]{font-weight:800}
+.app-body.tab-inside-panel button{font-family:inherit;cursor:pointer;transition:background .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .12s ease}
+.app-body.tab-inside-panel button:hover{transform:translateY(-1px)}
+.app-body.tab-inside-panel button:active{transform:translateY(0)}
+@media(max-width:620px){.app-body.tab-inside-panel .side-col{padding:10px}}
