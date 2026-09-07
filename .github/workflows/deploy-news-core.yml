@@ -23,24 +23,27 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 5637f51ea89c44719b4a680b6122bf05
           command: deploy
-      - name: Verify News Core
+      - name: Warm and verify all News Core batches
         run: |
           python - <<'PY'
-          import json,urllib.request,sys
+          import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
-          h={'User-Agent':'MiracoloLab-NewsCore-Verification/4.0'}
+          h={'User-Agent':'MiracoloLab-NewsCore-Verification/5.0'}
           def get(p): return json.load(urllib.request.urlopen(urllib.request.Request(base+p,headers=h),timeout=90))
-          v=get('/version')
-          live=get('/api/live')
-          n=live.get('news') or live
-          cs=n.get('categorySummary') or {}
-          items=n.get('items') or []
           cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
+          for i in range(4):
+              n=get('/api/full-scan')
+              cs=n.get('categorySummary') or {}
+              counts={k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
+              print('BATCH',i+1,'ITEMS',len(n.get('items') or []),'CATEGORIES',json.dumps(counts))
+              time.sleep(1)
+          n=get('/api/live')
+          n=n.get('news') or n
+          cs=n.get('categorySummary') or {}
           counts={k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
-          print('VERSION',v.get('build'))
-          print('ITEMS',len(items))
-          print('CATEGORIES',json.dumps(counts))
-          if len(items)<100: sys.exit('Initial news snapshot unexpectedly small')
-          if sum(x==0 for x in counts.values())>3: sys.exit('Too many empty categories')
-          print('NEWS CORE DEPLOY VERIFIED')
+          print('FINAL LIVE ITEMS',len(n.get('items') or []))
+          print('FINAL LIVE CATEGORIES',json.dumps(counts))
+          if len(n.get('items') or []) < 300: sys.exit('News snapshot still too small after four batches')
+          if sum(x==0 for x in counts.values())>1: sys.exit('More than one category remains empty')
+          print('NEWS CORE BATCHED COVERAGE VERIFIED')
           PY
