@@ -1,1 +1,1 @@
-.panel-workspace-hidden{display:none!important}.panel-workspace{width:100%;min-height:calc(100vh - 130px);display:block}.panel-workspace[hidden]{display:none!important}.panel-workspace[data-panel]{padding:0}.top-tab[aria-selected="true"]{font-weight:700}
+.panel-workspace-hidden{display:none!important}.app-body.tab-inside-panel .side-col{display:block!important;grid-column:1/-1;width:100%}.app-body.tab-inside-panel .side-panel{width:100%;max-width:none}.app-body.tab-inside-panel .feed-col{display:none!important}.top-tab[aria-selected="true"]{font-weight:700}
