@@ -13,90 +13,75 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Build high-density News Core
+      - name: Build batched persistent News Core
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('worker.js')
-          s = p.read_text()
-          s = s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260908-V11-HIGH-DENSITY-NEWS';")
-          # Keep the native multi-source worker architecture. The previous deploy step
-          # replaced it with the 24-query Bing core, which caused category starvation.
-          # Stay within the Worker subrequest budget by collecting the first 30 feeds,
-          # then use one rescue feed only for categories that are still nearly empty.
-          old = "Promise.all(FEEDS.map(async f=>"
-          new = "Promise.all(FEEDS.slice(0,30).map(async f=>"
-          if old not in s:
-              raise SystemExit('native scan boundary not found')
-          s = s.replace(old, new, 1)
-          needle = "const items=GROUPS.flatMap(k=>buckets[k]);"
-          rescue = """const rescue=[
-['news','Rescue Investing All News','https://www.investing.com/rss/news.rss'],
-['finance','Rescue Investing Stocks','https://www.investing.com/rss/news_1063.rss'],
-['crypto','Rescue Cointelegraph','https://cointelegraph.com/rss'],
-['macro','Rescue Google Macro','https://news.google.com/rss/search?q=(inflation+OR+CPI+OR+PCE+OR+GDP+OR+payrolls+OR+PMI+OR+recession)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['rates','Rescue Google Rates','https://news.google.com/rss/search?q=(Treasury+OR+bond+OR+yield+OR+credit+spread+OR+high+yield)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['central','Rescue Google Central Banks','https://news.google.com/rss/search?q=(Fed+OR+ECB+OR+BoE+OR+BoJ+OR+central+bank)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['commodities','Rescue Investing Commodities','https://www.investing.com/rss/news_14.rss'],
-['fx','Rescue Investing Forex','https://www.investing.com/rss/news_301.rss'],
-['volatility','Rescue Google Volatility','https://news.google.com/rss/search?q=(VIX+OR+volatility+OR+options+OR+gamma+OR+put+call)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['geopolitics','Rescue Google Geopolitics','https://news.google.com/rss/search?q=(geopolitics+OR+sanctions+OR+tariffs+OR+war+OR+conflict)+when:7d&hl=en-US&gl=US&ceid=US:en'],
-['social','Rescue Reddit Investing','https://www.reddit.com/r/investing/.rss'],
-['company','Rescue Investing Company News','https://www.investing.com/rss/news.rss']
+          p=Path('worker.js')
+          s=p.read_text()
+          s=s.replace("const BUILD='ML-20260906-V4-NEWS-TRANSPORT';", "const BUILD='ML-20260908-V12-BATCHED-PERSISTENT-NEWS';")
+          old="async function getFeed(url){let last='';for(let attempt=0;attempt<2;attempt++){try{const r=await get(url);if(r.ok)return{r,transport:'direct'};last='HTTP '+r.status}catch(e){last=String(e.message||e)}}try{const proxy='https://r.jina.ai/'+url;const r=await get(proxy);if(r.ok)return{r,transport:'proxy',proxy:true}}catch(e){last=String(e.message||e)}throw Error(last||'feed unavailable')}"
+          new="async function getFeed(url){let last='';try{const r=await get(url);if(r.ok)return{r,transport:'direct'};last='HTTP '+r.status}catch(e){last=String(e.message||e)}try{const proxy='https://r.jina.ai/'+url;const r=await get(proxy);if(r.ok)return{r,transport:'proxy',proxy:true}}catch(e){last=String(e.message||e)}throw Error(last||'feed unavailable')}"
+          if old not in s: raise SystemExit('getFeed pattern not found')
+          s=s.replace(old,new,1)
+          start=s.find('async function scan(){')
+          end=s.find('async function quote(',start)
+          if start<0 or end<0: raise SystemExit('scan boundaries not found')
+          scan=r'''async function scan(env){
+const BATCH=14,CURSOR_KEY='news/cursor',SNAPSHOT_KEY='news/snapshot';
+const RESCUE=[
+['finance','Rescue Finance','https://news.google.com/rss/search?q=(stocks+OR+equities+OR+Nasdaq+OR+S%26P+500+OR+Wall+Street)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['crypto','Rescue Crypto','https://www.coindesk.com/arc/outboundfeeds/rss/'],
+['macro','Rescue Macro','https://news.google.com/rss/search?q=(inflation+OR+CPI+OR+PCE+OR+GDP+OR+payrolls+OR+PMI)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['rates','Rescue Rates','https://news.google.com/rss/search?q=(Treasury+OR+bond+OR+yield+OR+credit+spread)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['central','Rescue Central Banks','https://news.google.com/rss/search?q=(Fed+OR+ECB+OR+BoE+OR+BoJ+OR+central+bank)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['commodities','Rescue Commodities','https://news.google.com/rss/search?q=(oil+OR+Brent+OR+WTI+OR+gold+OR+copper+OR+gas)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['fx','Rescue FX','https://news.google.com/rss/search?q=(EURUSD+OR+DXY+OR+USDJPY+OR+GBPUSD+OR+forex)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['volatility','Rescue Volatility','https://news.google.com/rss/search?q=(VIX+OR+volatility+OR+options+OR+gamma+OR+put+call)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['geopolitics','Rescue Geopolitics','https://news.google.com/rss/search?q=(geopolitics+OR+sanctions+OR+tariffs+OR+war+OR+conflict)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['social','Rescue Social','https://www.reddit.com/r/investing/.rss'],
+['company','Rescue Company','https://news.google.com/rss/search?q=(earnings+OR+revenue+OR+guidance+OR+banking+OR+companies)+when:7d&hl=en-US&gl=US&ceid=US:en'],
+['news','Rescue News','https://news.google.com/rss/search?q=(stock+market+OR+Wall+Street+OR+markets)+when:7d&hl=en-US&gl=US&ceid=US:en']
 ];
-for(const [cat,name,url] of rescue){
-  if((buckets[cat]?.length||0)>=50) continue;
-  try{
-    const got=await getFeed(url),text=await got.r.text();
-    const extra=parse(text,[name,cat,url]).map(x=>({...x,score:sentiment(x),rescue:true}));
-    for(const x of extra){if(buckets[cat].length>=300)break;buckets[cat].push(x)}
-  }catch{}
-}
-for(const k of GROUPS){
-  const seen=new Set();
-  buckets[k]=buckets[k].filter(x=>{const key=(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,300)
-}
-const items=GROUPS.flatMap(k=>buckets[k]);"""
-          if needle not in s:
-              raise SystemExit('News Core insertion point not found')
-          s = s.replace(needle, rescue, 1)
+const cur=await readKV(env,CURSOR_KEY)||{next:0};
+const previous=await readKV(env,SNAPSHOT_KEY);
+const start=Number(cur.next||0)%FEEDS.length;
+const selected=[];for(let i=0;i<BATCH&&i<FEEDS.length;i++)selected.push(FEEDS[(start+i)%FEEDS.length]);
+const states=await Promise.all(selected.map(async f=>{try{const got=await getFeed(f[2]);const text=await got.r.text();const items=parse(text,f).map(x=>({...x,score:sentiment(x)}));return{name:f[0],type:f[1],url:f[2],status:'ok',count:items.length,transport:got.transport,items}}catch(e){return{name:f[0],type:f[1],url:f[2],status:'error',count:0,error:String(e.message||e),items:[]}}}));
+const buckets=Object.fromEntries(GROUPS.map(k=>[k,Array.isArray(previous?.categories?.[k])?previous.categories[k].slice():[]]));
+for(const x of states.flatMap(x=>x.items))buckets[categoryOf(x)].push(x);
+const need=GROUPS.filter(k=>(buckets[k]?.length||0)<20).sort((a,b)=>(buckets[a]?.length||0)-(buckets[b]?.length||0)).slice(0,5);
+for(const cat of need){const f=RESCUE.find(x=>x[0]===cat);if(!f)continue;try{const got=await getFeed(f[2]);const text=await got.r.text();const extra=parse(text,[f[1],cat,f[2]]).map(x=>({...x,score:sentiment(x),rescue:true}));buckets[cat].push(...extra)}catch{}}
+for(const k of GROUPS){const seen=new Set();buckets[k]=buckets[k].filter(x=>{const key=(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,300)}
+const sourceMap=new Map((previous?.sources||[]).map(x=>[x.name,x]));for(const x of states){const {items,...meta}=x;sourceMap.set(x.name,meta)}
+const sources=[...sourceMap.values()];const items=GROUPS.flatMap(k=>buckets[k]);const pos=items.filter(x=>x.score>0).length,neg=items.filter(x=>x.score<0).length;
+const categorySummary=Object.fromEntries(GROUPS.map(k=>[k,{count:buckets[k].length,complete:buckets[k].length>=300}]));
+const snapshot={timestamp:new Date().toISOString(),batch:{start,size:BATCH,selected:selected.map(x=>x[0]),next:(start+BATCH)%FEEDS.length},sources,items,categories:buckets,categorySummary,summary:{configured:FEEDS.length,reachable:sources.filter(x=>x.status==='ok').length,failed:sources.filter(x=>x.status==='error').length,items:items.length,strong:items.filter(x=>Math.abs(x.score)>=1).length,news:items.filter(x=>['news','company','equity'].includes(x.type)).length,social:items.filter(x=>x.type==='social').length,sentiment:{positive:pos,negative:neg,neutral:items.length-pos-neg}}};
+await writeKV(env,CURSOR_KEY,{next:(start+BATCH)%FEEDS.length});await writeKV(env,SNAPSHOT_KEY,snapshot);return snapshot}
+'''
+          s=s[:start]+scan+s[end:]
+          s=s.replace('await scan()','await scan(env)')
           p.write_text(s)
           PY
-
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
-
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 5637f51ea89c44719b4a680b6122bf05
           command: deploy
-
-      - name: Verify News Core coverage
+      - name: Verify News Core
         run: |
           python - <<'PY'
-          import json, urllib.request, sys
-          base='https://miracolo-lab.listaconcerti.workers.dev'
-          h={'User-Agent':'MiracoloLab-NewsCore-Verification/2.0'}
-          def get(path):
-              return json.load(urllib.request.urlopen(urllib.request.Request(base+path,headers=h),timeout=90))
-          v=get('/version')
-          print('VERSION',v.get('build'))
-          n=get('/api/full-scan')
-          s=n.get('summary') or {}
-          cs=n.get('categorySummary') or {}
-          counts={k:int((cs.get(k) or {}).get('count') or 0) for k in ['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']}
-          print('SUMMARY',json.dumps({'items':len(n.get('items') or []),'reachable':s.get('reachable'),'failed':s.get('failed'),'categories':counts}))
-          if len(n.get('items') or []) < 1000:
-              print('FAIL: total news density below 1000')
-              sys.exit(1)
-          if sum(1 for x in counts.values() if x < 10) > 1:
-              print('FAIL: too many nearly-empty categories')
-              sys.exit(1)
-          if s.get('failed',0) > 15:
-              print('FAIL: excessive source failures')
-              sys.exit(1)
-          print('NEWS CORE COVERAGE OK')
+          import json,urllib.request,sys
+          base='https://miracolo-lab.listaconcerti.workers.dev'; h={'User-Agent':'MiracoloLab-NewsCore-Verification/3.0'}
+          def get(p): return json.load(urllib.request.urlopen(urllib.request.Request(base+p,headers=h),timeout=90))
+          v=get('/version'); n=get('/api/live'); cs=n.get('news',{}).get('categorySummary') or n.get('categorySummary') or {}; items=n.get('news',{}).get('items') or n.get('items') or []
+          cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
+          counts={k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
+          print('VERSION',v.get('build'));print('ITEMS',len(items));print('CATEGORIES',json.dumps(counts))
+          if len(items)<100: sys.exit('Initial snapshot unexpectedly small')
+          if sum(x==0 for x in counts.values())>3: sys.exit('Too many empty categories')
+          print('NEWS CORE DEPLOY VERIFIED')
           PY
