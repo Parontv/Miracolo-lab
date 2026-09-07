@@ -13,7 +13,7 @@
 
   async function loadScan() {
     // Dashboard reads the persisted central dataset first. This avoids making
-    // every browser load trigger a fresh 24-feed network scan.
+    // every browser load trigger a fresh network scan.
     try {
       const live = await json('/api/live');
       const snapshot = live?.news;
@@ -49,7 +49,18 @@
     }
   }
 
-  window.ML.data = { refresh };
+  // Explicit user-triggered news search. Unlike normal refresh(), this always
+  // calls the live scanner so the button has a real, visible purpose.
+  async function forceNewsScan() {
+    const scan = await json('/api/full-scan');
+    const market = await loadMarket();
+    if (!scan || scan.ok === false) throw new Error(scan?.error || 'Scansione notizie non disponibile');
+    window.ML.set({ scan, market, updatedAt: new Date().toISOString() });
+    window.ML.emit('data', { scan, market, manual: true });
+    return { scan, market };
+  }
+
+  window.ML.data = { refresh, forceNewsScan };
   window.ML.on('panel', panel => {
     if (panel === 'radar') window.ML.data.refresh().catch(e => console.warn('Miracolo Lab data refresh:', e.message));
   });
