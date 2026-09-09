@@ -16,6 +16,15 @@ s=s[:old_getfeed.start()]+new_getfeed+s[old_getfeed.end():]
 # external-subrequest ceiling because each feed has at most two attempts.
 s=s.replace("const CURSOR_KEY='news/cursor',SNAPSHOT_KEY='news/snapshot',BATCH=18;","const CURSOR_KEY='news/cursor',SNAPSHOT_KEY='news/snapshot',BATCH=12;")
 
+# Rate limiting is deliberately kept out of KV: public HTTP endpoints can be
+# called frequently by the frontend and would otherwise consume the 1,000/day
+# free KV-write allowance. This is a soft per-isolate limiter, not security.
+old_rl=re.search(r"async function rateLimit\(req,env,bucket,limit=30\)\{.*?\}\n",s,re.S)
+if not old_rl:
+    raise SystemExit('rateLimit function not found')
+new_rl="""const RL_MEM=new Map();\nfunction rateLimit(req,env,bucket,limit=30){const ip=req.headers.get('CF-Connecting-IP')||'unknown',key=bucket+':'+ip,now=Date.now(),v=RL_MEM.get(key);if(!v||now-v.started>=60000){RL_MEM.set(key,{started:now,count:1});return true}if(v.count>=limit)return false;v.count++;return true}\n"""
+s=s[:old_rl.start()]+new_rl+s[old_rl.end():]
+
 # Market quotes are also rotated. Structured adapters remain shared and their
 # 15-minute KV caches prevent repeated external calls on every 5-minute cycle.
 start=s.find('async function market(env){')
@@ -42,11 +51,11 @@ async function market(env){
 '''
 s=s[:start]+market+s[end:]
 
-if 'MARKET_BATCH=18' not in s or 'BATCH=12' not in s or 'const MARKET_SNAPSHOT_KEY' not in s:
+if 'MARKET_BATCH=18' not in s or 'BATCH=12' not in s or 'const MARKET_SNAPSHOT_KEY' not in s or 'const RL_MEM=new Map()' not in s:
     raise SystemExit('free-budget patch markers missing')
 if re.search(r"async function getFeed\(url\)\{.*?for\(let attempt=0;attempt<2;attempt\+\+\)",s,re.S):
     raise SystemExit('two-attempt feed loop remains')
 if re.search(r'(?<![A-Za-z0-9_])market\(\)',s):
     raise SystemExit('unbound market() call remains')
 p.write_text(s)
-print('Applied Workers Free subrequest-safe rotating news and market batches')
+print('Applied Workers Free subrequest-safe rotating news/market batches and in-memory HTTP rate limiting')
