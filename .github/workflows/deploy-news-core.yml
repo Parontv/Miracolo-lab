@@ -25,7 +25,7 @@ jobs:
         run: python scripts/patch-onchain-data.py
       - name: Stabilize News Core live endpoint
         run: python scripts/patch-news-live.py
-      - name: Validate generated Worker syntax
+      - name: Validate generated Worker syntax and data adapters
         run: |
           node --check worker.js
           python - <<'PY'
@@ -34,8 +34,13 @@ jobs:
           s=Path('worker.js').read_text()
           if re.search(r'(?<!async )\bfunction botMonitor\s*\(', s):
               raise SystemExit('botMonitor must remain async')
+          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","async function institutionalData","async function socialData","async function onchainData","institutionalData:institutional","socialData:social","onchainData:onchain"]:
+              if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
+          if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s:
+              raise SystemExit('Missing DATA-EXPANSION-V1 build stamp')
           print('WORKER SYNTAX: PASS')
           print('botMonitor async invariant: PASS')
+          print('DATA ADAPTER MARKERS: PASS')
           PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
@@ -45,11 +50,14 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 5637f51ea89c44719b4a680b6122bf05
           command: deploy
-      - name: Verify market and structured data
+      - name: Verify deployed build and market data
         run: |
           python - <<'PY'
           import json,urllib.request,sys
           base='https://miracolo-lab.listaconcerti.workers.dev'
+          version=json.load(urllib.request.urlopen(urllib.request.Request(base+'/version',headers={'User-Agent':'MiracoloLab-Version-Verification/1.0'}),timeout=30))
+          print('DEPLOYED BUILD:',version.get('build'))
+          if version.get('build')!='ML-20260910-DATA-EXPANSION-V1': sys.exit('Deployed Worker build stamp is not the expanded data build')
           raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/market-monitor',headers={'User-Agent':'MiracoloLab-Market-Verification/1.0'}),timeout=60))
           indices=raw.get('indices') or []
           inst=raw.get('institutionalData') or {}
