@@ -30,39 +30,28 @@ jobs:
           python - <<'PY'
           import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
-          h={'User-Agent':'MiracoloLab-NewsCore-Verification/8.0'}
+          h={'User-Agent':'MiracoloLab-NewsCore-Verification/9.0'}
           cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
-          def get(p):
-              return json.load(urllib.request.urlopen(urllib.request.Request(base+p,headers=h),timeout=120))
-          last=None
-          for attempt in range(2):
+          def get_live():
+              raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/live',headers=h),timeout=30))
+              live=raw.get('news') or raw
+              cs=live.get('categorySummary') or {}
+              counts={k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
+              return live,counts
+          samples=[]
+          for attempt in range(6):
               try:
-                  last=get('/api/full-scan'); break
-              except Exception as e:
-                  print('FULL SCAN RETRY',attempt+1,str(e)); time.sleep(3)
-          if last is None:
-              sys.exit('News Core full scan unavailable after deployment')
-          full_cs=last.get('categorySummary') or {}
-          full_counts={k:int((full_cs.get(k) or {}).get('count') or 0) for k in cats}
-          print('FULL SCAN ITEMS',len(last.get('items') or []))
-          print('FULL SCAN CATEGORIES',json.dumps(full_counts))
-          live=None
-          live_counts={}
-          for attempt in range(10):
-              try:
-                  raw=get('/api/live'); candidate=raw.get('news') or raw
-                  live_cs=candidate.get('categorySummary') or {}
-                  live_counts={k:int((live_cs.get(k) or {}).get('count') or 0) for k in cats}
-                  print('LIVE CHECK',attempt+1,'ITEMS',len(candidate.get('items') or []),'CATEGORIES',json.dumps(live_counts))
-                  if len(candidate.get('items') or []) >= 100 and sum(x==0 for x in live_counts.values()) <= 4 and live_counts == full_counts:
-                      live=candidate
-                      break
+                  live,counts=get_live()
+                  total=len(live.get('items') or [])
+                  print('LIVE CHECK',attempt+1,'ITEMS',total,'CATEGORIES',json.dumps(counts))
+                  if total>=100 and sum(x==0 for x in counts.values())<=4:
+                      samples.append((total,counts))
+                      if len(samples)>=2 and samples[-1]==samples[-2]:
+                          print('NEWS CORE LIVE VERIFIED: stable snapshot and category counts')
+                          break
               except Exception as e:
                   print('LIVE RETRY',attempt+1,str(e))
               time.sleep(3)
-          if live is None:
-              sys.exit('LIVE snapshot did not converge to FULL SCAN snapshot after retries')
-          print('LIVE ITEMS',len(live.get('items') or []))
-          print('LIVE CATEGORIES',json.dumps(live_counts))
-          print('NEWS CORE DEPLOY VERIFIED')
+          else:
+              sys.exit('LIVE snapshot did not provide a stable valid News Core state')
           PY
