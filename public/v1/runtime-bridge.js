@@ -70,4 +70,35 @@
   }
   if(window.ML?.on)window.ML.on('data',renderNewsFirst);
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>renderNewsFirst(window.ML?.state),1500);});
+
+  /*
+   * TODO SECURITY: CFG.geminiKey, CFG.tgToken and CFG.tgChatId are currently
+   * stored/used in the browser (localStorage/client-side requests). Anyone who
+   * can inspect the page or localStorage can access them. Move Gemini/Telegram
+   * calls behind worker.js and store credentials as Cloudflare secrets instead.
+   */
+  async function getAiAnalysisEnriched(suggestion,signals){
+    const key=typeof CFG!=='undefined'?CFG.geminiKey:'';
+    if(!key)return null;
+    const list=Array.isArray(signals)?signals:[];
+    const topSignals=list
+      .filter(s=>Math.abs(Number(s?.score||0))>=2)
+      .slice(0,8)
+      .map(s=>`• [${Number(s.score)||0}/6] ${s.title||'Senza titolo'} — ${(s.description||'').slice(0,150)} — Fonte: ${s.source||'Fonte non disponibile'}`)
+      .join('\n');
+    const price=typeof S!=='undefined'?S.cryptoPrices?.[suggestion.sym]:null;
+    const cryptoInfo=typeof S!=='undefined'?S.cryptoList?.find(c=>c.symbol===suggestion.sym):null;
+    const change24h=cryptoInfo?Number(cryptoInfo.change24h||0):0;
+    const botContext=typeof window.ML_BOT_STRATEGY_CONTEXT==='function'?window.ML_BOT_STRATEGY_CONTEXT(suggestion.sym):null;
+    const strategyText=botContext?JSON.stringify({rsi:botContext.rsi,momentum:botContext.momentum,trend:botContext.trend,newsBias:botContext.newsBias,strategyScore:botContext.strategyScore,action:botContext.action,confidence:botContext.confidence}):'(dati Bot Strategy non disponibili per questo asset)';
+    const prompt=`Sei l'analista AI di Miracolo Lab. Analizza questo possibile trade crypto usando i dati disponibili, con priorità alle notizie specifiche e al contesto del Bot Strategy. Scrivi in italiano semplice, concreto e non generico.\n\nASSET: ${suggestion.sym}\nPREZZO: €${price?fmt(price,2):'N/D'}\nVARIAZIONE 24h: ${fmtPct(change24h)}\nIMPORTO SUGGERITO: €${fmt(suggestion.amount,2)}\nTIMEFRAME: 1-3 giorni (swing trading)\n\nNEWS E SEGNALI RILEVANTI:\n${topSignals||'(nessun segnale forte disponibile)'}\n\nCONTESTO BOT STRATEGY (se disponibile):\n${strategyText}\n\nISTRUZIONI: cita almeno una notizia specifica per nome/fonte nella spiegazione, evita frasi generiche che potrebbero applicarsi a qualsiasi asset. Usa descrizione e fonte delle notizie per spiegare il perché. Se il contesto Bot Strategy non è disponibile, non inventarlo. Distingui fatti da interpretazione e indica i principali rischi.\n\nRestituisci SOLO JSON valido:\n{"azione":"BUY","confidenza":72,"timeframe":"1-2 giorni","perche":"2-4 frasi con almeno una notizia specifica e la sua fonte","rischi":"1-3 frasi sui rischi specifici","impara":"1-2 frasi su un concetto di trading rilevante"}`;
+    try{
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.65,maxOutputTokens:600,responseMimeType:'application/json'}})});
+      if(!r.ok)throw new Error('Gemini HTTP '+r.status);
+      const d=await r.json(),text=d.candidates?.[0]?.content?.parts?.[0]?.text||'',m=text.match(/\{[\s\S]*\}/);
+      if(!m)throw new Error('No JSON in response');
+      return JSON.parse(m[0]);
+    }catch(e){console.warn('Gemini enriched trade analysis:',e.message);return null;}
+  }
+  window.getAiAnalysis=getAiAnalysisEnriched;
 })();
