@@ -48,6 +48,8 @@ jobs:
           if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s): raise SystemExit('News feed retry loop exceeds free-plan budget')
           if "function renderIndices(market){const all=(market?.indices||[]);" not in ui: raise SystemExit('Dashboard still filters market instruments by ok status')
           if ".filter(x=>x.ok)" in ui: raise SystemExit('Dashboard contains an ok-only market filter')
+          if "${(data.market?.indices||[]).filter(x=>x.ok).length} strumenti" in ui: raise SystemExit('Dashboard header still counts only ok instruments')
+          if "${(data.market?.indices||[]).length} strumenti" not in ui: raise SystemExit('Dashboard header does not count full market universe')
           news_budget=12*2+5*2
           market_budget=18+1+2+3+1+1+2+7+6
           if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
@@ -55,6 +57,7 @@ jobs:
           if kv_writes_day>1000: raise SystemExit('Free KV write budget exceeded')
           print('WORKER SYNTAX: PASS')
           print('DASHBOARD MARKET RENDERING: FULL UNIVERSE PASS')
+          print('DASHBOARD MARKET COUNT: FULL UNIVERSE PASS')
           print('SOURCE EXPANSION: PASS')
           print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget)
           print('FREE KV WRITE BUDGET: PASS',kv_writes_day)
@@ -86,7 +89,7 @@ jobs:
           for name,obj in [('institutional',raw.get('institutionalData') or {}),('social',raw.get('socialData') or {}),('onchain',raw.get('onchainData') or {})]:
               if not isinstance(obj,dict) or obj.get('adapter')!=name: sys.exit(name+' adapter provenance missing')
           html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/2.0','Cache-Control':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          if 'dashboard.js?v=1.4.1' not in html: sys.exit('Deployed UI is not loading dashboard.js')
+          if 'dashboard.js?v=1.4.2' not in html: sys.exit('Deployed UI is not loading dashboard.js v1.4.2')
           print('DEPLOYED MARKET PAYLOAD: >=50 PASS')
           print('DEPLOYED UI ENTRYPOINT: PASS')
           PY
