@@ -29,7 +29,8 @@
   --ml-transition-fast:160ms ease;
   --ml-transition-normal:240ms ease;
 }
-
-/* Shared visual primitives. Existing module-specific styles can adopt these tokens incrementally. */
 .ml-skeleton{background:linear-gradient(90deg,var(--ml-color-surface-2) 25%,var(--ml-color-surface-3) 50%,var(--ml-color-surface-2) 75%);background-size:200% 100%;animation:ml-shimmer 1.5s linear infinite;border-radius:var(--ml-radius-sm)}
+.ml-skeleton-lg{height:12px;width:92%;margin-bottom:8px}.ml-skeleton-md{height:9px;width:76%;margin-bottom:8px}.ml-skeleton-sm{height:8px;width:54%}
 @keyframes ml-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+.ml-sentiment-gauge{position:relative;width:78px;height:78px;flex:0 0 78px;display:grid;place-items:center;filter:drop-shadow(0 5px 14px rgba(0,0,0,.18))}.ml-sentiment-gauge svg{width:100%;height:100%;transform:rotate(135deg)}.ml-gauge-track,.ml-gauge-value{fill:none;stroke-width:8;stroke-linecap:round;pathLength:100;stroke-dasharray:75 100}.ml-gauge-track{stroke:rgba(148,163,184,.12)}.ml-gauge-value{stroke:var(--ml-gauge-color);stroke-dashoffset:calc(75 - var(--ml-gauge-progress));transition:stroke-dashoffset 700ms cubic-bezier(.2,.8,.2,1),stroke 350ms ease}.ml-gauge-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:1px;line-height:1}.ml-gauge-center strong{font-size:18px;color:var(--ml-color-text);font-weight:850}.ml-gauge-center span{font-size:7px;color:var(--ml-color-text-dim);align-self:flex-end;margin-bottom:22px}.ml-category-icon{width:14px;height:14px;display:inline-block;flex:0 0 14px;color:var(--ml-color-accent);vertical-align:-2px}.ml-sparkline{height:48px;margin-top:3px;overflow:hidden;border-top:1px solid rgba(255,255,255,.04);padding-top:2px}.v1-index:has(.ml-sparkline){padding-bottom:4px}
+@media(max-width:720px){.ml-sentiment-gauge{width:72px;height:72px;flex-basis:72px}.ml-sparkline{height:44px}}
