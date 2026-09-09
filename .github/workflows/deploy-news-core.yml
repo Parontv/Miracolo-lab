@@ -36,7 +36,7 @@ jobs:
               raise SystemExit('botMonitor must remain async')
           if re.search(r'(?<![A-Za-z0-9_])market\(\)', s):
               raise SystemExit('Unbound market() call remains; all routes must use market(env)')
-          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","async function institutionalData","async function socialData","async function onchainData","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'"]:
+          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","async function institutionalData","async function socialData","async function onchainData","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","/api/market-monitor-v2"]:
               if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
           if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s:
               raise SystemExit('Missing DATA-EXPANSION-V1 build stamp')
@@ -60,13 +60,13 @@ jobs:
           base='https://miracolo-lab.listaconcerti.workers.dev'
           nonce=str(time.time_ns())
           def get(path):
-              return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/2.0','Cache-Control':'no-cache'}),timeout=60))
+              return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/3.0','Cache-Control':'no-cache'}),timeout=60))
           version=get('/version')
           print('DEPLOYED BUILD:',version.get('build'))
           if version.get('build')!='ML-20260910-DATA-EXPANSION-V1': sys.exit('Deployed Worker build stamp is not the expanded data build')
-          raw=get('/api/market-monitor')
-          print('MARKET PAYLOAD BUILD:',raw.get('build'),'UNIVERSE:',raw.get('marketUniverseVersion'))
-          if raw.get('build')!='ML-20260910-DATA-EXPANSION-V1' or raw.get('marketUniverseVersion')!='DATA-EXPANSION-V1': sys.exit('Market route is not executing the expanded market function')
+          raw=get('/api/market-monitor-v2')
+          print('MARKET V2 PAYLOAD BUILD:',raw.get('build'),'UNIVERSE:',raw.get('marketUniverseVersion'))
+          if raw.get('build')!='ML-20260910-DATA-EXPANSION-V1' or raw.get('marketUniverseVersion')!='DATA-EXPANSION-V1': sys.exit('Versioned market route is not executing the expanded market function')
           indices=raw.get('indices') or []
           inst=raw.get('institutionalData') or {}
           social=raw.get('socialData') or {}
