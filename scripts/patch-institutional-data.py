@@ -6,9 +6,9 @@ s=p.read_text()
 
 # Make market environment-aware so the structured institutional layer can use KV caching.
 s=s.replace('async function market(){', 'async function market(env){', 1)
-s=s.replace('await market();', 'await market(env);')
-s=s.replace('Promise.all([market(),universe()])', 'Promise.all([market(env),universe()])')
-s=s.replace('return json(await market())', 'return json(await market(env))')
+# Normalize every call site after the function has been renamed. This covers
+# routes and autonomous() even if surrounding code changes slightly.
+s=re.sub(r'(?<![A-Za-z0-9_])market\(\)', 'market(env)', s)
 
 start=s.find('async function market(env){')
 end=s.find('async function universe', start)
@@ -36,8 +36,10 @@ async function institutionalData(env){
   await writeKV(env,INSTITUTIONAL_KEY,out,INSTITUTIONAL_TTL);
   return out;
 }
-async function market(env){const indices=await Promise.all(Object.entries(MARKET).map(async([name,ticker])=>{try{const q=await quote(ticker),changePct=q.previous?((q.price-q.previous)/q.previous)*100:0;const item={name,...q,rsi:rsi(q.closes),changePct,ok:true};item.evaluation=evaluate(item);return item}catch(e){return{name,ticker,ok:false,error:String(e.message||e)}}}));let crypto=[];try{const r=await get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=eur&include_24hr_change=true');if(r.ok){const d=await r.json();crypto=[['BTC','bitcoin'],['ETH','ethereum']].map(([symbol,id])=>({symbol,price:Number(d[id]?.eur||0),change24h:Number(d[id]?.eur_24h_change||0),ok:Number(d[id]?.eur||0)>0}))}}catch{}let institutional=null;try{institutional=await institutionalData(env)}catch(e){institutional={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional}}
+async function market(env){const indices=await Promise.all(Object.entries(MARKET).map(async([name,ticker])=>{try{const q=await quote(ticker),changePct=q.previous?((q.price-q.previous)/q.previous)*100:0;const item={name,...q,rsi:rsi(q.closes),changePct,ok:true};item.evaluation=evaluate(item);return item}catch(e){return{name,ticker,ok:false,error:String(e.message||e)}}}));let crypto=[];try{const r=await get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=eur&include_24hr_change=true');if(r.ok){const d=await r.json();crypto=[['BTC','bitcoin'],['ETH','ethereum']].map(([symbol,id])=>({symbol,price:Number(d[id]?.eur||0),change24h:Number(d[id]?.eur_24h_change||0),ok:Number(d[id]?.eur||0)>0}))}}catch{}let institutional=null;try{institutional=await institutionalData(env)}catch(e){institutional={timestamp:new Date().toISOString(),error:String(e.message||e)}}let social=null;try{social=await socialData(env)}catch(e){social={timestamp:new Date().toISOString(),error:String(e.message||e)}}let onchain=null;try{onchain=await onchainData(env)}catch(e){onchain={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional,socialData:social,onchainData:onchain}}
 '''
 s=s[:start]+market+s[end:]
+if re.search(r'(?<![A-Za-z0-9_])market\(\)', s):
+    raise SystemExit('unbound market() call remains after env propagation')
 p.write_text(s)
-print('Added KV-cached institutionalData adapter and preserved market() return compatibility')
+print('Added KV-cached institutionalData and hardened all market(env) call sites')
