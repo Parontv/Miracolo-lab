@@ -56,12 +56,15 @@ jobs:
       - name: Verify deployed build and market data
         run: |
           python - <<'PY'
-          import json,urllib.request,sys
+          import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
-          version=json.load(urllib.request.urlopen(urllib.request.Request(base+'/version',headers={'User-Agent':'MiracoloLab-Version-Verification/1.0'}),timeout=30))
+          nonce=str(time.time_ns())
+          def get(path):
+              return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/2.0','Cache-Control':'no-cache'}),timeout=60))
+          version=get('/version')
           print('DEPLOYED BUILD:',version.get('build'))
           if version.get('build')!='ML-20260910-DATA-EXPANSION-V1': sys.exit('Deployed Worker build stamp is not the expanded data build')
-          raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/market-monitor',headers={'User-Agent':'MiracoloLab-Market-Verification/1.0'}),timeout=60))
+          raw=get('/api/market-monitor')
           indices=raw.get('indices') or []
           inst=raw.get('institutionalData') or {}
           social=raw.get('socialData') or {}
@@ -76,10 +79,11 @@ jobs:
           python - <<'PY'
           import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
-          h={'User-Agent':'MiracoloLab-NewsCore-Verification/9.0'}
+          h={'User-Agent':'MiracoloLab-NewsCore-Verification/9.0','Cache-Control':'no-cache'}
           cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
           def get_live():
-              raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/live',headers=h),timeout=30))
+              nonce=str(time.time_ns())
+              raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/live?ts='+nonce,headers=h),timeout=30))
               live=raw.get('news') or raw
               cs=live.get('categorySummary') or {}
               counts={k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
