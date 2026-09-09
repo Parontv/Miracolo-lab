@@ -2,9 +2,12 @@ from pathlib import Path
 
 p=Path('worker.js')
 s=p.read_text()
-marker="const SOCIAL_KEY='social/latest';"
+marker='async function market(env){'
 if marker not in s:
-    raise SystemExit('social adapter marker not found')
+    raise SystemExit('market(env) not found')
+if 'async function onchainData(env)' in s:
+    print('onchainData helper already present')
+    raise SystemExit(0)
 helper=r'''const ONCHAIN_KEY='crypto/onchain/latest';
 const ONCHAIN_TTL=900;
 async function onchainData(env){
@@ -23,12 +26,7 @@ async function onchainData(env){
 }
 '''
 s=s.replace(marker,helper+marker,1)
-needle='return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional,socialData:social}'
-if needle not in s:
-    raise SystemExit('socialData return anchor not found')
-replacement="let onchain=null;try{onchain=await onchainData(env)}catch(e){onchain={timestamp:new Date().toISOString(),error:String(e.message||e)}}"+needle[:-1]+',onchainData:onchain}'
-s=s.replace(needle,replacement,1)
-if 'onchainData:onchain' not in s:
-    raise SystemExit('onchainData return was not inserted')
+if 'async function onchainData(env)' not in s:
+    raise SystemExit('onchainData helper was not inserted')
 p.write_text(s)
-print('Added KV-cached BTC/ETH onchain and funding context')
+print('Added KV-cached BTC/ETH onchain and funding helper')
