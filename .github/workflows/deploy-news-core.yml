@@ -17,6 +17,8 @@ jobs:
         run: python scripts/build-news-core.py
       - name: Expand market universe
         run: python scripts/patch-market-universe.py
+      - name: Expand institutional and macro source universe
+        run: python scripts/patch-source-universe.py
       - name: Add structured institutional data
         run: python scripts/patch-institutional-data.py
       - name: Add retail social sentiment
@@ -34,25 +36,19 @@ jobs:
           from pathlib import Path
           import re
           s=Path('worker.js').read_text()
-          if re.search(r'(?<!async )\bfunction botMonitor\s*\(', s):
-              raise SystemExit('botMonitor must remain async')
-          if re.search(r'(?<![A-Za-z0-9_])market\(\)', s):
-              raise SystemExit('Unbound market() call remains; all routes must use market(env)')
-          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY","const RL_MEM=new Map()"]:
+          if re.search(r'(?<!async )\bfunction botMonitor\s*\(', s): raise SystemExit('botMonitor must remain async')
+          if re.search(r'(?<![A-Za-z0-9_])market\(\)', s): raise SystemExit('Unbound market() call remains; all routes must use market(env)')
+          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","SOURCE_EXPANSION_V1","CFTC General","SEC Latest 8-K","SNB Official","BoE Official","OPEC Official","IMF Official","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY","const RL_MEM=new Map()"]:
               if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
-          if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s:
-              raise SystemExit('Missing DATA-EXPANSION-V1 build stamp')
-          if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s):
-              raise SystemExit('News feed retry loop exceeds free-plan budget')
+          if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing DATA-EXPANSION-V1 build stamp')
+          if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s): raise SystemExit('News feed retry loop exceeds free-plan budget')
           news_budget=12*2+5*2
           market_budget=18+1+2+3+1+1+2+7+6
           if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
           kv_writes_day=288*3
           if kv_writes_day>1000: raise SystemExit('Free KV write budget exceeded')
           print('WORKER SYNTAX: PASS')
-          print('botMonitor async invariant: PASS')
-          print('market(env) call-site invariant: PASS')
-          print('TYPED DATA ADAPTERS: PASS')
+          print('SOURCE EXPANSION: PASS')
           print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget)
           print('FREE KV WRITE BUDGET: PASS',kv_writes_day)
           PY
@@ -70,54 +66,34 @@ jobs:
           import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
           nonce=str(time.time_ns())
-          def get(path):
-              return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/4.0','Cache-Control':'no-cache'}),timeout=60))
+          def get(path): return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/5.0','Cache-Control':'no-cache'}),timeout=60))
           version=get('/version')
           print('DEPLOYED BUILD:',version.get('build'))
           if version.get('build')!='ML-20260910-DATA-EXPANSION-V1': sys.exit('Deployed Worker build stamp is not the expanded data build')
-          first=get('/api/market-monitor-v2')
-          time.sleep(2)
           raw=get('/api/market-monitor-v2')
           print('MARKET V2 PAYLOAD BUILD:',raw.get('build'),'UNIVERSE:',raw.get('marketUniverseVersion'),'INDICES:',len(raw.get('indices') or []))
           if raw.get('build')!='ML-20260910-DATA-EXPANSION-V1' or raw.get('marketUniverseVersion')!='DATA-EXPANSION-V1': sys.exit('Versioned market route is not executing the expanded market function')
-          indices=raw.get('indices') or []
-          inst=raw.get('institutionalData') or {}
-          social=raw.get('socialData') or {}
-          onchain=raw.get('onchainData') or {}
-          if len(indices)<35: sys.exit('Expanded market cache did not rotate to enough instruments')
-          if not isinstance(inst,dict) or not isinstance(social,dict) or not isinstance(onchain,dict): sys.exit('Structured adapters missing')
-          for name,obj in [('institutional',inst),('social',social),('onchain',onchain)]:
-              if obj.get('adapter')!=name: sys.exit(name+' adapter provenance missing')
+          if len(raw.get('indices') or [])<35: sys.exit('Expanded market cache did not rotate to enough instruments')
+          for name,obj in [('institutional',raw.get('institutionalData') or {}),('social',raw.get('socialData') or {}),('onchain',raw.get('onchainData') or {})]:
+              if not isinstance(obj,dict) or obj.get('adapter')!=name: sys.exit(name+' adapter provenance missing')
           print('MARKET/INSTITUTIONAL/SOCIAL/ONCHAIN VERIFIED')
           PY
       - name: Verify News Core after deployment
         run: |
           python - <<'PY'
           import json,urllib.request,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev'
-          h={'User-Agent':'MiracoloLab-NewsCore-Verification/9.0','Cache-Control':'no-cache'}
+          base='https://miracolo-lab.listaconcerti.workers.dev';h={'User-Agent':'MiracoloLab-NewsCore-Verification/10.0','Cache-Control':'no-cache'}
           cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
           def get_live():
-              nonce=str(time.time_ns())
-              raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/live?ts='+nonce,headers=h),timeout=30))
-              live=raw.get('news') or raw
-              cs=live.get('categorySummary') or {}
-              counts={k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
-              return live,counts
+              raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/live?ts='+str(time.time_ns()),headers=h),timeout=30));live=raw.get('news') or raw;cs=live.get('categorySummary') or {};return live,{k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
           samples=[]
           for attempt in range(6):
               try:
-                  live,counts=get_live()
-                  total=len(live.get('items') or [])
-                  print('LIVE CHECK',attempt+1,'ITEMS',total,'CATEGORIES',json.dumps(counts))
+                  live,counts=get_live();total=len(live.get('items') or []);print('LIVE CHECK',attempt+1,'ITEMS',total,'CATEGORIES',json.dumps(counts))
                   if total>=100 and sum(x==0 for x in counts.values())<=4:
                       samples.append((total,counts))
-                      if len(samples)>=2 and samples[-1]==samples[-2]:
-                          print('NEWS CORE LIVE VERIFIED: stable snapshot and category counts')
-                          break
-              except Exception as e:
-                  print('LIVE RETRY',attempt+1,str(e))
+                      if len(samples)>=2 and samples[-1]==samples[-2]: print('NEWS CORE LIVE VERIFIED: stable snapshot and category counts');break
+              except Exception as e: print('LIVE RETRY',attempt+1,str(e))
               time.sleep(3)
-          else:
-              sys.exit('LIVE snapshot did not provide a stable valid News Core state')
+          else: sys.exit('LIVE snapshot did not provide a stable valid News Core state')
           PY
