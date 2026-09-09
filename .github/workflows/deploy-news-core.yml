@@ -29,25 +29,32 @@ jobs:
         run: python scripts/patch-free-budget.py
       - name: Stabilize News Core live endpoint
         run: python scripts/patch-news-live.py
-      - name: Validate generated Worker syntax, adapters and free budget
+      - name: Patch dashboard market rendering
+        run: python scripts/patch-dashboard-indices.py
+      - name: Validate generated Worker and dashboard before deploy
         run: |
           node --check worker.js
+          node --check public/v1/dashboard.js
           python - <<'PY'
           from pathlib import Path
           import re
           s=Path('worker.js').read_text()
+          ui=Path('public/v1/dashboard.js').read_text()
           if re.search(r'(?<!async )\bfunction botMonitor\s*\(', s): raise SystemExit('botMonitor must remain async')
           if re.search(r'(?<![A-Za-z0-9_])market\(\)', s): raise SystemExit('Unbound market() call remains; all routes must use market(env)')
-          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","SOURCE_EXPANSION_V1","CFTC General","SEC Latest 8-K","SNB Official","BoE Official","OPEC Official","IMF Official","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY","const RL_MEM=new Map()"]:
+          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","SOURCE_EXPANSION_V1","CFTC General","SEC Latest 8-K","SNB Official","BoE Official","OPEC Official","IMF Official","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","marketUniverse:Object.keys(MARKET)","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY","const RL_MEM=new Map()"]:
             if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
           if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing DATA-EXPANSION-V1 build stamp')
           if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s): raise SystemExit('News feed retry loop exceeds free-plan budget')
+          if "function renderIndices(market){const all=(market?.indices||[]);" not in ui: raise SystemExit('Dashboard still filters market instruments by ok status')
+          if ".filter(x=>x.ok)" in ui: raise SystemExit('Dashboard contains an ok-only market filter')
           news_budget=12*2+5*2
           market_budget=18+1+2+3+1+1+2+7+6
           if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
           kv_writes_day=288*3
           if kv_writes_day>1000: raise SystemExit('Free KV write budget exceeded')
           print('WORKER SYNTAX: PASS')
+          print('DASHBOARD MARKET RENDERING: FULL UNIVERSE PASS')
           print('SOURCE EXPANSION: PASS')
           print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget)
           print('FREE KV WRITE BUDGET: PASS',kv_writes_day)
@@ -59,23 +66,29 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
         run: npx wrangler@4 deploy
-      - name: Verify deployed build and market data
+      - name: Verify deployed build, full market universe and UI
         run: |
           python - <<'PY'
           import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
           nonce=str(time.time_ns())
-          def get(path): return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/5.0','Cache-Control':'no-cache'}),timeout=60))
+          def get(path): return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/6.0','Cache-Control':'no-cache'}),timeout=60))
           version=get('/version')
           print('DEPLOYED BUILD:',version.get('build'))
           if version.get('build')!='ML-20260910-DATA-EXPANSION-V1': sys.exit('Deployed Worker build stamp is not the expanded data build')
           raw=get('/api/market-monitor-v2')
-          print('MARKET V2 PAYLOAD BUILD:',raw.get('build'),'UNIVERSE:',raw.get('marketUniverseVersion'),'INDICES:',len(raw.get('indices') or []))
-          if raw.get('build')!='ML-20260910-DATA-EXPANSION-V1' or raw.get('marketUniverseVersion')!='DATA-EXPANSION-V1': sys.exit('Versioned market route is not executing the expanded market function')
-          if len(raw.get('indices') or [])<35: sys.exit('Expanded market cache did not rotate to enough instruments')
+          indices=raw.get('indices') or []
+          universe=raw.get('marketUniverse') or []
+          print('MARKET V2 BUILD:',raw.get('build'),'UNIVERSE:',raw.get('marketUniverseVersion'),'INDICES:',len(indices),'UNIVERSE NAMES:',len(universe))
+          if raw.get('build')!='ML-20260910-DATA-EXPANSION-V1' or raw.get('marketUniverseVersion')!='DATA-EXPANSION-V1': sys.exit('Expanded market route is not active')
+          if len(universe)<50 or len(indices)<50: sys.exit('Deployed market universe/UI payload is not at least 50 instruments')
+          if len({x.get('name') for x in indices if x.get('name')})<50: sys.exit('Market payload contains fewer than 50 unique instruments')
           for name,obj in [('institutional',raw.get('institutionalData') or {}),('social',raw.get('socialData') or {}),('onchain',raw.get('onchainData') or {})]:
               if not isinstance(obj,dict) or obj.get('adapter')!=name: sys.exit(name+' adapter provenance missing')
-          print('MARKET/INSTITUTIONAL/SOCIAL/ONCHAIN VERIFIED')
+          html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/2.0','Cache-Control':'no-cache'}),timeout=30).read().decode('utf-8','replace')
+          if 'dashboard.js?v=1.4.1' not in html: sys.exit('Deployed UI is not loading dashboard.js')
+          print('DEPLOYED MARKET PAYLOAD: >=50 PASS')
+          print('DEPLOYED UI ENTRYPOINT: PASS')
           PY
       - name: Verify News Core after deployment
         run: |
