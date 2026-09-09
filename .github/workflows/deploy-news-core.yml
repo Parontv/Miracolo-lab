@@ -30,7 +30,7 @@ jobs:
           python - <<'PY'
           import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
-          h={'User-Agent':'MiracoloLab-NewsCore-Verification/7.0'}
+          h={'User-Agent':'MiracoloLab-NewsCore-Verification/8.0'}
           cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
           def get(p):
               return json.load(urllib.request.urlopen(urllib.request.Request(base+p,headers=h),timeout=120))
@@ -46,13 +46,23 @@ jobs:
           full_counts={k:int((full_cs.get(k) or {}).get('count') or 0) for k in cats}
           print('FULL SCAN ITEMS',len(last.get('items') or []))
           print('FULL SCAN CATEGORIES',json.dumps(full_counts))
-          live=get('/api/live'); live=live.get('news') or live
-          live_cs=live.get('categorySummary') or {}
-          live_counts={k:int((live_cs.get(k) or {}).get('count') or 0) for k in cats}
+          live=None
+          live_counts={}
+          for attempt in range(10):
+              try:
+                  raw=get('/api/live'); candidate=raw.get('news') or raw
+                  live_cs=candidate.get('categorySummary') or {}
+                  live_counts={k:int((live_cs.get(k) or {}).get('count') or 0) for k in cats}
+                  print('LIVE CHECK',attempt+1,'ITEMS',len(candidate.get('items') or []),'CATEGORIES',json.dumps(live_counts))
+                  if len(candidate.get('items') or []) >= 100 and sum(x==0 for x in live_counts.values()) <= 4 and live_counts == full_counts:
+                      live=candidate
+                      break
+              except Exception as e:
+                  print('LIVE RETRY',attempt+1,str(e))
+              time.sleep(3)
+          if live is None:
+              sys.exit('LIVE snapshot did not converge to FULL SCAN snapshot after retries')
           print('LIVE ITEMS',len(live.get('items') or []))
           print('LIVE CATEGORIES',json.dumps(live_counts))
-          if len(live.get('items') or []) < 100: sys.exit('News snapshot unexpectedly small')
-          if sum(x==0 for x in live_counts.values())>4: sys.exit('Too many empty categories after deployment')
-          if live_counts != full_counts: sys.exit('LIVE snapshot differs from FULL SCAN snapshot')
           print('NEWS CORE DEPLOY VERIFIED')
           PY
