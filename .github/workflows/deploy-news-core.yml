@@ -17,6 +17,18 @@ jobs:
         run: python scripts/build-news-core.py
       - name: Stabilize News Core live endpoint
         run: python scripts/patch-news-live.py
+      - name: Validate generated Worker syntax
+        run: |
+          node --check worker.js
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('worker.js').read_text()
+          if re.search(r'(?<!async )\bfunction botMonitor\s*\(', s):
+              raise SystemExit('botMonitor must remain async')
+          print('WORKER SYNTAX: PASS')
+          print('botMonitor async invariant: PASS')
+          PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
       - name: Deploy Worker
