@@ -21,6 +21,8 @@ jobs:
         run: python scripts/patch-institutional-data.py
       - name: Add retail social sentiment
         run: python scripts/patch-social-data.py
+      - name: Add crypto onchain data
+        run: python scripts/patch-onchain-data.py
       - name: Stabilize News Core live endpoint
         run: python scripts/patch-news-live.py
       - name: Validate generated Worker syntax
@@ -52,10 +54,11 @@ jobs:
           indices=raw.get('indices') or []
           inst=raw.get('institutionalData') or {}
           social=raw.get('socialData') or {}
-          print('MARKET CHECK: indices=',len(indices),'institutional=',bool(inst),'social=',bool(social))
+          onchain=raw.get('onchainData') or {}
+          print('MARKET CHECK: indices=',len(indices),'institutional=',bool(inst),'social=',bool(social),'onchain=',bool(onchain))
           if len(indices)<35: sys.exit('Expanded market universe did not return enough instruments')
-          if not isinstance(inst,dict) or not isinstance(social,dict): sys.exit('Structured data adapters missing')
-          print('MARKET/INSTITUTIONAL/SOCIAL VERIFIED')
+          if not isinstance(inst,dict) or not isinstance(social,dict) or not isinstance(onchain,dict): sys.exit('Structured adapters missing')
+          print('MARKET/INSTITUTIONAL/SOCIAL/ONCHAIN VERIFIED')
           PY
       - name: Verify News Core after deployment
         run: |
