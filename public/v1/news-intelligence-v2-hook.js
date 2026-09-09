@@ -1,14 +1,10 @@
-/* News Intelligence V2 UI hook
-   Runs only after the tab-navigation layer has activated the Bot panel.
-   It does not touch News Core. */
+/* News Intelligence V3 UI hook
+   The intelligence engine is shared data, not a Bot panel.
+   Dashboard/Market Sentiment consumes window.ML_NEWS_INTELLIGENCE.
+*/
 (()=>{
   'use strict';
-  function run(e){
-    if(e?.detail?.panel!=='bot')return;
-    if(typeof window.runNewsIntelligenceV2==='function')setTimeout(window.runNewsIntelligenceV2,80);
-  }
-  window.addEventListener('miracolo:panelchange',run);
-  document.addEventListener('DOMContentLoaded',()=>{
-    if(window.__mlPanel==='bot'||document.body.dataset.activePanel==='bot')setTimeout(run,80);
+  window.addEventListener('miracolo:panelchange',e=>{
+    if(e?.detail?.panel==='radar'&&typeof window.ML_NEWS_INTELLIGENCE_RUN==='function')setTimeout(window.ML_NEWS_INTELLIGENCE_RUN,80);
   });
 })();
