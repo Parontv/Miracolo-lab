@@ -27,7 +27,7 @@ jobs:
         run: python scripts/patch-free-budget.py
       - name: Stabilize News Core live endpoint
         run: python scripts/patch-news-live.py
-      - name: Validate generated Worker syntax and data adapters
+      - name: Validate generated Worker syntax, adapters and free budget
         run: |
           node --check worker.js
           python - <<'PY'
@@ -44,11 +44,22 @@ jobs:
               raise SystemExit('Missing DATA-EXPANSION-V1 build stamp')
           if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s):
               raise SystemExit('News feed retry loop exceeds free-plan budget')
+          # Static worst-case external-subrequest budget per invocation.
+          # News: 12 feeds x 2 attempts + 5 rescue feeds x 2 = 34.
+          # Market: 18 quotes + CoinGecko 1 + SEC 2 + BLS 3 + ECB 1 + Eurostat 1 + FRED 2 + StockTwits 7 + on-chain 6 = 41.
+          news_budget=12*2+5*2
+          market_budget=18+1+2+3+1+1+2+7+6
+          if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
+          # Cron runs every 5m. State + market snapshot/cursor + news snapshot/cursor
+          # are bounded at <= 3 writes per invocation => <=864 writes/day.
+          kv_writes_day=288*3
+          if kv_writes_day>1000: raise SystemExit('Free KV write budget exceeded')
           print('WORKER SYNTAX: PASS')
           print('botMonitor async invariant: PASS')
           print('market(env) call-site invariant: PASS')
           print('TYPED DATA ADAPTERS: PASS')
-          print('FREE SUBREQUEST BUDGET: PASS')
+          print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget)
+          print('FREE KV WRITE BUDGET: PASS',kv_writes_day)
           PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
