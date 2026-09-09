@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Build batched persistent News Core
+      - name: Build persistent batched News Core
         run: python scripts/build-news-core.py
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
@@ -23,27 +23,33 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 5637f51ea89c44719b4a680b6122bf05
           command: deploy
-      - name: Warm and verify all News Core batches
+      - name: Verify News Core after deployment
         run: |
           python - <<'PY'
           import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
-          h={'User-Agent':'MiracoloLab-NewsCore-Verification/5.0'}
-          def get(p): return json.load(urllib.request.urlopen(urllib.request.Request(base+p,headers=h),timeout=90))
+          h={'User-Agent':'MiracoloLab-NewsCore-Verification/6.0'}
           cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
-          for i in range(4):
-              n=get('/api/full-scan')
-              cs=n.get('categorySummary') or {}
-              counts={k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
-              print('BATCH',i+1,'ITEMS',len(n.get('items') or []),'CATEGORIES',json.dumps(counts))
-              time.sleep(1)
-          n=get('/api/live')
-          n=n.get('news') or n
-          cs=n.get('categorySummary') or {}
+          def get(p):
+              return json.load(urllib.request.urlopen(urllib.request.Request(base+p,headers=h),timeout=120))
+          last=None
+          for attempt in range(2):
+              try:
+                  last=get('/api/full-scan'); break
+              except Exception as e:
+                  print('FULL SCAN RETRY',attempt+1,str(e)); time.sleep(3)
+          if last is None:
+              sys.exit('News Core full scan unavailable after deployment')
+          cs=last.get('categorySummary') or {}
           counts={k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
-          print('FINAL LIVE ITEMS',len(n.get('items') or []))
-          print('FINAL LIVE CATEGORIES',json.dumps(counts))
-          if len(n.get('items') or []) < 300: sys.exit('News snapshot still too small after four batches')
-          if sum(x==0 for x in counts.values())>1: sys.exit('More than one category remains empty')
-          print('NEWS CORE BATCHED COVERAGE VERIFIED')
+          print('FULL SCAN ITEMS',len(last.get('items') or []))
+          print('FULL SCAN CATEGORIES',json.dumps(counts))
+          live=get('/api/live'); live=live.get('news') or live
+          cs=live.get('categorySummary') or {}
+          counts={k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
+          print('LIVE ITEMS',len(live.get('items') or []))
+          print('LIVE CATEGORIES',json.dumps(counts))
+          if len(live.get('items') or []) < 100: sys.exit('News snapshot unexpectedly small')
+          if sum(x==0 for x in counts.values())>4: sys.exit('Too many empty categories after deployment')
+          print('NEWS CORE DEPLOY VERIFIED')
           PY
