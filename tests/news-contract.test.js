@@ -29,6 +29,9 @@ assert.match(data,/ML_NEWS_CONTRACT/);
 assert.match(dashboard,/ML_NEWS_CONTRACT/);
 assert.doesNotMatch(data,/function\s+categoryOf\s*\(/);
 assert.doesNotMatch(dashboard,/function\s+categoryOf\s*\(/);
+// Regression guard: every canonical category must map to [key,label,icon].
+assert.match(dashboard,/const groups=CONTRACT\.GROUPS\.map\(k=>\[k,\.\.\.\(LABELS\[k\]\|\|\[k,'📰'\]\)\]\);/,'dashboard category mapping must preserve the canonical key');
+assert.doesNotMatch(dashboard,/CONTRACT\.GROUPS\.map\(k=>\(\{[\s\S]*?\}\[k\]\)\.map\(/,'dashboard must not nest the category tuple inside another array');
 
 const worker=fs.readFileSync('worker.js','utf8');
 for(const key of C.GROUPS)assert.ok(worker.includes(`'${key}'`),`worker missing canonical category ${key}`);
