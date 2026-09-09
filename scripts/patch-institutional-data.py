@@ -7,6 +7,7 @@ s=p.read_text()
 # Make market environment-aware so the structured institutional layer can use KV caching.
 s=s.replace('async function market(){', 'async function market(env){', 1)
 s=s.replace('await market();', 'await market(env);')
+s=s.replace('Promise.all([market(),universe()])', 'Promise.all([market(env),universe()])')
 s=s.replace('return json(await market())', 'return json(await market(env))')
 
 start=s.find('async function market(env){')
@@ -35,10 +36,8 @@ async function institutionalData(env){
   await writeKV(env,INSTITUTIONAL_KEY,out,INSTITUTIONAL_TTL);
   return out;
 }
-async function market(env){const indices=await Promise.all(Object.entries(MARKET).map(async([name,ticker])=>{try{const q=await quote(ticker),changePct=q.previous?((q.price-q.previous)/q.previous)*100:0;const item={name,...q,rsi:rsi(q.closes),changePct,ok:true};item.evaluation=evaluate(item);return item}catch(e){return{name,ticker,ok:false,error:String(e.message||e)}}}));let crypto=[];try{const r=await get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=eur&include_24hr_change=true');if(r.ok){const d=await r.json();crypto=[['BTC','bitcoin'],['ETH','ethereum']].map(([symbol,id])=>({symbol,price:Number(d[id]?.eur||0),change24h:Number(d[id]?.eur_24h_change||0),ok:Number(d[id]?.eur||0)>0}))}}catch{}let institutionalData=null;try{institutionalData=await institutionalData(env)}catch(e){institutionalData={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData}}
+async function market(env){const indices=await Promise.all(Object.entries(MARKET).map(async([name,ticker])=>{try{const q=await quote(ticker),changePct=q.previous?((q.price-q.previous)/q.previous)*100:0;const item={name,...q,rsi:rsi(q.closes),changePct,ok:true};item.evaluation=evaluate(item);return item}catch(e){return{name,ticker,ok:false,error:String(e.message||e)}}}));let crypto=[];try{const r=await get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=eur&include_24hr_change=true');if(r.ok){const d=await r.json();crypto=[['BTC','bitcoin'],['ETH','ethereum']].map(([symbol,id])=>({symbol,price:Number(d[id]?.eur||0),change24h:Number(d[id]?.eur_24h_change||0),ok:Number(d[id]?.eur||0)>0}))}}catch{}let institutional=null;try{institutional=await institutionalData(env)}catch(e){institutional={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional}}
 '''
-# Fix shadowing by using a distinct local name in the generated market function.
-market=market.replace('let institutionalData=null;try{institutionalData=await institutionalData(env)}catch(e){institutionalData={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData}', 'let institutional=null;try{institutional=await institutionalData(env)}catch(e){institutional={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional}')
 s=s[:start]+market+s[end:]
 p.write_text(s)
 print('Added KV-cached institutionalData adapter and preserved market() return compatibility')
