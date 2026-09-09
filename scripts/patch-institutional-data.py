@@ -32,10 +32,16 @@ async function institutionalData(env){
   await writeKV(env,INSTITUTIONAL_KEY,out,INSTITUTIONAL_TTL);
   return out;
 }
-async function market(env){const indices=await Promise.all(Object.entries(MARKET).map(async([name,ticker])=>{try{const q=await quote(ticker),changePct=q.previous?((q.price-q.previous)/q.previous)*100:0;const item={name,...q,rsi:rsi(q.closes),changePct,ok:true};item.evaluation=evaluate(item);return item}catch(e){return{name,ticker,ok:false,error:String(e.message||e)}}}));let crypto=[];try{const r=await get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=eur&include_24hr_change=true');if(r.ok){const d=await r.json();crypto=[['BTC','bitcoin'],['ETH','ethereum']].map(([symbol,id])=>({symbol,price:Number(d[id]?.eur||0),change24h:Number(d[id]?.eur_24h_change||0),ok:Number(d[id]?.eur||0)>0}))}}catch{}let institutional=null;try{institutional=await institutionalData(env)}catch(e){institutional={timestamp:new Date().toISOString(),error:String(e.message||e)}}let social=null;try{social=await socialData(env)}catch(e){social={timestamp:new Date().toISOString(),error:String(e.message||e)}}let onchain=null;try{onchain=await onchainData(env)}catch(e){onchain={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),build:BUILD,marketUniverseVersion:'DATA-EXPANSION-V1',indices,crypto,institutionalData:institutional,socialData:social,onchainData:onchain}}
+const DATA_ADAPTERS={
+  institutional:{type:'json-institutional',run:institutionalData},
+  social:{type:'json-social',run:typeof socialData==='function'?socialData:null},
+  onchain:{type:'json-onchain',run:typeof onchainData==='function'?onchainData:null}
+};
+async function runDataAdapter(env,name){const a=DATA_ADAPTERS[name];if(!a?.run)return{timestamp:new Date().toISOString(),adapter:name,type:a?.type||'unknown',ok:false,error:'adapter unavailable'};try{const value=await a.run(env);return{...value,adapter:name,adapterType:a.type}}catch(e){return{timestamp:new Date().toISOString(),adapter:name,adapterType:a.type,ok:false,error:String(e.message||e)}}}
+async function market(env){const indices=await Promise.all(Object.entries(MARKET).map(async([name,ticker])=>{try{const q=await quote(ticker),changePct=q.previous?((q.price-q.previous)/q.previous)*100:0;const item={name,...q,rsi:rsi(q.closes),changePct,ok:true};item.evaluation=evaluate(item);return item}catch(e){return{name,ticker,ok:false,error:String(e.message||e)}}}));let crypto=[];try{const r=await get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=eur&include_24hr_change=true');if(r.ok){const d=await r.json();crypto=[['BTC','bitcoin'],['ETH','ethereum']].map(([symbol,id])=>({symbol,price:Number(d[id]?.eur||0),change24h:Number(d[id]?.eur_24h_change||0),ok:Number(d[id]?.eur||0)>0}))}}catch{}const [institutional,social,onchain]=await Promise.all([runDataAdapter(env,'institutional'),runDataAdapter(env,'social'),runDataAdapter(env,'onchain')]);return{timestamp:new Date().toISOString(),build:BUILD,marketUniverseVersion:'DATA-EXPANSION-V1',indices,crypto,institutionalData:institutional,socialData:social,onchainData:onchain}}
 '''
 s=s[:start]+market+s[end:]
 if re.search(r'(?<![A-Za-z0-9_])market\(\)', s):
     raise SystemExit('unbound market() call remains after env propagation')
 p.write_text(s)
-print('Added KV-cached institutionalData and stamped market payload provenance')
+print('Added typed rss/json adapter architecture around structured data sources')
