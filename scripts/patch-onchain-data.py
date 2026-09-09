@@ -23,10 +23,12 @@ async function onchainData(env){
 }
 '''
 s=s.replace(marker,helper+marker,1)
-old="let institutional=null;try{institutional=await institutionalData(env)}catch(e){institutional={timestamp:new Date().toISOString(),error:String(e.message||e)}}let social=null;try{social=await socialData(env)}catch(e){social={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional,socialData:social}"
-new="let institutional=null;try{institutional=await institutionalData(env)}catch(e){institutional={timestamp:new Date().toISOString(),error:String(e.message||e)}}let social=null;try{social=await socialData(env)}catch(e){social={timestamp:new Date().toISOString(),error:String(e.message||e)}}let onchain=null;try{onchain=await onchainData(env)}catch(e){onchain={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional,socialData:social,onchainData:onchain}"
-if old not in s:
-    raise SystemExit('market return signature not found')
-s=s.replace(old,new,1)
+needle='return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional,socialData:social}'
+if needle not in s:
+    raise SystemExit('socialData return anchor not found')
+replacement="let onchain=null;try{onchain=await onchainData(env)}catch(e){onchain={timestamp:new Date().toISOString(),error:String(e.message||e)}}"+needle[:-1]+',onchainData:onchain}'
+s=s.replace(needle,replacement,1)
+if 'onchainData:onchain' not in s:
+    raise SystemExit('onchainData return was not inserted')
 p.write_text(s)
 print('Added KV-cached BTC/ETH onchain and funding context')
