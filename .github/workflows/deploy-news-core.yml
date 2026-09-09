@@ -36,14 +36,14 @@ jobs:
               raise SystemExit('botMonitor must remain async')
           if re.search(r'(?<![A-Za-z0-9_])market\(\)', s):
               raise SystemExit('Unbound market() call remains; all routes must use market(env)')
-          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","async function institutionalData","async function socialData","async function onchainData","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","/api/market-monitor-v2"]:
+          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","/api/market-monitor-v2"]:
               if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
           if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s:
               raise SystemExit('Missing DATA-EXPANSION-V1 build stamp')
           print('WORKER SYNTAX: PASS')
           print('botMonitor async invariant: PASS')
           print('market(env) call-site invariant: PASS')
-          print('DATA ADAPTER MARKERS: PASS')
+          print('TYPED DATA ADAPTERS: PASS')
           PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
@@ -60,7 +60,7 @@ jobs:
           base='https://miracolo-lab.listaconcerti.workers.dev'
           nonce=str(time.time_ns())
           def get(path):
-              return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/3.0','Cache-Control':'no-cache'}),timeout=60))
+              return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/4.0','Cache-Control':'no-cache'}),timeout=60))
           version=get('/version')
           print('DEPLOYED BUILD:',version.get('build'))
           if version.get('build')!='ML-20260910-DATA-EXPANSION-V1': sys.exit('Deployed Worker build stamp is not the expanded data build')
@@ -74,6 +74,8 @@ jobs:
           print('MARKET CHECK: indices=',len(indices),'institutional=',bool(inst),'social=',bool(social),'onchain=',bool(onchain))
           if len(indices)<35: sys.exit('Expanded market universe did not return enough instruments')
           if not isinstance(inst,dict) or not isinstance(social,dict) or not isinstance(onchain,dict): sys.exit('Structured adapters missing')
+          for name,obj in [('institutional',inst),('social',social),('onchain',onchain)]:
+              if obj.get('adapter')!=name: sys.exit(name+' adapter provenance missing')
           print('MARKET/INSTITUTIONAL/SOCIAL/ONCHAIN VERIFIED')
           PY
       - name: Verify News Core after deployment
