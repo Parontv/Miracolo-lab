@@ -43,6 +43,20 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 5637f51ea89c44719b4a680b6122bf05
           command: deploy
+      - name: Verify market and structured data
+        run: |
+          python - <<'PY'
+          import json,urllib.request,sys
+          base='https://miracolo-lab.listaconcerti.workers.dev'
+          raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/market-monitor',headers={'User-Agent':'MiracoloLab-Market-Verification/1.0'}),timeout=60))
+          indices=raw.get('indices') or []
+          inst=raw.get('institutionalData') or {}
+          social=raw.get('socialData') or {}
+          print('MARKET CHECK: indices=',len(indices),'institutional=',bool(inst),'social=',bool(social))
+          if len(indices)<35: sys.exit('Expanded market universe did not return enough instruments')
+          if not isinstance(inst,dict) or not isinstance(social,dict): sys.exit('Structured data adapters missing')
+          print('MARKET/INSTITUTIONAL/SOCIAL VERIFIED')
+          PY
       - name: Verify News Core after deployment
         run: |
           python - <<'PY'
