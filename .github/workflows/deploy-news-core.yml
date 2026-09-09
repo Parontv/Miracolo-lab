@@ -44,15 +44,9 @@ jobs:
               raise SystemExit('Missing DATA-EXPANSION-V1 build stamp')
           if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s):
               raise SystemExit('News feed retry loop exceeds free-plan budget')
-          # Static worst-case external-subrequest budget per invocation.
-          # News: 12 feeds x 2 attempts + 5 rescue feeds x 2 = 34.
-          # Market: 18 quotes + CoinGecko 1 + SEC 2 + BLS 3 + ECB 1 + Eurostat 1 + FRED 2 + StockTwits 7 + on-chain 6 = 41.
           news_budget=12*2+5*2
           market_budget=18+1+2+3+1+1+2+7+6
           if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
-          # Cron runs every 5m. Each cron invocation performs at most three KV writes:
-          # state/latest plus the phase-specific cursor and snapshot. HTTP rate limiting
-          # is in-memory and therefore does not consume the KV daily write quota.
           kv_writes_day=288*3
           if kv_writes_day>1000: raise SystemExit('Free KV write budget exceeded')
           print('WORKER SYNTAX: PASS')
@@ -81,15 +75,16 @@ jobs:
           version=get('/version')
           print('DEPLOYED BUILD:',version.get('build'))
           if version.get('build')!='ML-20260910-DATA-EXPANSION-V1': sys.exit('Deployed Worker build stamp is not the expanded data build')
+          first=get('/api/market-monitor-v2')
+          time.sleep(2)
           raw=get('/api/market-monitor-v2')
-          print('MARKET V2 PAYLOAD BUILD:',raw.get('build'),'UNIVERSE:',raw.get('marketUniverseVersion'))
+          print('MARKET V2 PAYLOAD BUILD:',raw.get('build'),'UNIVERSE:',raw.get('marketUniverseVersion'),'INDICES:',len(raw.get('indices') or []))
           if raw.get('build')!='ML-20260910-DATA-EXPANSION-V1' or raw.get('marketUniverseVersion')!='DATA-EXPANSION-V1': sys.exit('Versioned market route is not executing the expanded market function')
           indices=raw.get('indices') or []
           inst=raw.get('institutionalData') or {}
           social=raw.get('socialData') or {}
           onchain=raw.get('onchainData') or {}
-          print('MARKET CHECK: indices=',len(indices),'institutional=',bool(inst),'social=',bool(social),'onchain=',bool(onchain))
-          if len(indices)<35: sys.exit('Expanded market universe did not return enough instruments')
+          if len(indices)<35: sys.exit('Expanded market cache did not rotate to enough instruments')
           if not isinstance(inst,dict) or not isinstance(social,dict) or not isinstance(onchain,dict): sys.exit('Structured adapters missing')
           for name,obj in [('institutional',inst),('social',social),('onchain',onchain)]:
               if obj.get('adapter')!=name: sys.exit(name+' adapter provenance missing')
