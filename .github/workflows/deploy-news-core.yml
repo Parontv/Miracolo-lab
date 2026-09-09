@@ -23,6 +23,8 @@ jobs:
         run: python scripts/patch-social-data.py
       - name: Add crypto onchain data
         run: python scripts/patch-onchain-data.py
+      - name: Enforce Workers Free data budget
+        run: python scripts/patch-free-budget.py
       - name: Stabilize News Core live endpoint
         run: python scripts/patch-news-live.py
       - name: Validate generated Worker syntax and data adapters
@@ -36,14 +38,17 @@ jobs:
               raise SystemExit('botMonitor must remain async')
           if re.search(r'(?<![A-Za-z0-9_])market\(\)', s):
               raise SystemExit('Unbound market() call remains; all routes must use market(env)')
-          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","/api/market-monitor-v2"]:
+          for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY"]:
               if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
           if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s:
               raise SystemExit('Missing DATA-EXPANSION-V1 build stamp')
+          if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s):
+              raise SystemExit('News feed retry loop exceeds free-plan budget')
           print('WORKER SYNTAX: PASS')
           print('botMonitor async invariant: PASS')
           print('market(env) call-site invariant: PASS')
           print('TYPED DATA ADAPTERS: PASS')
+          print('FREE SUBREQUEST BUDGET: PASS')
           PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
