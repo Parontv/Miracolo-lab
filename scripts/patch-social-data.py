@@ -6,7 +6,6 @@ s=p.read_text()
 marker='async function market(env){'
 if marker not in s:
     raise SystemExit('market(env) not found')
-
 helper=r'''const SOCIAL_KEY='social/latest';
 const SOCIAL_TTL=900;
 async function socialData(env){
@@ -28,10 +27,15 @@ async function socialData(env){
 }
 '''
 s=s.replace(marker,helper+marker,1)
-old="let institutional=null;try{institutional=await institutionalData(env)}catch(e){institutional={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional}"
-new="let institutional=null;try{institutional=await institutionalData(env)}catch(e){institutional={timestamp:new Date().toISOString(),error:String(e.message||e)}}let social=null;try{social=await socialData(env)}catch(e){social={timestamp:new Date().toISOString(),error:String(e.message||e)}}return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional,socialData:social}"
-if old not in s:
-    raise SystemExit('market return signature not found')
-s=s.replace(old,new,1)
+needle='return{timestamp:new Date().toISOString(),indices,crypto,institutionalData:institutional}'
+if needle not in s:
+    # tolerate the same return object with additional fields already present
+    if 'institutionalData:institutional' not in s:
+        raise SystemExit('institutionalData return anchor not found')
+    raise SystemExit('market return anchor not found')
+replacement="let social=null;try{social=await socialData(env)}catch(e){social={timestamp:new Date().toISOString(),error:String(e.message||e)}}"+needle[:-1]+',socialData:social}'
+s=s.replace(needle,replacement,1)
+if 'socialData:social' not in s:
+    raise SystemExit('socialData return was not inserted')
 p.write_text(s)
 print('Added KV-cached StockTwits retail sentiment as separate socialData')
