@@ -17,6 +17,8 @@ jobs:
         run: python scripts/build-news-core.py
       - name: Expand market universe
         run: python scripts/patch-market-universe.py
+      - name: Add structured institutional data
+        run: python scripts/patch-institutional-data.py
       - name: Stabilize News Core live endpoint
         run: python scripts/patch-news-live.py
       - name: Validate generated Worker syntax
