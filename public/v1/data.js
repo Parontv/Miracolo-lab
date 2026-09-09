@@ -20,7 +20,7 @@
     if(hasNews(scan)){const check=CONTRACT.validate(scan);if(!check.ok)throw new Error('News Contract invalid: '+check.error)}
     return scan;
   }
-  async function loadMarket(){try{return await json('/api/market-monitor')}catch{return{indices:[]}}}
+  async function loadMarket(){try{return await json('/api/market-monitor-v2')}catch{try{return await json('/api/market-monitor')}catch{return{indices:[]}}}}
   async function refresh(){try{const[scan,market]=await Promise.all([loadScan(),loadMarket()]);window.ML.set({scan,market,updatedAt:new Date().toISOString()});window.ML.emit('data',{scan,market});return{scan,market}}catch(e){window.ML.emit('error',e);throw e}}
   async function forceNewsScan(){const scan=normalize(await json('/api/full-scan'));const check=CONTRACT.validate(scan);if(!check.ok)throw new Error('News Contract invalid: '+check.error);const market=await loadMarket();window.ML.set({scan,market,updatedAt:new Date().toISOString()});window.ML.emit('data',{scan,market,manual:true});return{scan,market}}
   window.ML.data={refresh,forceNewsScan,normalizeScan:normalize};
