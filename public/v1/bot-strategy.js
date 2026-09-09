@@ -9,6 +9,7 @@
   const REFRESH_MS=300000;
   let timer=null;
   let busy=false;
+  const strategyContext={};
   const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const num=v=>Number.isFinite(Number(v))?Number(v):null;
   const n=(v,d=1)=>num(v)!==null?num(v).toFixed(d):'—';
@@ -90,6 +91,23 @@
     return parts;
   }
 
+  function publishStrategyContext(c,rows,news){
+    const key=String(c.symbol||'').toUpperCase();
+    if(!key)return;
+    strategyContext[key]={
+      symbol:c.symbol,
+      name:c.name,
+      rsi:num(c.rsi),
+      momentum:num(rows.find(x=>x.name==='Momentum')?.score),
+      trend:num(rows.find(x=>x.name==='Trend Proxy')?.score),
+      newsBias:Number(news),
+      strategyScore:num(c.strategyScore),
+      action:c.action,
+      confidence:num(c.confidence),
+      lenses:rows.map(x=>({name:x.name,signal:x.signal,score:x.score,detail:x.detail}))
+    };
+  }
+
   function box(){
     const p=document.getElementById('sidePanel');
     if(!p)return null;
@@ -113,6 +131,7 @@
     const stamp=data?.timestamp?new Date(data.timestamp).toLocaleTimeString('it-IT'):'—';
     const cards=candidates.length?candidates.map(c=>{
       const rows=lens(c,bias);
+      publishStrategyContext(c,rows,bias);
       const buyN=rows.filter(x=>x.signal==='BUY').length;
       const sellN=rows.filter(x=>x.signal==='SELL').length;
       const analysis=reasoning(c,rows,bias,c);
@@ -165,6 +184,8 @@
     window.addEventListener('load',()=>setTimeout(()=>{if(window.__mlPanel==='bot'||document.body.dataset.activePanel==='bot')run()},800));
     timer=setInterval(run,REFRESH_MS);
     window.runMiracoloStrategyCycle=run;
+    window.ML_BOT_STRATEGY_CONTEXT=(sym)=>strategyContext[String(sym||'').toUpperCase()]||null;
+    window.ML_BOT_STRATEGY_CONTEXTS=strategyContext;
   }
   install();
 })();
