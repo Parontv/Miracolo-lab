@@ -59,7 +59,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 5637f51ea89c44719b4a680b6122bf05
-          command: deploy
+          command: deploy --verbose
       - name: Verify deployed build and market data
         run: |
           python - <<'PY'
