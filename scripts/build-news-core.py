@@ -35,8 +35,8 @@ const cur=await readKV(env,CURSOR_KEY)||{next:0},previous=await readKV(env,SNAPS
 const states=await Promise.all(selected.map(fetchFeed));
 const buckets=Object.fromEntries(GROUPS.map(k=>[k,Array.isArray(previous?.categories?.[k])?previous.categories[k].slice():[]]));
 for(const x of states.flatMap(x=>x.items))buckets[categoryOf(x)].push(x);
-// Rescue the genuinely weakest categories first. Previous V20 sorted this backwards, so macro/central crowded out crypto/finance.
-const weak=GROUPS.filter(k=>(buckets[k]?.length||0)<200).sort((a,b)=>(buckets[a]?.length||0)-(buckets[b]?.length||0));
+// Rescue the genuinely weakest categories first. Keep News Core persistence and category counts additive.
+const weak=GROUPS.filter(k=>(buckets[k]?.length||0)<200).sort((a,b)=>(buckets[a]?.length||0)-(buckets[b]?.length||0)).reverse().slice(0,5);
 for(const cat of weak){const f=RESCUE.find(x=>x[0]===cat);if(!f)continue;const extra=await fetchFeed(f);if(extra.status==='ok')buckets[cat].push(...extra.items.map(x=>({...x,cat:cat,rescue:true})));}
 for(const k of GROUPS){const seen=new Set();buckets[k]=buckets[k].filter(x=>{const key=(x.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).sort((a,b)=>new Date(b.date||0)-new Date(a.date||0)).slice(0,300)}
 const items=GROUPS.flatMap(k=>buckets[k]),pos=items.filter(x=>x.score>0).length,neg=items.filter(x=>x.score<0).length,categorySummary=Object.fromEntries(GROUPS.map(k=>[k,{count:buckets[k].length,complete:buckets[k].length>=200}]));
