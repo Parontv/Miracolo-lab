@@ -8,7 +8,7 @@ vm.runInNewContext(contractSource,context);
 const C=context.window.ML_NEWS_CONTRACT;
 assert.ok(C,'News Contract must load');
 assert.equal(C.VERSION,4);
-assert.deepEqual(C.GROUPS,['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']);
+assert.deepEqual(Array.from(C.GROUPS),['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']);
 
 const items=[
   {id:'1',title:'Bitcoin rallies',description:'Crypto market surge',type:'crypto',cat:'crypto'},
