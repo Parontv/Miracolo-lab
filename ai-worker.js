@@ -7,24 +7,13 @@ const AI_BUILD = 'ML-AI-20260910-V1';
 const clean = (value, max = 700) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 
 async function readKV(env, key) {
-  try {
-    const value = await env.ML_KV.get(key);
-    return value ? JSON.parse(value) : null;
-  } catch {
-    return null;
-  }
+  try { const value = await env.ML_KV.get(key); return value ? JSON.parse(value) : null; } catch { return null; }
 }
-
-async function writeKV(env, key, value) {
-  try {
-    await env.ML_KV.put(key, JSON.stringify(value));
-  } catch {}
-}
+async function writeKV(env, key, value) { try { await env.ML_KV.put(key, JSON.stringify(value)); } catch {} }
 
 function selectNews(news) {
   const items = Array.isArray(news?.items) ? news.items : [];
-  const now = Date.now();
-  const dedup = new Set();
+  const now = Date.now(), dedup = new Set();
   const ranked = items.map((item) => {
     const date = Date.parse(item.date || '') || 0;
     const ageHours = date ? Math.max(0, (now - date) / 3600000) : 999;
@@ -42,26 +31,22 @@ function selectNews(news) {
     if (!byCategory.has(category)) byCategory.set(category, []);
     byCategory.get(category).push(row);
   }
-  const selected = [];
-  const categories = [...byCategory.keys()];
+  const selected = [], categories = [...byCategory.keys()];
   let round = 0;
   while (selected.length < 120 && round < 20) {
     let added = false;
     for (const category of categories) {
       const row = byCategory.get(category)?.[round];
       if (!row) continue;
-      selected.push(row.item);
-      added = true;
+      selected.push(row.item); added = true;
       if (selected.length >= 120) break;
     }
     if (!added) break;
     round++;
   }
   return selected.map((x) => ({
-    category: clean(x.cat || x.type || 'news', 40),
-    date: clean(x.date, 40),
-    title: clean(x.title, 220),
-    context: clean(x.description, 650)
+    category: clean(x.cat || x.type || 'news', 40), date: clean(x.date, 40),
+    title: clean(x.title, 220), context: clean(x.description, 650)
   }));
 }
 
@@ -82,15 +67,7 @@ function marketContext(market) {
 function previousContext(previous) {
   const ai = previous?.ai;
   if (!ai) return null;
-  return {
-    generatedAt: ai.generatedAt || null,
-    headline: clean(ai.headline, 220),
-    thesis: clean(ai.thesis, 1200),
-    summary: clean(ai.summary, 1600),
-    bullish: clean(ai.bullish, 900),
-    bearish: clean(ai.bearish, 900),
-    watch: clean(ai.watch, 900)
-  };
+  return { generatedAt: ai.generatedAt || null, headline: clean(ai.headline, 220), thesis: clean(ai.thesis, 1200), summary: clean(ai.summary, 1600), bullish: clean(ai.bullish, 900), bearish: clean(ai.bearish, 900), watch: clean(ai.watch, 900) };
 }
 
 async function callOpenAI(env, context) {
@@ -125,16 +102,12 @@ regime: una descrizione breve del regime di mercato, senza numeri.`;
     method: 'POST',
     headers: { 'Authorization': `Bearer ${env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model,
-      store: false,
+      model, store: false,
       input: [{ role: 'system', content: system }, { role: 'user', content: JSON.stringify(context) }],
       text: { format: { type: 'json_schema', name: 'miracolo_market_analysis', strict: true, schema: {
         type: 'object', additionalProperties: false,
-        properties: {
-          headline: { type: 'string' }, thesis: { type: 'string' }, summary: { type: 'string' },
-          bullish: { type: 'string' }, bearish: { type: 'string' }, watch: { type: 'string' }, regime: { type: 'string' }
-        },
-        required: ['headline', 'thesis', 'summary', 'bullish', 'bearish', 'watch', 'regime']
+        properties: { headline:{type:'string'}, thesis:{type:'string'}, summary:{type:'string'}, bullish:{type:'string'}, bearish:{type:'string'}, watch:{type:'string'}, regime:{type:'string'} },
+        required: ['headline','thesis','summary','bullish','bearish','watch','regime']
       } } }
     })
   });
@@ -146,18 +119,13 @@ regime: una descrizione breve del regime di mercato, senza numeri.`;
 }
 
 async function generateAI(env, state) {
-  if (!env.OPENAI_API_KEY) return { enabled: false, status: 'missing_secret', build: AI_BUILD };
-  const context = {
-    asOf: new Date().toISOString(),
-    market: marketContext(state?.market || {}),
-    news: selectNews(state?.news || {}),
-    previousAnalysis: previousContext(state)
-  };
+  if (!env.OPENAI_API_KEY) return { enabled:false, status:'missing_secret', build:AI_BUILD };
+  const context = { asOf:new Date().toISOString(), market:marketContext(state?.market||{}), news:selectNews(state?.news||{}), previousAnalysis:previousContext(state) };
   try {
     const result = await callOpenAI(env, context);
-    return { enabled: true, status: 'ok', model: env.OPENAI_MODEL || AI_MODEL_DEFAULT, build: AI_BUILD, generatedAt: new Date().toISOString(), ...result };
+    return { enabled:true, status:'ok', model:env.OPENAI_MODEL||AI_MODEL_DEFAULT, build:AI_BUILD, generatedAt:new Date().toISOString(), ...result };
   } catch (error) {
-    return { enabled: true, status: 'error', build: AI_BUILD, generatedAt: new Date().toISOString(), error: clean(error?.message || error, 180) };
+    return { enabled:true, status:'error', build:AI_BUILD, generatedAt:new Date().toISOString(), error:clean(error?.message||error,180) };
   }
 }
 
@@ -166,21 +134,32 @@ async function runAI(env) {
   if (!state) return null;
   const ai = await generateAI(env, state);
   if (ai?.status === 'ok') await writeKV(env, AI_STATE_KEY, { ...state, ai });
-  else if (ai?.status === 'error') await writeKV(env, AI_STATE_KEY, { ...state, ai: { ...(state.ai || {}), ...ai } });
+  else if (ai?.status === 'error') await writeKV(env, AI_STATE_KEY, { ...state, ai:{ ...(state.ai||{}), ...ai } });
   return ai;
+}
+
+async function waitForBaseStateAndRunAI(env, previousTimestamp) {
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    const state = await readKV(env, AI_STATE_KEY);
+    if (state?.timestamp && state.timestamp !== previousTimestamp) return runAI(env);
+    await scheduler.wait(1000);
+  }
+  return runAI(env);
 }
 
 export default {
   async scheduled(event, env, ctx) {
-    await baseWorker.scheduled(event, env, ctx);
     const minute = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
-    if (minute % 10 === 0) ctx.waitUntil(runAI(env));
+    const previous = minute % 10 === 0 ? await readKV(env, AI_STATE_KEY) : null;
+    await baseWorker.scheduled(event, env, ctx);
+    if (minute % 10 === 0) ctx.waitUntil(waitForBaseStateAndRunAI(env, previous?.timestamp || null));
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === '/api/ai') {
       const state = await readKV(env, AI_STATE_KEY);
-      return Response.json({ ok: true, build: AI_BUILD, ai: state?.ai || null }, { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
+      return Response.json({ ok:true, build:AI_BUILD, ai:state?.ai||null }, { headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*'} });
     }
     return baseWorker.fetch(request, env, ctx);
   }
