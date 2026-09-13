@@ -20,17 +20,20 @@ if "function marketAnalysis(" in s:
 p.write_text(s)
 
 # This script is the final generated-Worker patch in the deploy pipeline.
-# Some historical generators may emit the BUILD declaration with a different
-# formatting or omit it. Normalize either case so validation/deploy are deterministic.
+# Normalize the generated Worker to exactly one BUILD declaration. Historical
+# generators can emit an older declaration and previous hardening may add one.
 w=Path('worker.js')
 ws=w.read_text()
-pattern=r"const\s+BUILD\s*=\s*['\"][^'\"]+['\"];?"
-ws2=re.sub(pattern, "const BUILD='ML-20260910-DATA-EXPANSION-V1';", ws, count=1)
+build_pattern=r"^\s*const\s+BUILD\s*=\s*['\"][^'\"]+['\"];?\s*$"
+ws=re.sub(build_pattern, '', ws, flags=re.M)
+header_pattern=r"(\/\*[^\n]*Miracolo Lab[^\n]*\*\/\n)"
+ws2=re.sub(header_pattern, r"\1const BUILD='ML-20260910-DATA-EXPANSION-V1';\n", ws, count=1)
 if ws2==ws:
-    ws2=re.sub(r"(\/\*[^\n]*Miracolo Lab[^\n]*\*\/\n)", r"\1const BUILD='ML-20260910-DATA-EXPANSION-V1';\n", ws, count=1)
-if ws2==ws:
-    raise SystemExit('Unable to normalize Worker BUILD declaration')
+    raise SystemExit('Unable to insert canonical Worker BUILD declaration')
+if len(re.findall(r"^\s*const\s+BUILD\s*=", ws2, flags=re.M)) != 1:
+    raise SystemExit('Worker BUILD declaration is not unique')
 w.write_text(ws2)
 print('Dashboard indices: full market universe PASS')
 print('Dashboard Market Sentiment: unified no-score renderer PASS')
 print('Final Worker build stamp: DATA-EXPANSION-V1 PASS')
+print('Worker BUILD uniqueness: PASS')
