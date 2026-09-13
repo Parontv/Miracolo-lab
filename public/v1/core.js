@@ -36,7 +36,7 @@
       try { if (typeof previous === 'function') previous(panel); } catch (e) { console.warn('Miracolo Lab panel error:', e); }
       syncTabs(panel);
       emit('panel', panel);
-      window.dispatchEvent(new CustomEvent('miracolo:panel-change', { detail: { panel } }));
+      window.dispatchEvent(new CustomEvent('miracolo:panelchange', { detail: { panel } }));
     };
     window.setPanel.__mlV1 = true;
     syncTabs(state.activePanel);
