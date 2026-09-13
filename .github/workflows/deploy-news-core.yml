@@ -121,3 +121,4 @@ jobs:
               time.sleep(3)
           else: sys.exit('LIVE snapshot did not provide a stable valid News Core state')
           PY
+# Deployment trigger: keep the full validation/deploy chain running after feed hardening.
