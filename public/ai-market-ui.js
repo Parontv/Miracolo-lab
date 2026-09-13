@@ -1,6 +1,7 @@
 /* Miracolo Lab — AI Market Intelligence UI */
 (() => {
   'use strict';
+  const REFRESH_MS = 300000;
   const esc = (value) => String(value ?? '').replace(/[&<>\"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const hideLegacy = () => {
     document.querySelectorAll('.v1-market-card .v1-card-head > div:last-child strong, .v1-market-card .v1-market-label, .v1-market-card .v1-ai-foot').forEach((el) => { el.style.display = 'none'; });
@@ -18,7 +19,7 @@
   };
   const load = async () => {
     try {
-      const response = await fetch('/api/live?ai=1', { cache: 'no-store' });
+      const response = await fetch('/api/live?ai=1&ts=' + Date.now(), { cache: 'no-store' });
       if (!response.ok) return;
       applyState(await response.json());
     } catch {}
@@ -26,6 +27,10 @@
   const boot = () => {
     load();
     if (window.ML?.on) window.ML.on('state', applyState);
+    // The AI Worker refreshes its analysis independently from the browser's
+    // News Core refresh. Polling keeps the card synchronized with the latest
+    // server-side analysis instead of leaving the first result on screen.
+    setInterval(load, REFRESH_MS);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
 })();
