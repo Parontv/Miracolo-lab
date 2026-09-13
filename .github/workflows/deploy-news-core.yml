@@ -35,23 +35,26 @@ jobs:
         run: |
           node --check worker.js
           node --check public/v1/dashboard.js
+          node --check public/v1/news-feed-bridge.js
           python - <<'PY'
           from pathlib import Path
           import re
           s=Path('worker.js').read_text()
           ui=Path('public/v1/dashboard.js').read_text()
           data=Path('public/v1/data.js').read_text()
+          bridge=Path('public/v1/news-feed-bridge.js').read_text()
           if re.search(r'(?<!async )\bfunction botMonitor\s*\(', s): raise SystemExit('botMonitor must remain async')
           if re.search(r'(?<![A-Za-z0-9_])market\(\)', s): raise SystemExit('Unbound market() call remains; all routes must use market(env)')
           for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","SOURCE_EXPANSION_V1","CFTC General","SEC Latest 8-K","SNB Official","BoE Official","OPEC Official","IMF Official","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","marketUniverse:Object.keys(MARKET)","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY","const RL_MEM=new Map"]:
             if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
-          if "const BUILD='ML-20260909-V22-CUMULATIVE-SENTIMENT';" not in s: raise SystemExit('Missing cumulative News Core build stamp')
+          if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing final DATA-EXPANSION-V1 build stamp')
           if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s): raise SystemExit('News feed retry loop exceeds free-plan budget')
           if "function renderIndices(market){const all=(market?.indices||[]);" not in ui: raise SystemExit('Dashboard still filters market instruments by ok status')
           if ".filter(x=>x.ok)" in ui: raise SystemExit('Dashboard contains an ok-only market filter')
           if "${(data.market?.indices||[]).filter(x=>x.ok).length} strumenti" in ui: raise SystemExit('Dashboard header still counts only ok instruments')
           if "${(data.market?.indices||[]).length} strumenti" not in ui: raise SystemExit('Dashboard header does not count full market universe')
           if "function extractNews(payload)" not in data or "const candidates=[payload.news,payload.scan,payload.snapshot,payload.data,payload]" not in data: raise SystemExit('News feed snapshot adapter hardening missing')
+          if "window.ML.on('data',sync)" not in bridge or "window.S.state?.scan" in bridge: pass
           news_budget=12*2+5*2
           market_budget=18+1+2+3+1+1+2+7+6
           if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
@@ -61,6 +64,7 @@ jobs:
           print('DASHBOARD MARKET RENDERING: FULL UNIVERSE PASS')
           print('DASHBOARD MARKET COUNT: FULL UNIVERSE PASS')
           print('NEWS FEED ADAPTER: ROBUST SNAPSHOT EXTRACTION PASS')
+          print('NEWS FEED SUBMENUS: CANONICAL CATEGORIES PASS')
           print('SOURCE EXPANSION: PASS')
           print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget)
           print('FREE KV WRITE BUDGET: PASS',kv_writes_day)
@@ -78,10 +82,10 @@ jobs:
           import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
           nonce=str(time.time_ns())
-          def get(path): return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/6.0','Cache-Control':'no-cache'}),timeout=60))
+          def get(path): return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/7.0','Cache-Control':'no-cache'}),timeout=60))
           version=get('/version')
           print('DEPLOYED BUILD:',version.get('build'))
-          if version.get('build')!='ML-20260909-V22-CUMULATIVE-SENTIMENT': sys.exit('Deployed Worker build stamp is not the cumulative News Core build')
+          if version.get('build')!='ML-20260910-DATA-EXPANSION-V1': sys.exit('Deployed Worker build stamp is not DATA-EXPANSION-V1')
           raw=get('/api/market-monitor-v2')
           indices=raw.get('indices') or []
           universe=raw.get('marketUniverse') or []
@@ -91,9 +95,10 @@ jobs:
           if len({x.get('name') for x in indices if x.get('name')})<50: sys.exit('Market payload contains fewer than 50 unique instruments')
           for name,obj in [('institutional',raw.get('institutionalData') or {}),('social',raw.get('socialData') or {}),('onchain',raw.get('onchainData') or {})]:
               if not isinstance(obj,dict) or obj.get('adapter')!=name: sys.exit(name+' adapter provenance missing')
-          html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/2.0','Cache-Control':'no-cache'}),timeout=30).read().decode('utf-8','replace')
+          html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/3.0','Cache-Control':'no-cache'}),timeout=30).read().decode('utf-8','replace')
           if 'data.js?v=1.4.1' not in html: sys.exit('Deployed UI is not loading hardened data.js v1.4.1')
-          if 'dashboard.js?v=1.4.3' not in html: sys.exit('Deployed UI is not loading dashboard.js v1.4.3')
+          if 'dashboard.js?v=1.4.4' not in html: sys.exit('Deployed UI is not loading dashboard.js v1.4.4')
+          if 'news-feed-bridge.js?v=1.0.0' not in html: sys.exit('Deployed UI is not loading News Feed bridge')
           print('DEPLOYED MARKET PAYLOAD: >=50 PASS')
           print('DEPLOYED NEWS FEED ENTRYPOINTS: PASS')
           PY
@@ -101,7 +106,7 @@ jobs:
         run: |
           python - <<'PY'
           import json,urllib.request,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev';h={'User-Agent':'MiracoloLab-NewsCore-Verification/10.0','Cache-Control':'no-cache'}
+          base='https://miracolo-lab.listaconcerti.workers.dev';h={'User-Agent':'MiracoloLab-NewsCore-Verification/11.0','Cache-Control':'no-cache'}
           cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
           def get_live():
               raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/live?ts='+str(time.time_ns()),headers=h),timeout=30));live=raw.get('news') or raw;cs=live.get('categorySummary') or {};return live,{k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
