@@ -16,6 +16,17 @@ if "ma.score+'/100'" in s or 'confidenza ${ma.confidence}%' in s:
     raise SystemExit('Dashboard Market Sentiment still exposes numeric score/confidence')
 if "function marketAnalysis(" in s:
     raise SystemExit('Legacy numeric Market Sentiment engine remains in dashboard')
+p.write_text(s)
+
+# This script is the final generated-Worker patch in the deploy pipeline.
+# Stamp the worker only here so no later generator can silently restore an older build id.
+w=Path('worker.js')
+ws=w.read_text()
+import re
+ws2=re.sub(r"const BUILD='[^']+';", "const BUILD='ML-20260910-DATA-EXPANSION-V1';", ws, count=1)
+if ws2==ws:
+    raise SystemExit('Worker BUILD declaration not found')
+w.write_text(ws2)
 print('Dashboard indices: full market universe PASS')
 print('Dashboard Market Sentiment: unified no-score renderer PASS')
-p.write_text(s)
+print('Final Worker build stamp: DATA-EXPANSION-V1 PASS')
