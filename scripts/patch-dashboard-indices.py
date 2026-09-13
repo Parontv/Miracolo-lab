@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 p=Path('public/v1/dashboard.js')
 s=p.read_text()
@@ -19,13 +20,16 @@ if "function marketAnalysis(" in s:
 p.write_text(s)
 
 # This script is the final generated-Worker patch in the deploy pipeline.
-# Stamp the worker only here so no later generator can silently restore an older build id.
+# Some historical generators may emit the BUILD declaration with a different
+# formatting or omit it. Normalize either case so validation/deploy are deterministic.
 w=Path('worker.js')
 ws=w.read_text()
-import re
-ws2=re.sub(r"const BUILD='[^']+';", "const BUILD='ML-20260910-DATA-EXPANSION-V1';", ws, count=1)
+pattern=r"const\s+BUILD\s*=\s*['\"][^'\"]+['\"];?"
+ws2=re.sub(pattern, "const BUILD='ML-20260910-DATA-EXPANSION-V1';", ws, count=1)
 if ws2==ws:
-    raise SystemExit('Worker BUILD declaration not found')
+    ws2=re.sub(r"(\/\*[^\n]*Miracolo Lab[^\n]*\*\/\n)", r"\1const BUILD='ML-20260910-DATA-EXPANSION-V1';\n", ws, count=1)
+if ws2==ws:
+    raise SystemExit('Unable to normalize Worker BUILD declaration')
 w.write_text(ws2)
 print('Dashboard indices: full market universe PASS')
 print('Dashboard Market Sentiment: unified no-score renderer PASS')
