@@ -1,7 +1,7 @@
 /* Miracolo Lab — Strategy Lab tab bridge */
 (()=>{
   'use strict';
-  const PANELS=['radar','investimenti','bot','strategy','learning','blackswan','settings'];
+  const PANELS=['radar','investimenti','bot','strategy','blackswan','settings'];
   const originalSetPanel=window.setPanel;
   function activate(id){
     if(!PANELS.includes(id)) id='radar';
@@ -12,9 +12,8 @@
     if(body) body.classList.toggle('tab-inside-panel',!dashboard);
     if(feed) feed.classList.toggle('panel-workspace-hidden',!dashboard);
     if(side) side.classList.remove('panel-workspace-hidden');
-    document.querySelectorAll('.top-tab[data-panel]').forEach(tab=>{
-      const active=tab.dataset.panel===id;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',active?'true':'false');
-    });
+    document.querySelectorAll('.top-tab[data-panel]').forEach(tab=>{const active=tab.dataset.panel===id;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',active?'true':'false')});
+    if(id==='strategy'){window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));return;}
     if(typeof originalSetPanel==='function') originalSetPanel(id);
     window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
   }
