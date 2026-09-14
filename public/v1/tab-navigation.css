@@ -6,21 +6,28 @@
 
 /* ===== TOP NAVIGATION ===== */
 .top-tabs{
+  position:relative;
+  z-index:200;
+  isolation:isolate;
   display:flex;
   align-items:stretch;
   gap:6px;
   width:100%;
   max-width:100%;
   min-width:0;
+  flex:0 0 auto;
   overflow-x:auto;
   overflow-y:hidden;
   padding:6px 10px;
   scrollbar-width:none;
-  background:rgba(4,10,20,.82);
+  background:rgba(4,10,20,.96);
   border-bottom:1px solid rgba(14,165,233,.10);
+  pointer-events:auto;
 }
 .top-tabs::-webkit-scrollbar{display:none}
 .top-tab{
+  position:relative;
+  z-index:201;
   flex:1 1 0;
   min-width:0;
   max-width:none;
@@ -40,6 +47,7 @@
   -webkit-appearance:none;
   appearance:none;
   box-shadow:none;
+  pointer-events:auto;
   transition:background .18s ease,border-color .18s ease,color .18s ease,transform .12s ease,box-shadow .18s ease;
 }
 .top-tab span{font-size:13px;line-height:1;flex:0 0 auto}
@@ -66,7 +74,7 @@
 .app-body.tab-inside-panel button:hover{transform:translateY(-1px)}
 .app-body.tab-inside-panel button:active{transform:translateY(0)}
 
-/* Keep the primary navigation inside the portrait viewport. */
+/* Keep the primary navigation inside the portrait viewport and above dashboard cards. */
 @media(max-width:700px){
   .top-tabs{
     gap:5px;
