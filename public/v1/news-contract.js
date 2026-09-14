@@ -57,6 +57,18 @@
     }).slice(0,MAX_PER_CATEGORY);
   }
 
+  function flattenUnique(categories){
+    const seen=new Set(),out=[];
+    for(const k of GROUPS){
+      for(const x of categories[k]||[]){
+        const kx=key(x);
+        if(!kx||seen.has(kx))continue;
+        seen.add(kx);out.push(x);
+      }
+    }
+    return out;
+  }
+
   function normalize(scan){
     if(!scan||typeof scan!=='object')return scan;
     const now=Date.now();
@@ -73,7 +85,7 @@
       const chosen=(src.length===0&&fallback.length>0)||(suspicious&&fallback.length>0)?fallback:src;
       return [k,dedupe(chosen)];
     }));
-    const boundedItems=GROUPS.flatMap(k=>categories[k]);
+    const boundedItems=flattenUnique(categories);
     return {...scan,schemaVersion:VERSION,lookbackDays:LOOKBACK_DAYS,items:boundedItems,categories,categorySummary:Object.fromEntries(GROUPS.map(k=>[k,{count:categories[k].length,complete:categories[k].length>=MAX_PER_CATEGORY}]))};
   }
 
