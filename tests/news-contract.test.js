@@ -18,11 +18,12 @@ const items=[
   {id:'3',title:'US inflation rises',description:'CPI data',type:'macro',cat:'macro',date:new Date(now-29*86400000).toISOString()},
   {id:'old',title:'Old article',description:'Outside lookback',type:'news',cat:'news',date:new Date(now-31*86400000).toISOString()}
 ];
-const normalized=C.normalize({items,categories:{news:items}});
+const normalized=C.normalize({items,categories:{}});
 const valid=C.validate(normalized);
 assert.equal(valid.ok,true,valid.error||'contract validation failed');
 for(const key of C.GROUPS)assert.ok(Array.isArray(normalized.categories[key]),`missing category ${key}`);
 assert.equal(normalized.items.length,3);
+assert.equal(new Set(normalized.items.map(x=>x.id)).size,3);
 assert.equal(normalized.categories.crypto.length,1);
 assert.equal(normalized.categories.central.length,1);
 assert.equal(normalized.categories.macro.length,1);
@@ -36,7 +37,6 @@ assert.match(data,/ML_NEWS_CONTRACT/);
 assert.match(dashboard,/ML_NEWS_CONTRACT/);
 assert.doesNotMatch(data,/function\s+categoryOf\s*\(/);
 assert.doesNotMatch(dashboard,/function\s+categoryOf\s*\(/);
-// Regression guard: every canonical category must map to [key,label,icon].
 assert.match(dashboard,/const groups=CONTRACT\.GROUPS\.map\(k=>\[k,\.\.\.\(LABELS\[k\]\|\|\[k,'📰'\]\)\]\);/,'dashboard category mapping must preserve the canonical key');
 assert.doesNotMatch(dashboard,/CONTRACT\.GROUPS\.map\(k=>\(\{[\s\S]*?\}\[k\]\)\.map\(/,'dashboard must not nest the category tuple inside another array');
 
