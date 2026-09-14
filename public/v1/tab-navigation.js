@@ -1,7 +1,7 @@
 /* Miracolo Lab — Top tab navigation */
 (()=>{
   'use strict';
-  const PANELS=['radar','investimenti','bot','strategy','learning','blackswan','settings'];
+  const PANELS=['radar','investimenti','bot','strategy','blackswan','settings'];
   const originalSetPanel=window.setPanel;
   function activate(id){
     if(!PANELS.includes(id)) id='radar';
