@@ -8,6 +8,9 @@ old="function renderIndices(market){const all=(market?.indices||[]).filter(x=>x.
 new="function renderIndices(market){const all=(market?.indices||[]);if(!all.length)return '<div class=\"v1-empty\">Dati non disponibili.</div>';"
 if old in s:
     s=s.replace(old,new,1)
+# The dashboard market universe must never be reduced to only instruments with an ok flag.
+# Older dashboard variants used this filter in more than one renderer/count expression.
+s=s.replace('.filter(x=>x.ok)','')
 old_count="<summary>📈 INDICI DI BORSA <b>${(data.market?.indices||[]).filter(x=>x.ok).length} strumenti</b></summary>"
 new_count="<summary>📈 INDICI DI BORSA <b>${(data.market?.indices||[]).length} strumenti</b></summary>"
 if old_count in s:
@@ -34,6 +37,7 @@ if len(re.findall(r"^\s*const\s+BUILD\s*=", ws2, flags=re.M)) != 1:
     raise SystemExit('Worker BUILD declaration is not unique')
 w.write_text(ws2)
 print('Dashboard indices: full market universe PASS')
+print('Dashboard ok-filter removal: PASS')
 print('Dashboard Market Sentiment: unified no-score renderer PASS')
 print('Final Worker build stamp: DATA-EXPANSION-V1 PASS')
 print('Worker BUILD uniqueness: PASS')
