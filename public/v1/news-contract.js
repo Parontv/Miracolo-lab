@@ -1,8 +1,10 @@
-/* Miracolo Lab — Canonical News Contract. Keep this file dependency-free. */
+/* Miracolo Lab — Canonical News Contract. 30-day lookback is enforced here so every UI/intelligence consumer sees the same bounded dataset. */
 (() => {
   'use strict';
-  const VERSION=4;
+  const VERSION=5;
   const MAX_PER_CATEGORY=300;
+  const LOOKBACK_DAYS=30;
+  const LOOKBACK_MS=LOOKBACK_DAYS*24*60*60*1000;
   const GROUPS=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company'];
 
   function categoryOf(x){
@@ -22,35 +24,68 @@
     return'news';
   }
 
+  function dateOf(x){
+    const raw=x?.date??x?.publishedAt??x?.published??x?.pubDate??x?.updatedAt??x?.updated??x?.timestamp??x?.time;
+    if(raw===undefined||raw===null||raw==='')return null;
+    const n=Number(raw);
+    if(Number.isFinite(n)){
+      const ms=n<1e12?n*1000:n;
+      const d=new Date(ms);
+      return Number.isNaN(d.getTime())?null:d;
+    }
+    const d=new Date(String(raw));
+    return Number.isNaN(d.getTime())?null:d;
+  }
+
+  function withinLookback(x,now=Date.now()){
+    const d=dateOf(x);
+    if(!d)return true;
+    const age=now-d.getTime();
+    return age>=0&&age<=LOOKBACK_MS;
+  }
+
   function key(x){return String(x?.url||x?.link||x?.id||x?.title||'').trim().toLowerCase();}
-  function dedupe(a){const seen=new Set();return(Array.isArray(a)?a:[]).filter(x=>{const k=key(x);if(!k||seen.has(k))return false;seen.add(k);return true}).slice(0,MAX_PER_CATEGORY)}
+
+  function dedupe(a){
+    const seen=new Set();
+    return(Array.isArray(a)?a:[]).filter(x=>{
+      if(!withinLookback(x))return false;
+      const k=key(x);
+      if(!k||seen.has(k))return false;
+      seen.add(k);
+      return true;
+    }).slice(0,MAX_PER_CATEGORY);
+  }
 
   function normalize(scan){
     if(!scan||typeof scan!=='object')return scan;
-    const items=Array.isArray(scan.items)?scan.items:[];
-    if(!items.length)return {...scan,schemaVersion:VERSION,categories:Object.fromEntries(GROUPS.map(k=>[k,[]])),categorySummary:Object.fromEntries(GROUPS.map(k=>[k,{count:0,complete:false}]))};
+    const now=Date.now();
+    const items=Array.isArray(scan.items)?scan.items.filter(x=>withinLookback(x,now)):[];
+    if(!items.length)return {...scan,schemaVersion:VERSION,lookbackDays:LOOKBACK_DAYS,categories:Object.fromEntries(GROUPS.map(k=>[k,[]])),categorySummary:Object.fromEntries(GROUPS.map(k=>[k,{count:0,complete:false}]))};
     const supplied=scan.categories&&typeof scan.categories==='object'?scan.categories:{};
     const derived=Object.fromEntries(GROUPS.map(k=>[k,[]]));
     items.forEach(x=>derived[categoryOf(x)].push(x));
-    const suppliedCount=GROUPS.reduce((n,k)=>n+(Array.isArray(supplied[k])?supplied[k].length:0),0);
+    const suppliedCount=GROUPS.reduce((n,k)=>n+(Array.isArray(supplied[k])?supplied[k].filter(x=>withinLookback(x,now)).length:0),0);
     const suspicious=suppliedCount/items.length<0.75;
     const categories=Object.fromEntries(GROUPS.map(k=>{
-      const src=Array.isArray(supplied[k])?supplied[k]:[];
+      const src=Array.isArray(supplied[k])?supplied[k].filter(x=>withinLookback(x,now)):[];
       const fallback=derived[k]||[];
       const chosen=(src.length===0&&fallback.length>0)||(suspicious&&fallback.length>0)?fallback:src;
       return [k,dedupe(chosen)];
     }));
-    return {...scan,schemaVersion:VERSION,categories,categorySummary:Object.fromEntries(GROUPS.map(k=>[k,{count:categories[k].length,complete:categories[k].length>=MAX_PER_CATEGORY}]))};
+    const boundedItems=GROUPS.flatMap(k=>categories[k]);
+    return {...scan,schemaVersion:VERSION,lookbackDays:LOOKBACK_DAYS,items:boundedItems,categories,categorySummary:Object.fromEntries(GROUPS.map(k=>[k,{count:categories[k].length,complete:categories[k].length>=MAX_PER_CATEGORY}]))};
   }
 
   function validate(scan){
     if(!scan||typeof scan!=='object')return{ok:false,error:'dataset_missing'};
     if(Number(scan.schemaVersion)!==VERSION)return{ok:false,error:'schema_version'};
+    if(Number(scan.lookbackDays)!==LOOKBACK_DAYS)return{ok:false,error:'lookback_days'};
     if(!Array.isArray(scan.items))return{ok:false,error:'items_missing'};
     if(!scan.categories||typeof scan.categories!=='object')return{ok:false,error:'categories_missing'};
     for(const k of GROUPS)if(!Array.isArray(scan.categories[k]))return{ok:false,error:'category_missing:'+k};
     return{ok:true};
   }
 
-  window.ML_NEWS_CONTRACT={VERSION,GROUPS,MAX_PER_CATEGORY,categoryOf,normalize,validate};
+  window.ML_NEWS_CONTRACT={VERSION,GROUPS,MAX_PER_CATEGORY,LOOKBACK_DAYS,dateOf,withinLookback,categoryOf,normalize,validate};
 })();
