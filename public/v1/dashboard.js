@@ -6,19 +6,6 @@
   const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const num=v=>Number.isFinite(Number(v))?Number(v):0;
   const hasNum=(o,...keys)=>keys.some(k=>Number.isFinite(Number(o?.[k])));
-  const MAX_PER_CATEGORY=CONTRACT.MAX_PER_CATEGORY;
-  const LABELS={news:['Notizie','📰'],finance:['Finance','💹'],crypto:['Cripto','₿'],macro:['Macroeconomia','🌍'],rates:['Obbligazioni / Tassi','💶'],central:['Banche Centrali','🏦'],commodities:['Commodities','🛢️'],fx:['Forex','💱'],volatility:['Volatilità','📊'],geopolitics:['Geopolitica','🌐'],social:['Social / Sentiment','💬'],company:['Società / Earnings','🏢']};
-  const groups=CONTRACT.GROUPS.map(k=>[k,...(LABELS[k]||[k,'📰'])]);
-
-  function article(x){
-    const href=x.url||x.link||'';
-    const title=esc(x.title||x.headline||'Articolo senza titolo');
-    const source=esc(x.source||x.feed||x.publisher||'Fonte');
-    const score=Number(x.score||0);
-    const tone=score>0?'POSITIVO':score<0?'NEGATIVO':'NEUTRALE';
-    const body=`<span class="v1-article-title">${title}</span><span class="v1-article-meta">${source} · ${tone}</span>`;
-    return href?`<a class="v1-article" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${body}</a>`:`<div class="v1-article">${body}</div>`;
-  }
 
   function regimeLabel(ai){
     const raw=String(ai?.bias||ai?.regime||'').toLowerCase();
@@ -134,24 +121,16 @@
 
   function render(data){
     const scan=data.scan||{};
-    const sources=scan.sources||[];
     const summary=scan.summary||{};
     const root=document.getElementById('results');
     if(!root)return;
-    const buckets=scan.categories&&typeof scan.categories==='object'?scan.categories:CONTRACT.normalize(scan).categories;
-    const sourceHtml=groups.map(([k,label,icon])=>{
-      const a=Array.isArray(buckets[k])?buckets[k]:[];
-      const uniqueSources=[...new Set(a.map(x=>x.source||x.feed||x.publisher).filter(Boolean))];
-      const count=a.length;
-      const articles=a.slice(0,MAX_PER_CATEGORY).map(article).join('')||`<div class="v1-empty">Nessuna notizia ricevuta in questa categoria.</div>`;
-      const meta=`${count} ${count===1?'notizia':'notizie'}${uniqueSources.length?` · ${uniqueSources.length} ${uniqueSources.length===1?'fonte':'fonti'}`:''}`;
-      return `<details class="v1-category" ${k==='news'||k==='finance'?'open':''}><summary>${icon} ${label}<span>${count}</span><small>${meta}</small></summary><div>${articles}</div></details>`;
-    }).join('');
-    const okSources=sources.filter(x=>x.status==='ok').length;
-    root.innerHTML=`<section class="v1-card v1-market-card"><div class="v1-card-head"><div><b>MARKET SENTIMENT</b><small>Analisi AI integrata di news, market data e sentiment globale</small></div><div><button type="button" class="v1-news-search-btn" onclick="window.ML.manualNewsSearch(this)">🔎 Cerca notizie</button></div></div><div id="v1-market-content" class="v1-market-content"><div class="v1-ai-loading">Preparazione del quadro AI…</div></div></section><section class="v1-card v1-indices-card"><details class="v1-section" open><summary>📈 INDICI DI BORSA <b>${(data.market?.indices||[]).filter(x=>x.ok).length} strumenti</b></summary><div class="v1-index-universe">${renderIndices(data.market)}</div></details></section><section class="v1-card"><details class="v1-section" open><summary>📚 FONTI RICEVUTE <b>${okSources} OK · ${sources.length} fonti</b></summary><div class="v1-source-groups">${sourceHtml}</div></details></section>`;
+
+    root.innerHTML=`<section class="v1-card v1-market-card"><div class="v1-card-head"><div><b>MARKET SENTIMENT</b><small>Analisi AI integrata di news, market data e sentiment globale</small></div><div><button type="button" class="v1-news-search-btn" onclick="window.ML.manualNewsSearch(this)">🔎 Cerca notizie</button></div></div><div id="v1-market-content" class="v1-market-content"><div class="v1-ai-loading">Preparazione del quadro AI…</div></div></section><section class="v1-card v1-indices-card"><details class="v1-section" open><summary>📈 INDICI DI BORSA <b>${(data.market?.indices||[]).filter(x=>x.ok).length} strumenti</b></summary><div class="v1-index-universe">${renderIndices(data.market)}</div></details></section>`;
+
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v??'—'};
     set('hNews',summary.news);set('hSocial',summary.social);set('hStrong',summary.strong);set('hTime',new Date().toLocaleTimeString('it-IT'));
     renderAI().catch(e=>console.warn('Market Sentiment render:',e.message));
   }
+
   window.ML.on('state',state=>render(state));
 })();
