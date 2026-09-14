@@ -1,7 +1,7 @@
 /* Miracolo Lab — Top tab navigation */
 (()=>{
   'use strict';
-  const PANELS=['radar','investimenti','bot','learning','blackswan','settings'];
+  const PANELS=['radar','investimenti','bot','strategy','learning','blackswan','settings'];
   const originalSetPanel=window.setPanel;
   function activate(id){
     if(!PANELS.includes(id)) id='radar';
@@ -19,6 +19,10 @@
       tab.classList.toggle('active',active);
       tab.setAttribute('aria-selected',active?'true':'false');
     });
+    if(id==='strategy'){
+      window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
+      return;
+    }
     if(typeof originalSetPanel==='function') originalSetPanel(id);
     window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
   }
