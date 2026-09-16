@@ -1,8 +1,7 @@
-/* Miracolo Lab — compact Strategy Lab methodology controls v2.0 */
-/* The engine still creates its detailed section buttons; the UI layer intentionally replaces them with one disclosure. */
-.sl2-submenu{display:none!important;height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
+/* Miracolo Lab — Strategy Lab compact methodology UI v4.0 */
+.sl2-submenu,.sl2-subtab{display:none!important;height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
 .ml-method-wrap{display:block;margin:9px 0 8px;width:100%;box-sizing:border-box}
-.ml-method-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 9px;border:1px solid rgba(127,127,127,.22);border-radius:7px;background:rgba(127,127,127,.05);color:inherit;font:inherit;font-size:10px;font-weight:600;line-height:1.2;text-align:left;cursor:pointer;opacity:.78}
+.ml-method-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 9px;border:1px solid rgba(127,127,127,.22);border-radius:7px;background:rgba(127,127,127,.05);color:inherit;font:inherit;font-size:10px;font-weight:600;line-height:1.2;text-align:left;cursor:pointer;opacity:.82}
 .ml-method-toggle:hover,.ml-method-wrap.is-open .ml-method-toggle{opacity:1;background:rgba(127,127,127,.09)}
 .ml-method-chevron{font-size:12px;line-height:1;transition:transform .15s ease;opacity:.6}
 .ml-method-wrap.is-open .ml-method-chevron{transform:rotate(180deg)}
