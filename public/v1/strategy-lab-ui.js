@@ -1,63 +1,33 @@
-/* Miracolo Lab — Strategy Lab UI refinement
- * Keeps methodology visible without wasting vertical space on inactive section buttons.
+/* Miracolo Lab — Strategy Lab UI refinement v1.1
+ * Keep methodology visible in one compact disclosure instead of many inactive buttons.
  */
 (()=>{
   'use strict';
 
-  const METHODS={
-    Jesse:{label:'Come analizza i dati',items:[
-      'Market Structure','Trend Analysis','Momentum','RSI','MACD','EMA / SMA','Bollinger Bands',
-      'Support & Resistance','Breakout Detection','Volume Analysis','Volatility','Multi-Timeframe',
-      'Signal','Confidence','Historical Comparison','Strategy Performance'
-    ]},
-    WolfBot:{label:'Come analizza i dati',items:[
-      'Trend','Momentum','RSI / MACD','Moving Averages','Bollinger Bands','Breakout','Volume',
-      'Volatility','Support / Resistance','Signal','Risk / Reward','Confidence','Performance'
-    ]},
-    'Multi-Agent':{label:'Ruoli degli agenti',items:[
-      'Bull Agent','Bear Agent','Trader Agent','Risk Agent','Evidence','Debate','Consensus','Confidence','Risk Flags'
-    ]},
-    Historical:{label:'Come analizza i dati',items:[
-      'Data Quality','Analogues','Market Regimes','Similar Events','Outcome Distribution','Time Horizons','Reliability','Limitations'
-    ]},
-    Backtest:{label:'Cosa viene verificato',items:[
-      'Returns','Trades','Win Rate','Drawdown','Profit Factor','Benchmark','Risk Adjusted','Robustness','Limitations'
-    ]},
-    Learning:{label:'Cosa monitora',items:[
-      'Accuracy','Signal Quality','Strategy Performance','Error Analysis','Recent Outcomes','Drift','Reliability','Improvements','Limits'
-    ]}
+  const LABELS={
+    'Multi-Agent':'Ruoli degli agenti',
+    Backtest:'Cosa viene verificato',
+    Learning:'Cosa monitora',
+    Jesse:'Come analizza i dati',
+    WolfBot:'Come analizza i dati',
+    Historical:'Come analizza i dati'
   };
 
-  const LEGACY=new Set(['Overview',...Object.values(METHODS).flatMap(x=>x.items)]);
-  const norm=s=>String(s||'').replace(/\s+/g,' ').trim();
-  const exact=(root,text)=>Array.from(root.querySelectorAll('*')).filter(el=>norm(el.textContent)===text);
+  function compactSubmenu(content){
+    if(!content) return;
+    const submenu=content.querySelector('.sl2-submenu');
+    if(!submenu || submenu.dataset.compact==='1') return;
 
-  function moduleBox(name){
-    const title=exact(document,name)[0];
-    if(!title) return null;
-    let el=title;
-    for(let i=0;i<7&&el;i++,el=el.parentElement){
-      const count=Array.from(el.querySelectorAll('*')).filter(x=>LEGACY.has(norm(x.textContent))).length;
-      if(count>=2) return el;
-    }
-    return null;
-  }
+    const items=[...submenu.querySelectorAll('.sl2-subtab')]
+      .map(x=>x.textContent.trim())
+      .filter(Boolean);
+    if(!items.length) return;
 
-  function render(name,box){
-    if(!box || box.querySelector(':scope > .ml-method-toggle')) return;
-    const cfg=METHODS[name];
-    if(!cfg) return;
+    submenu.dataset.compact='1';
+    submenu.style.display='none';
 
-    const nodes=[];
-    for(const item of cfg.items){
-      exact(box,item).forEach(el=>{
-        if(!nodes.includes(el)) nodes.push(el);
-      });
-    }
-    exact(box,'Overview').forEach(el=>{if(!nodes.includes(el))nodes.push(el)});
-    if(!nodes.length) return;
-
-    nodes.forEach(el=>el.classList.add('ml-legacy-section-hidden'));
+    const title=(content.querySelector('.sl2-title')?.textContent||'').replace(/^\S+\s*/,'').trim();
+    const label=LABELS[title]||'Metodo di analisi';
 
     const wrap=document.createElement('div');
     wrap.className='ml-method-wrap';
@@ -66,12 +36,12 @@
     button.type='button';
     button.className='ml-method-toggle';
     button.setAttribute('aria-expanded','false');
-    button.innerHTML=`<span>${cfg.label}</span><span class="ml-method-chevron">⌄</span>`;
+    button.innerHTML=`<span>${label}</span><span class="ml-method-chevron">⌄</span>`;
 
     const panel=document.createElement('div');
     panel.className='ml-method-panel';
     panel.hidden=true;
-    panel.innerHTML=cfg.items.map(x=>`<span class="ml-method-item">${x}</span>`).join('');
+    panel.innerHTML=items.map(x=>`<span class="ml-method-item">${escapeHtml(x)}</span>`).join('');
 
     button.addEventListener('click',()=>{
       const open=button.getAttribute('aria-expanded')==='true';
@@ -81,27 +51,32 @@
     });
 
     wrap.append(button,panel);
-    const first=nodes.slice().sort((a,b)=>{
-      const p=a.compareDocumentPosition(b);
-      return p&Node.DOCUMENT_POSITION_FOLLOWING?-1:1;
-    })[0];
-    first.parentNode.insertBefore(wrap,first);
+    const actions=content.querySelector('.sl2-actions');
+    content.insertBefore(wrap,actions||null);
+  }
+
+  function escapeHtml(value){
+    return String(value).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
   function scan(){
-    Object.keys(METHODS).forEach(name=>render(name,moduleBox(name)));
+    document.querySelectorAll('.sl2-content').forEach(compactSubmenu);
   }
 
   let timer;
   const observer=new MutationObserver(()=>{
     clearTimeout(timer);
-    timer=setTimeout(scan,80);
+    timer=setTimeout(scan,40);
   });
 
-  document.addEventListener('DOMContentLoaded',()=>{
+  function boot(){
     scan();
     observer.observe(document.body,{childList:true,subtree:true});
-    setTimeout(scan,250);
-    setTimeout(scan,1000);
-  });
+    setTimeout(scan,100);
+    setTimeout(scan,500);
+    setTimeout(scan,1500);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
 })();
