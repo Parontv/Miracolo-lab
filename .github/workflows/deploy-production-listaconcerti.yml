@@ -1,0 +1,45 @@
+name: Deploy Production Listaconcerti
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'public/**'
+      - 'ai-worker.js'
+      - 'worker.js'
+      - 'wrangler.toml'
+      - '.github/workflows/deploy-production-listaconcerti.yml'
+  workflow_dispatch:
+concurrency:
+  group: listaconcerti-production-deploy
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Wrangler
+        run: npm install --no-save wrangler@4
+      - name: Deploy production Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
+        run: npx wrangler@4 deploy --name listaconcerti
+      - name: Verify production Strategy Lab UI
+        run: |
+          python - <<'PY'
+          import urllib.request,sys,time
+          base='https://listaconcerti.workers.dev'
+          html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+str(time.time_ns()),headers={'Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
+          required=['strategy-lab-ui.css?v=3.0.0','strategy-lab-ui.js?v=3.0.0','sl2-submenu{display:none!important','ml-method-toggle']
+          for marker in required:
+              if marker not in html: sys.exit('Production UI missing marker: '+marker)
+          css=urllib.request.urlopen(urllib.request.Request(base+'/v1/strategy-lab-ui.css?v=3.0.0',headers={'Cache-Control':'no-cache'}),timeout=30).read().decode('utf-8','replace')
+          if '.sl2-submenu{display:none!important' not in css: sys.exit('Production CSS does not contain hard submenu hide')
+          js=urllib.request.urlopen(urllib.request.Request(base+'/v1/strategy-lab-ui.js?v=3.0.0',headers={'Cache-Control':'no-cache'}),timeout=30).read().decode('utf-8','replace')
+          if 'ml-method-toggle' not in js: sys.exit('Production Strategy Lab UI script is not the compact version')
+          print('PRODUCTION LISTACONCERTI UI: PASS')
+          print('COMPACT STRATEGY LAB: PASS')
+          PY
