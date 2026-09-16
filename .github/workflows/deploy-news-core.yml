@@ -85,9 +85,10 @@ jobs:
           for name,obj in [('institutional',raw.get('institutionalData') or {}),('social',raw.get('socialData') or {}),('onchain',raw.get('onchainData') or {})]:
               if not isinstance(obj,dict) or obj.get('adapter')!=name: sys.exit(name+' adapter provenance missing')
           nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/4.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.4.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.0.0','Strategy Lab'),('Miracolo Lab','header'),('v2.0','version')]:
+          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.4.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.2.0','Strategy Lab 2.2'),('Miracolo Lab','header'),('v2.2','version')]:
               if marker not in html: sys.exit('Deployed UI missing '+msg)
-          print('DEPLOYED MARKET PAYLOAD: >=50 PASS'); print('DEPLOYED UI ENTRYPOINTS: PASS'); print('DEPLOYED STRATEGY LAB: PASS'); print('DEPLOYED 2.0 HEADER: PASS')
+          if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
+          print('DEPLOYED MARKET PAYLOAD: >=50 PASS'); print('DEPLOYED UI ENTRYPOINTS: PASS'); print('DEPLOYED STRATEGY LAB 2.2: PASS'); print('LEGACY STRATEGY SUBMENU: ABSENT'); print('DEPLOYED 2.2 HEADER: PASS')
           PY
       - name: Verify News Core after deployment
         run: |
