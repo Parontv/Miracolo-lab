@@ -9,7 +9,7 @@
 (()=>{'use strict';
 const ROOT='ml_portfolio_v7',EK=ROOT+'.etf',CK=ROOT+'.crypto',HK=ROOT+'.history';
 const LEGACY_ETF='ml_portfolio_v6.etf',LEGACY_CRYPTO='ml_portfolio_v6.crypto',LEGACY_HISTORY='ml_portfolio_v6.history';
-const ETF_CATALOG={GOLD:{name:'Amundi Physical Gold ETC',isin:'FR0013416716',ticker:'SGLD.MI',currency:'EUR'},SWDA:{name:'iShares Core MSCI World UCITS ETF',isin:'IE00B4L5Y983',ticker:'SWDA.MI',currency:'EUR'},XMME:{name:'Xtrackers MSCI Emerging Markets UCITS ETF',isin:'IE00BTJRMP35',ticker:'XMME.MI',currency:'EUR'}};
+const ETF_CATALOG={GOLD:{name:'Amundi Physical Gold ETC',isin:'FR0013416716',ticker:'AGOLD.MI',currency:'EUR'},SWDA:{name:'iShares Core MSCI World UCITS ETF',isin:'IE00B4L5Y983',ticker:'SWDA.MI',currency:'EUR'},XMME:{name:'Xtrackers MSCI Emerging Markets UCITS ETF',isin:'IE00BTJRMP35',ticker:'XMME.MI',currency:'EUR'}};
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const num=v=>{if(typeof v==='number')return Number.isFinite(v)&&v>=0?v:0;let s=String(v??'').trim().replace(/€/g,'').replace(/\s/g,'');if(!s)return 0;const comma=s.lastIndexOf(','),dot=s.lastIndexOf('.');if(comma>=0&&dot>=0)s=comma>dot?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');else if(comma>=0)s=s.replace(',','.');else if((s.match(/\./g)||[]).length>1)s=s.replace(/\./g,'');const x=Number(s);return Number.isFinite(x)&&x>=0?x:0};
 const eur=v=>(Number(v)||0).toLocaleString('it-IT',{style:'currency',currency:'EUR',maximumFractionDigits:2});
