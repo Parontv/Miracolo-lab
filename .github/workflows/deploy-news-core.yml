@@ -66,7 +66,7 @@ jobs:
         run: |
           python - <<'PY'
           import json,urllib.request,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev'; expected='ML-20260910-DATA-EXPANSION-V1'
+          base='https://miracolo-lab.listaconcerti.workers.dev'; expected='ML-20260909-V22-CUMULATIVE-SENTIMENT'
           def get(path):
               nonce=str(time.time_ns()); return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/8.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=60))
           version=None
