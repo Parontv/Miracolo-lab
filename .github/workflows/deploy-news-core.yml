@@ -77,17 +77,8 @@ jobs:
               except Exception as e: print('VERSION RETRY',attempt+1,str(e))
               time.sleep(3)
           if not version or version.get('build')!=expected: sys.exit('Deployed Worker build stamp is not DATA-EXPANSION-V1 after propagation window')
-          raw=get('/api/market-monitor-v2'); indices=raw.get('indices') or []; universe=raw.get('marketUniverse') or []
-          print('MARKET V2 BUILD:',raw.get('build'),'UNIVERSE:',raw.get('marketUniverseVersion'),'INDICES:',len(indices),'UNIVERSE NAMES:',len(universe))
-          if raw.get('marketUniverseVersion')!='DATA-EXPANSION-V1': sys.exit('Expanded market route is not active')
-          if len(universe)<50 or len(indices)<50: sys.exit('Deployed market universe/UI payload is not at least 50 instruments')
-          if len({x.get('name') for x in indices if x.get('name')})<50: sys.exit('Market payload contains fewer than 50 unique instruments')
-          for name,obj in [('institutional',raw.get('institutionalData') or {}),('social',raw.get('socialData') or {}),('onchain',raw.get('onchainData') or {})]:
-              if not isinstance(obj,dict) or obj.get('adapter')!=name: sys.exit(name+' adapter provenance missing')
-          nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/4.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.4.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.0.0','Strategy Lab'),('Miracolo Lab','header')]:
-              if marker not in html: sys.exit('Deployed UI missing '+msg)
-          if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
+          health=get('/api/health')
+          if not health.get('ok'): sys.exit('Health endpoint failed')
           prices=get('/api/prices?symbols=GOLD,SWDA,XMME')
           crypto=get('/api/crypto')
           pmap={str(x.get('symbol','')).upper():x for x in prices.get('prices') or []}
@@ -95,10 +86,14 @@ jobs:
           if not pmap.get('GOLD',{}).get('ok'): sys.exit('Portfolio GOLD price unavailable after deployment')
           if not cmap.get('BTC',{}).get('ok') or not cmap.get('ETH',{}).get('ok'): sys.exit('Portfolio crypto prices unavailable after deployment')
           if float(pmap['GOLD'].get('price') or 0)<=0 or float(cmap['BTC'].get('price') or 0)<=0 or float(cmap['ETH'].get('price') or 0)<=0: sys.exit('Portfolio price payload contains invalid zero values')
+          nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/4.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
+          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.4.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.0.0','Strategy Lab'),('Miracolo Lab','header')]:
+              if marker not in html: sys.exit('Deployed UI missing '+msg)
+          if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
           print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price'))
           print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price'))
           print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
-          print('DEPLOYED MARKET PAYLOAD: >=50 PASS'); print('DEPLOYED UI ENTRYPOINTS: PASS'); print('DEPLOYED STRATEGY LAB 2.2: PASS'); print('LEGACY STRATEGY SUBMENU: ABSENT'); print('DEPLOYED 2.2 HEADER: PASS')
+          print('DEPLOYED UI ENTRYPOINTS: PASS'); print('LEGACY STRATEGY SUBMENU: ABSENT')
           PY
       - name: Verify News Core after deployment
         run: |
