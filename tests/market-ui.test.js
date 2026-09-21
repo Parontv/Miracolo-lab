@@ -25,7 +25,8 @@ assert.match(css,/\.market-chart/);
 // Investimenti charts must remain isolated from Market and use recorded portfolio history.
 assert.match(html,/investment-charts\.js\?v=1\.0\.1/);
 assert.match(html,/investment-charts\.css\?v=1\.0.1/);
-assert.match(investments,/const ROOT='ml_portfolio_v7'/);\nassert.match(investments,/HK=ROOT\+'\.history'/);
+assert.match(investments,/const ROOT='ml_portfolio_v7'/);
+assert.match(investments,/HK=ROOT\+'\.history'/);
 assert.match(investments,/positions:t\.rows\.map/);
 assert.match(investmentCharts,/Grafici investimenti/);
 assert.match(investmentCharts,/ml_portfolio_v7\.history/);
