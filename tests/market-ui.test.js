@@ -28,7 +28,7 @@ assert.match(html,/strategy-lab\.js\?v=2\.3\.0/);
 assert.match(strategy,/id:'learning'/);
 assert.match(strategy,/id:'memory'/);
 assert.match(strategy,/id:'jesse'/);
-assert.match(strategy,/id:'wolf'/);
+assert.match(strategy,/id:'technical'/);
 assert.match(strategy,/id:'multi'/);
 assert.match(strategy,/id:'historical'/);
 assert.match(strategy,/id:'backtest'/);
