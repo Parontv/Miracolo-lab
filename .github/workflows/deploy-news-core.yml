@@ -35,6 +35,8 @@ jobs:
         run: python scripts/patch-news-live.py
       - name: Patch dashboard market rendering
         run: python scripts/patch-dashboard-indices.py
+      - name: Reapply Market chart route after final Worker generation
+        run: python scripts/patch-market-chart.py
       - name: Restore static ASSETS route after generated Worker patches
         run: |
           python - <<'PY'
