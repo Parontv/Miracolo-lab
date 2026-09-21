@@ -55,7 +55,7 @@ jobs:
             if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
           if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing final DATA-EXPANSION-V1 build stamp')
           if "positions:t.rows.map" not in Path('public/v1/investments.js').read_text(): raise SystemExit('Missing per-position investment history')
-          if "investment-charts.js?v=1.0.0" not in Path('public/index.html').read_text(): raise SystemExit('Missing investment charts UI')
+          if "investment-charts.js?v=1.0.1" not in Path('public/index.html').read_text(): raise SystemExit('Missing investment charts UI')
           if "async function chartData(symbol,period='5d')" not in s or "/api/chart" not in s: raise SystemExit('Missing Market chart endpoint')
           if "api.exchange.coinbase.com/products/BTC-EUR/ticker" not in s or "api.exchange.coinbase.com/products/ETH-EUR/ticker" not in s: raise SystemExit('Missing crypto fallback')
           if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s): raise SystemExit('News feed retry loop exceeds free-plan budget')
