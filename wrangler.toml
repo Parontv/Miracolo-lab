@@ -16,3 +16,7 @@ binding = "ML_KV"
 
 
 # Permanent historical memory: market photographs, AI analysis and daily news archives.
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
