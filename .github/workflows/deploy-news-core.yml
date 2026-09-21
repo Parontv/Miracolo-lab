@@ -29,6 +29,8 @@ jobs:
         run: python scripts/patch-free-budget.py
       - name: Add Market chart endpoint
         run: python scripts/patch-market-chart.py
+      - name: Harden crypto price fallbacks
+        run: python scripts/patch-crypto-reliability.py
       - name: Stabilize News Core live endpoint
         run: python scripts/patch-news-live.py
       - name: Patch dashboard market rendering
@@ -51,6 +53,7 @@ jobs:
             if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
           if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing final DATA-EXPANSION-V1 build stamp')
           if "async function chartData(symbol,period='5d')" not in s or "/api/chart" not in s: raise SystemExit('Missing Market chart endpoint')
+          if "api.exchange.coinbase.com/products/BTC-EUR/ticker" not in s or "api.exchange.coinbase.com/products/ETH-EUR/ticker" not in s: raise SystemExit('Missing crypto fallback')
           if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s): raise SystemExit('News feed retry loop exceeds free-plan budget')
           if ".filter(x=>x.ok)" in ui: raise SystemExit('Dashboard contains an ok-only market filter')
           if "function extractNews(payload)" not in data or "const candidates=[payload.news,payload.scan,payload.snapshot,payload.data,payload]" not in data: raise SystemExit('News feed snapshot adapter hardening missing')
@@ -99,7 +102,7 @@ jobs:
           print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price'))
           print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price'))
           print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
-          chart=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/chart?symbol=%5EGSPC&period=5d',headers=h),timeout=30))
+          chart=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/chart?symbol=%5EGSPC&period=5d',headers={'User-Agent':'MiracoloLab-Chart-Verification/1.0','Cache-Control':'no-cache'}),timeout=30))
           if not chart.get('ok') or len(chart.get('candles') or [])<2: sys.exit('Market chart endpoint failed')
           print('MARKET CHART API: PASS',len(chart.get('candles') or []),'candles')
           print('DEPLOYED UI ENTRYPOINTS: PASS'); print('LEGACY STRATEGY SUBMENU: ABSENT')
