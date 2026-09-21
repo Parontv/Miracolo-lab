@@ -42,7 +42,7 @@ jobs:
           p=Path('worker.js')
           s=p.read_text()
           old="}}return new Response('Not found',{status:404})}};"
-          new="}}if(env.ASSETS)return env.ASSETS.fetch(req);return new Response('Not found',{status:404})}};"
+          new="}}if(u.pathname==='/'&&env.ASSETS)return env.ASSETS.fetch(new Request(new URL('/index.html',req.url),req));if(env.ASSETS)return env.ASSETS.fetch(req);return new Response('Not found',{status:404})}};"
           if old not in s and "if(env.ASSETS)return env.ASSETS.fetch(req)" not in s:
               raise SystemExit('Generated Worker route tail not found')
           if old in s:
