@@ -33,7 +33,8 @@ if "async function chartData(symbol,period='5d')" not in s:
     s=s.replace(marker,chart_fn+marker,1)
 
 route="if(u.pathname==='/api/chart'){if(!(await rateLimit(req,env,'chart',30)))return json({ok:false,error:'Rate limit exceeded'},429);const symbol=(u.searchParams.get('symbol')||'').trim();const period=(u.searchParams.get('period')||'5d').trim();if(!symbol||!/^[A-Za-z0-9_^.=\\-]{1,30}$/.test(symbol))return json({ok:false,error:'Invalid symbol'},400);return json(await chartData(symbol,period))}"
-if "/api/chart" not in s:
+route_marker="if(u.pathname==='/api/chart')"
+if route_marker not in s:
     anchor="if(u.pathname==='/api/universe')"
     if anchor not in s:
         raise SystemExit("chart patch: universe route anchor not found")
