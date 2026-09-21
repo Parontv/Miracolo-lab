@@ -1,13 +1,12 @@
 from pathlib import Path
-import re
 
 p=Path('worker.js')
 s=p.read_text()
-start=s.find('async function cryptoQuotes(){')
-end=s.find('async function universe',start)
-if start<0 or end<0:
-    raise SystemExit('crypto function boundaries not found')
-new=r'''async function cryptoQuotes(){
+if 'async function cryptoQuotes()' not in s:
+    marker='async function universe'
+    if marker not in s:
+        raise SystemExit('crypto patch: universe marker not found')
+    helper=r'''async function cryptoQuotes(){
   const out=[];
   const add=(symbol,price,change24h,source)=>{
     price=Number(price||0);
@@ -65,6 +64,6 @@ new=r'''async function cryptoQuotes(){
   return{timestamp:new Date().toISOString(),crypto:out};
 }
 '''
-s=s[:start]+new+s[end:]
+    s=s.replace(marker,helper+marker,1)
 p.write_text(s)
 print('Crypto reliability patch: PASS')
