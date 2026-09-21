@@ -23,6 +23,19 @@ assert.match(market,/LineSeries/);
 assert.match(css,/\.market-chart/);
 
 // Investimenti charts must remain isolated from Market and use recorded portfolio history.
+const strategy=fs.readFileSync('public/v1/strategy-lab.js','utf8');
+assert.match(html,/strategy-lab\.js\?v=2\.3\.0/);
+assert.match(strategy,/id:'learning'/);
+assert.match(strategy,/id:'memory'/);
+assert.match(strategy,/id:'jesse'/);
+assert.match(strategy,/id:'wolf'/);
+assert.match(strategy,/id:'multi'/);
+assert.match(strategy,/id:'historical'/);
+assert.match(strategy,/id:'backtest'/);
+assert.match(strategy,/Accuracy/);
+assert.match(strategy,/Error Analysis/);
+assert.match(strategy,/Recent Outcomes/);
+assert.match(strategy,/data-section/);
 assert.match(html,/investment-charts\.js\?v=1\.0\.1/);
 assert.match(html,/investment-charts\.css\?v=1\.0.1/);
 assert.match(investments,/const ROOT='ml_portfolio_v7'/);
