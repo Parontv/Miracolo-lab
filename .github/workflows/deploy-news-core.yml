@@ -41,6 +41,8 @@ jobs:
           node --check public/v1/dashboard.js
           node --check public/v1/news-feed-bridge.js
           node --check public/v1/market.js
+          node --check public/v1/investments.js
+          node --check public/v1/investment-charts.js
           node tests/news-contract.test.js
           node tests/market-ui.test.js
           python - <<'PY'
@@ -52,6 +54,8 @@ jobs:
           for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","SOURCE_EXPANSION_V1","CFTC General","SEC Latest 8-K","SNB Official","BoE Official","OPEC Official","IMF Official","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","marketUniverse:Object.keys(MARKET)","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY","const RL_MEM=new Map"]:
             if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
           if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing final DATA-EXPANSION-V1 build stamp')
+          if "positions:t.rows.map" not in Path('public/v1/investments.js').read_text(): raise SystemExit('Missing per-position investment history')
+          if "investment-charts.js?v=1.0.0" not in Path('public/index.html').read_text(): raise SystemExit('Missing investment charts UI')
           if "async function chartData(symbol,period='5d')" not in s or "/api/chart" not in s: raise SystemExit('Missing Market chart endpoint')
           if "api.exchange.coinbase.com/products/BTC-EUR/ticker" not in s or "api.exchange.coinbase.com/products/ETH-EUR/ticker" not in s: raise SystemExit('Missing crypto fallback')
           if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s): raise SystemExit('News feed retry loop exceeds free-plan budget')
@@ -96,7 +100,7 @@ jobs:
           if not cmap.get('BTC',{}).get('ok') or not cmap.get('ETH',{}).get('ok'): sys.exit('Portfolio crypto prices unavailable after deployment')
           if float(pmap['GOLD'].get('price') or 0)<=0 or float(cmap['BTC'].get('price') or 0)<=0 or float(cmap['ETH'].get('price') or 0)<=0: sys.exit('Portfolio price payload contains invalid zero values')
           nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/4.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.4.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.0.0','Strategy Lab'),('market.js?v=1.0.0','Market tab'),('lightweight-charts@5.2.1','Lightweight Charts'),('Miracolo Lab','header')]:
+          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.4.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.0.0','Strategy Lab'),('market.js?v=1.0.0','Market tab'),('investment-charts.js?v=1.0.0','Investment charts'),('lightweight-charts@5.2.1','Lightweight Charts'),('Miracolo Lab','header')]:
               if marker not in html: sys.exit('Deployed UI missing '+msg)
           if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
           print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price'))
