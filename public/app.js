@@ -133,7 +133,7 @@ class LearningBot {
     // Execute buy
     const qty = s.amount / s.price;
     this.cash -= s.amount;
-    this.positions[s.sym] = { qty, entryPrice: s.price, invested: s.amount, sugId: id };
+    this.positions[s.sym] = { qty, entryPrice: s.price, invested: s.amount, sugId: id, openedAt: new Date().toISOString() };
     const trade = { type: 'BUY', sym: s.sym, price: s.price, amount: s.amount, reason: s.reason, time: new Date().toISOString() };
     this.trades.unshift(trade); if (this.trades.length > 50) this.trades.pop();
     this.accuracy.approved++;
