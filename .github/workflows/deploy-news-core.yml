@@ -43,6 +43,7 @@ jobs:
           node --check public/v1/market.js
           node --check public/v1/investments.js
           node --check public/v1/investment-charts.js
+          node --check ai-worker.js
           node tests/news-contract.test.js
           node tests/market-ui.test.js
           python - <<'PY'
@@ -54,6 +55,9 @@ jobs:
           for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","SOURCE_EXPANSION_V1","CFTC General","SEC Latest 8-K","SNB Official","BoE Official","OPEC Official","IMF Official","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","marketUniverse:Object.keys(MARKET)","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY","const RL_MEM=new Map"]:
             if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
           if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing final DATA-EXPANSION-V1 build stamp')
+          ai=Path('ai-worker.js').read_text()
+          for marker in ["ML-MEMORY-V1","MEMORY_INTERVAL_MINUTES=15","archiveMemory","/api/memory/recent","/api/memory/snapshot"]:
+              if marker not in ai: raise SystemExit('Missing historical memory marker: '+marker)
           if "positions:t.rows.map" not in Path('public/v1/investments.js').read_text(): raise SystemExit('Missing per-position investment history')
           if "investment-charts.js?v=1.0.1" not in Path('public/index.html').read_text(): raise SystemExit('Missing investment charts UI')
           if "async function chartData(symbol,period='5d')" not in s or "/api/chart" not in s: raise SystemExit('Missing Market chart endpoint')
@@ -66,10 +70,18 @@ jobs:
           if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
           kv_writes_day=288*3
           if kv_writes_day>1000: raise SystemExit('Free KV write budget exceeded')
-          print('WORKER SYNTAX: PASS'); print('DASHBOARD MARKET FILTER GUARD: PASS'); print('NEWS FEED ADAPTER: PASS'); print('NEWS FEED SUBMENUS: PASS'); print('SOURCE EXPANSION: PASS'); print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget); print('FREE KV WRITE BUDGET: PASS',kv_writes_day)
+          print('WORKER SYNTAX: PASS'); print('DASHBOARD MARKET FILTER GUARD: PASS'); print('NEWS FEED ADAPTER: PASS'); print('NEWS FEED SUBMENUS: PASS'); print('SOURCE EXPANSION: PASS'); print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget); print('FREE KV WRITE BUDGET: PASS',kv_writes_day); print('HISTORICAL MEMORY ARCHIVE: PASS')
           PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
+      - name: Ensure historical memory bucket exists
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
+        run: |
+          if ! npx wrangler@4 r2 bucket list | grep -q 'miracolo-lab-memory'; then
+            npx wrangler@4 r2 bucket create miracolo-lab-memory
+          fi
       - name: Deploy Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -106,6 +118,9 @@ jobs:
           print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price'))
           print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price'))
           print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
+          mem=get('/api/memory/recent')
+          if not mem.get('ok'): sys.exit('Historical memory endpoint failed')
+          print('MEMORY API: PASS',mem.get('date'),mem.get('count'))
           chart=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/chart?symbol=%5EGSPC&period=5d',headers={'User-Agent':'MiracoloLab-Chart-Verification/1.0','Cache-Control':'no-cache'}),timeout=30))
           if not chart.get('ok') or len(chart.get('candles') or [])<2: sys.exit('Market chart endpoint failed')
           print('MARKET CHART API: PASS',len(chart.get('candles') or []),'candles')
