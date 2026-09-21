@@ -35,6 +35,21 @@ jobs:
         run: python scripts/patch-news-live.py
       - name: Patch dashboard market rendering
         run: python scripts/patch-dashboard-indices.py
+      - name: Restore static ASSETS route after generated Worker patches
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('worker.js')
+          s=p.read_text()
+          old="}}return new Response('Not found',{status:404})}};"
+          new="}}if(env.ASSETS)return env.ASSETS.fetch(req);return new Response('Not found',{status:404})}};"
+          if old not in s and "if(env.ASSETS)return env.ASSETS.fetch(req)" not in s:
+              raise SystemExit('Generated Worker route tail not found')
+          if old in s:
+              s=s.replace(old,new)
+              p.write_text(s)
+          print('STATIC ASSETS ROUTE: PASS')
+          PY
       - name: Validate generated Worker and dashboard before deploy
         run: |
           node --check worker.js
