@@ -27,6 +27,8 @@ jobs:
         run: python scripts/patch-onchain-data.py
       - name: Enforce Workers Free data budget
         run: python scripts/patch-free-budget.py
+      - name: Add Market chart endpoint
+        run: python scripts/patch-market-chart.py
       - name: Stabilize News Core live endpoint
         run: python scripts/patch-news-live.py
       - name: Patch dashboard market rendering
@@ -45,6 +47,7 @@ jobs:
           for marker in ["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","SOURCE_EXPANSION_V1","CFTC General","SEC Latest 8-K","SNB Official","BoE Official","OPEC Official","IMF Official","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","marketUniverse:Object.keys(MARKET)","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY","const RL_MEM=new Map"]:
             if marker not in s: raise SystemExit('Missing generated worker marker: '+marker)
           if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing final DATA-EXPANSION-V1 build stamp')
+          if "async function chartData(symbol,period='5d')" not in s or "/api/chart" not in s: raise SystemExit('Missing Market chart endpoint')
           if re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s): raise SystemExit('News feed retry loop exceeds free-plan budget')
           if ".filter(x=>x.ok)" in ui: raise SystemExit('Dashboard contains an ok-only market filter')
           if "function extractNews(payload)" not in data or "const candidates=[payload.news,payload.scan,payload.snapshot,payload.data,payload]" not in data: raise SystemExit('News feed snapshot adapter hardening missing')
@@ -66,7 +69,7 @@ jobs:
         run: |
           python - <<'PY'
           import json,urllib.request,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev'; expected='ML-20260909-V22-CUMULATIVE-SENTIMENT'
+          base='https://miracolo-lab.listaconcerti.workers.dev'; expected='ML-20260910-DATA-EXPANSION-V1'
           def get(path):
               nonce=str(time.time_ns()); return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/8.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=60))
           version=None
@@ -87,12 +90,15 @@ jobs:
           if not cmap.get('BTC',{}).get('ok') or not cmap.get('ETH',{}).get('ok'): sys.exit('Portfolio crypto prices unavailable after deployment')
           if float(pmap['GOLD'].get('price') or 0)<=0 or float(cmap['BTC'].get('price') or 0)<=0 or float(cmap['ETH'].get('price') or 0)<=0: sys.exit('Portfolio price payload contains invalid zero values')
           nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/4.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.4.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.0.0','Strategy Lab'),('Miracolo Lab','header')]:
+          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.4.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.0.0','Strategy Lab'),('market.js?v=1.0.0','Market tab'),('lightweight-charts@5.2.1','Lightweight Charts'),('Miracolo Lab','header')]:
               if marker not in html: sys.exit('Deployed UI missing '+msg)
           if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
           print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price'))
           print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price'))
           print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
+          chart=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/chart?symbol=%5EGSPC&period=5d',headers=h),timeout=30))
+          if not chart.get('ok') or len(chart.get('candles') or [])<2: sys.exit('Market chart endpoint failed')
+          print('MARKET CHART API: PASS',len(chart.get('candles') or []),'candles')
           print('DEPLOYED UI ENTRYPOINTS: PASS'); print('LEGACY STRATEGY SUBMENU: ABSENT')
           PY
       - name: Verify News Core after deployment
