@@ -38,6 +38,9 @@ jobs:
           node --check worker.js
           node --check public/v1/dashboard.js
           node --check public/v1/news-feed-bridge.js
+          node --check public/v1/market.js
+          node tests/news-contract.test.js
+          node tests/market-ui.test.js
           python - <<'PY'
           from pathlib import Path
           import re
