@@ -32,12 +32,12 @@ if "async function chartData(symbol,period='5d')" not in s:
 """
     s=s.replace(marker,chart_fn+marker,1)
 
-route_old="if(u.pathname==='/api/market-monitor'){if(!(await rateLimit(req,env,'market',12)))return json({ok:false,error:'Rate limit exceeded'},429);return json(await market(env))}"
-route_new=route_old+"if(u.pathname==='/api/chart'){if(!(await rateLimit(req,env,'chart',30)))return json({ok:false,error:'Rate limit exceeded'},429);const symbol=(u.searchParams.get('symbol')||'').trim();const period=(u.searchParams.get('period')||'5d').trim();if(!symbol||!/^[A-Za-z0-9_^.=\\-]{1,30}$/.test(symbol))return json({ok:false,error:'Invalid symbol'},400);return json(await chartData(symbol,period))}"
+route="if(u.pathname==='/api/chart'){if(!(await rateLimit(req,env,'chart',30)))return json({ok:false,error:'Rate limit exceeded'},429);const symbol=(u.searchParams.get('symbol')||'').trim();const period=(u.searchParams.get('period')||'5d').trim();if(!symbol||!/^[A-Za-z0-9_^.=\\-]{1,30}$/.test(symbol))return json({ok:false,error:'Invalid symbol'},400);return json(await chartData(symbol,period))}"
 if "/api/chart" not in s:
-    if route_old not in s:
-        raise SystemExit("chart patch: market route not found")
-    s=s.replace(route_old,route_new,1)
+    anchor="if(u.pathname==='/api/universe')"
+    if anchor not in s:
+        raise SystemExit("chart patch: universe route anchor not found")
+    s=s.replace(anchor,route+anchor,1)
 
 p.write_text(s)
 print("Market chart patch: PASS")
