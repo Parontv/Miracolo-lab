@@ -19,7 +19,7 @@
       tab.classList.toggle('active',active);
       tab.setAttribute('aria-selected',active?'true':'false');
     });
-    if(id==='strategy'){
+    if(id==='market'||id==='strategy'){
       window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
       return;
     }
