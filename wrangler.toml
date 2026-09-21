@@ -16,10 +16,3 @@ binding = "ML_KV"
 
 
 # Permanent historical memory: market photographs, AI analysis and daily news archives.
-[[r2_buckets]]
-binding = "ML_MEMORY"
-bucket_name = "miracolo-lab-memory"
-
-[assets]
-directory = "./public"
-binding = "ASSETS"
