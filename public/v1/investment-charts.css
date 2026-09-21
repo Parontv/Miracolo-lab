@@ -1,0 +1,14 @@
+/* Miracolo Lab — Investment charts */
+.iv-chart-section{margin-top:28px;padding-top:20px;border-top:1px solid rgba(148,163,184,.13)}
+.iv-chart-title{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:12px}
+.iv-chart-title h3{margin:0;font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:#cbd5e1}
+.iv-chart-title small{display:block;margin-top:4px;color:#64748b;font-size:9px}
+.iv-chart-title>span{font-size:8px;letter-spacing:.8px;color:#64748b}
+.iv-chart-card{border:1px solid rgba(56,189,248,.11);border-radius:12px;background:rgba(10,18,31,.42);padding:12px;margin:9px 0}
+.iv-chart-card header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.iv-chart-card h4{margin:0;font-size:11px;color:#e2e8f0}
+.iv-chart-card header small{display:block;color:#64748b;font-size:8px;margin-top:3px}
+.iv-chart-last{font-size:11px;font-weight:800;color:#e2e8f0;white-space:nowrap}
+.iv-chart-canvas{height:230px;width:100%}
+.iv-chart-empty{padding:15px;border:1px dashed rgba(148,163,184,.14);border-radius:10px;color:#64748b;font-size:10px}
+@media(max-width:620px){.iv-chart-title{align-items:flex-start;flex-direction:column}.iv-chart-canvas{height:210px}}
