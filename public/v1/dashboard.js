@@ -133,21 +133,32 @@
   }
 
 
-  function renderNewsAccordion(scan,key,label,description){
-    const items=scan?.categories?.[key]||[];
-    const cards=items.slice(0,30).map(x=>`<article class="v1-index" style="margin:8px 0"><strong>${esc(x.title||'Notizia')}</strong><div class="v1-index-tech">${esc(x.source||'Fonte')} · ${esc(x.date||'Data non disponibile')}</div><p>${esc(x.description||'')}</p>${x.url?'<a href="'+esc(x.url)+'" target="_blank" rel="noopener">Apri fonte</a>':''}</article>`).join('');
-    return `<section class="v1-card"><details class="v1-section"><summary>${label} <b>${items.length} elementi</b></summary><div style="padding:12px"><p>${description}</p>${cards||'<div class="v1-empty">Nessun elemento disponibile in questo aggiornamento.</div>'}</div></details></section>`;
+  function metricRows(market,pattern){
+    const rows=(market?.indices||[]).filter(x=>x.ok&&pattern.test(String(x.name||'')+' '+String(x.ticker||'')));
+    if(!rows.length)return '<div class="v1-empty">Serie quantitativa non ancora collegata. Nessun valore viene stimato o sostituito con notizie.</div>';
+    return '<div class="v1-index-grid">'+rows.map(x=>{
+      const value=Number(x.price??x.value??x.close),ch=Number(x.changePct);
+      return '<div class="v1-index"><div class="v1-index-main"><strong>'+esc(x.name)+'</strong><span>'+(Number.isFinite(ch)?(ch>=0?'+':'')+ch.toFixed(2)+'%':'—')+'</span><small>'+(Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:4}):'—')+(x.currency?' '+esc(x.currency):'')+'</small></div><div class="v1-index-tech">Fonte: '+esc(x.source||'feed mercato')+' · '+esc(x.timestamp||market?.timestamp||'data non indicata')+'</div></div>';
+    }).join('')+'</div>';
   }
-
+  function renderDataAccordion(market,key,label,description,pattern){
+    const content=pattern?metricRows(market,pattern):'<div class="v1-empty">Integrazione quantitativa da completare. Qui saranno mostrati valori, unità, fonte, data di rilevazione e grafico storico. Le notizie restano nel Newsfeed.</div>';
+    return '<section class="v1-card"><details class="v1-section"><summary>'+label+'</summary><div style="padding:12px"><p class="v1-data-description">'+description+'</p>'+content+'</div></details></section>';
+  }
   function render(data){
     const scan=data.scan||data.news||{},summary=scan.summary||{},root=document.getElementById('results');if(!root)return;
-    root.innerHTML=`<section class="v1-card v1-market-card"><div class="v1-card-head"><div><b>MARKET SENTIMENT</b><small>Analisi AI integrata di news, market data, sentiment globale e Strategy Lab</small></div><div><button type="button" class="v1-news-search-btn" onclick="window.ML.manualNewsSearch(this)">🔎 Cerca notizie</button></div></div><div id="v1-market-content" class="v1-market-content"><div class="v1-ai-loading">Preparazione del quadro AI…</div></div></section><section class="v1-card v1-indices-card"><details class="v1-section" open><summary>📈 INDICI DI BORSA <b>${(data.market?.indices||[]).filter(x=>x.ok).length} strumenti</b></summary><div class="v1-index-universe">${renderIndices(data.market)}</div></details></section>`+
-      renderNewsAccordion(scan,'geopolitics','🌍 GEOPOLITICA','Conflitti, sanzioni, dazi e rischi per commercio e mercati.')+
-      renderNewsAccordion(scan,'flows','💸 POSIZIONAMENTO E FLUSSI','Notizie su flussi ETF, afflussi, deflussi e posizionamento; non sono serie quantitative certificate.')+
-      renderNewsAccordion(scan,'rates','🏦 OBBLIGAZIONI E CREDITO','Notizie su rendimenti, aste, spread e credito. I valori numerici vanno verificati separatamente.')+
-      renderNewsAccordion(scan,'macro','📊 MACROECONOMIA','Inflazione, crescita, lavoro, liquidità e indicatori economici.')+
-      renderNewsAccordion(scan,'central','🏛️ BANCHE CENTRALI','Comunicati e notizie sulle principali banche centrali.')+
-      renderNewsAccordion(scan,'volatility','⚠️ VOLATILITÀ E OPZIONI','Notizie su VIX, volatilità implicita, opzioni e open interest');
+    const market=data.market||{};
+    const equity=(market.indices||[]).filter(x=>x.ok&&['usa','europe','asia','other'].includes(indexGroup(x.name)[1])&&!['commodities','fx'].includes(indexGroup(x.name)[1]));
+    const equityMarket={...market,indices:equity};
+    root.innerHTML='<section class="v1-card v1-market-card"><div class="v1-card-head"><div><b>MARKET SENTIMENT</b><small>Quadro AI di mercato e contesto Strategy Lab</small></div><div><button type="button" class="v1-news-search-btn" onclick="window.ML.manualNewsSearch(this)">🔎 Aggiorna notizie</button></div></div><div id="v1-market-content" class="v1-market-content"><div class="v1-ai-loading">Preparazione del quadro AI…</div></div></section>'+
+      '<section class="v1-card v1-indices-card"><details class="v1-section" open><summary>📈 INDICI DI BORSA <b>'+equity.length+' strumenti</b></summary><div class="v1-index-universe">'+renderIndices(equityMarket)+'</div></details></section>'+
+      renderDataAccordion(market,'rates','🏦 OBBLIGAZIONI E RENDIMENTI','Rendimenti sovrani e curve: Treasury USA, Bund, BTP e spread. I dati vengono mostrati solo se presenti nei feed quantitativi.',/treasury|yield|bund|btp|gilt|10y|2y|30y|5y|^rates/i)+
+      renderDataAccordion(market,'macro','📊 MACROECONOMIA','Inflazione, PIL, occupazione, PMI, liquidità e indicatori economici.',null)+
+      renderDataAccordion(market,'central','🏛️ BANCHE CENTRALI','Tassi ufficiali e storico delle decisioni Fed, BCE e altre banche centrali.',null)+
+      renderDataAccordion(market,'credit','🏢 CREDITO','Spread, CDS e indicatori quantitativi del credito investment grade e high yield.',null)+
+      renderDataAccordion(market,'flows','💸 FLUSSI E POSIZIONAMENTO','Flussi di fondi ed ETF e posizionamento degli investitori, con data e frequenza di aggiornamento.',null)+
+      renderDataAccordion(market,'volatility','⚠️ VOLATILITÀ E OPZIONI','VIX e altri indici di volatilità; volatilità implicita, realizzata e dati sulle opzioni.',/vix|volatility|vxn|vxd|vstoxx/i)+
+      renderDataAccordion(market,'crossasset','🪙 MATERIE PRIME E CAMBI','Quotazioni di oro, energia, metalli e principali cambi, se disponibili nel monitor di mercato.',/gold|silver|brent|wti|oil|copper|natgas|natural|dxy|eurusd|gbpusd|usdjpy|fx/i);
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v??'—'};set('hNews',summary.news);set('hSocial',summary.social);set('hStrong',summary.strong);set('hTime',new Date().toLocaleTimeString('it-IT'));renderAI().catch(e=>console.warn('Market Sentiment render:',e.message));
   }
 
