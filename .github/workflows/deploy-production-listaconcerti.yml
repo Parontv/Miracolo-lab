@@ -27,19 +27,26 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
         run: npx wrangler@4 deploy --name miracolo-lab
-      - name: Verify production Strategy Lab UI
+      - name: Verify production Miracolo Lab
         run: |
           python - <<'PY'
-          import urllib.request,sys,time
+          import urllib.request,sys,time,json
           base='https://miracolo-lab.listaconcerti.workers.dev'
-          html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+str(time.time_ns()),headers={'Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          required=['strategy-lab-ui.css?v=3.0.0','strategy-lab-ui.js?v=3.0.0','sl2-submenu{display:none!important','ml-method-toggle']
-          for marker in required:
-              if marker not in html: sys.exit('Production UI missing marker: '+marker)
-          css=urllib.request.urlopen(urllib.request.Request(base+'/v1/strategy-lab-ui.css?v=3.0.0',headers={'Cache-Control':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          if '.sl2-submenu{display:none!important' not in css: sys.exit('Production CSS does not contain hard submenu hide')
-          js=urllib.request.urlopen(urllib.request.Request(base+'/v1/strategy-lab-ui.js?v=3.0.0',headers={'Cache-Control':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          if 'ml-method-toggle' not in js: sys.exit('Production Strategy Lab UI script is not the compact version')
-          print('PRODUCTION LISTACONCERTI UI: PASS')
-          print('COMPACT STRATEGY LAB: PASS')
+          def get(path):
+              req=urllib.request.Request(base+path,headers={'Cache-Control':'no-cache','Pragma':'no-cache'})
+              return urllib.request.urlopen(req,timeout=45).read().decode('utf-8','replace')
+          html=get('/?ts='+str(time.time_ns()))
+          if 'Miracolo Lab' not in html: sys.exit('Production HTML does not identify Miracolo Lab')
+          print('PRODUCTION HTML: PASS')
+          raw=get('/api/market-monitor')
+          data=json.loads(raw)
+          quant=data.get('quantitative')
+          if not isinstance(quant,dict): sys.exit('API missing quantitative payload')
+          coverage=quant.get('coverage',{})
+          groups=quant.get('groups',{})
+          if not isinstance(groups,dict): sys.exit('API missing quantitative groups')
+          print('QUANTITATIVE API: PASS; coverage='+json.dumps(coverage))
+          for name in ('macro','central','rates','credit'):
+              if name not in groups: sys.exit('Missing quantitative group: '+name)
+          print('QUANTITATIVE GROUPS: PASS')
           PY
