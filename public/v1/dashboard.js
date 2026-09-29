@@ -146,13 +146,13 @@
     if(pattern){
       content=metricRows(market,pattern);
     }else if(key==='macro'){
-      content='<div class="v1-data-status"><strong>Dati macroeconomici non ancora collegati</strong><p>Questa sezione è predisposta per dati ufficiali, ma al momento il monitor di mercato non restituisce serie quantitative macro. Non mostro articoli né valori inventati.</p></div>'+
+      content='<div class="v1-data-status"><strong>Dati macro non disponibili</strong></div>'+
       '<div class="v1-data-list"><div><b>Inflazione</b><span>CPI / HICP e inflazione core · variazione annua e mensile</span></div><div><b>Crescita</b><span>PIL reale · variazione trimestrale e annua</span></div><div><b>Lavoro</b><span>Disoccupazione, occupazione e salari</span></div><div><b>Attività</b><span>PMI manifatturiero e servizi, produzione industriale</span></div><div><b>Liquidità</b><span>Aggregati monetari e condizioni finanziarie</span></div></div>'+
       '<div class="v1-data-source">Fonti da integrare: Eurostat, ISTAT, BLS, BEA e FRED. Ogni indicatore dovrà riportare valore, unità, periodo di riferimento, pubblicazione e fonte.</div>';
     }else{
-      content='<div class="v1-data-status"><strong>Serie quantitative non ancora collegate</strong><p>Il pannello è predisposto, ma non sono disponibili dati strutturati per questa sezione.</p></div>';
+      content='<div class="v1-data-status"><strong>Nessun dato quantitativo disponibile</strong></div>';
     }
-    return '<section class="v1-card v1-data-card"><details class="v1-section"><summary><span class="v1-data-heading"><strong>'+label+'</strong><small>'+description+'</small></span></summary><div class="v1-data-body">'+content+'</div></details></section>';
+    return '<section class="v1-card v1-data-card"><details class="v1-section"><summary><strong>'+label+'</strong></summary><div class="v1-data-body">'+content+'</div></details></section>';
   }
 
   function render(data){
