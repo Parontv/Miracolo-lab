@@ -20,6 +20,7 @@
       tab.setAttribute('aria-selected',active?'true':'false');
     });
     if(id==='market'||id==='strategy'){
+      if(id==='strategy'&&typeof window.ML_STRATEGY_LAB?.render==='function') window.ML_STRATEGY_LAB.render();
       window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
       return;
     }
