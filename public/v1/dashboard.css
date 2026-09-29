@@ -9,3 +9,42 @@
 /* Dashboard V1 owns the radar view. The legacy side-panel Radar must not appear underneath it. */
 body[data-active-panel="radar"] .side-col{display:none}
 @media(max-width:720px){.v1-market-card{min-height:360px;padding:14px 15px}.v1-card-head strong{font-size:21px}.v1-ai-headline{font-size:14px}.v1-ai-summary{font-size:11px;line-height:1.6}.v1-index-grid{grid-template-columns:1fr}.v1-card{padding:9px}.v1-index-tech{font-size:7.5px}}
+
+/* Unified dashboard typography and touch targets, aligned with the News Feed rhythm. */
+.v1-card{padding:12px 14px;border-radius:12px;margin-bottom:10px}
+.v1-section>summary,.v1-category>summary{font-size:14px;line-height:1.35;min-height:42px;gap:10px;letter-spacing:0;text-transform:none}
+.v1-section>summary b,.v1-category>summary span{font-size:12px}
+.v1-category{padding:8px 0}
+.v1-article{padding:10px 11px;margin-top:6px}
+.v1-article-title{font-size:14px;line-height:1.45}
+.v1-article-meta{font-size:11px;line-height:1.4;margin-top:4px}
+.v1-empty{font-size:13px;line-height:1.5;padding:12px 2px}
+.v1-data-heading{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;padding:5px 0}
+.v1-data-heading strong{font-size:14px;line-height:1.35;color:#dbeafe}
+.v1-data-heading small{font-size:12px;line-height:1.45;font-weight:400;color:#94a3b8;letter-spacing:0;text-transform:none}
+.v1-data-body{padding:8px 0 3px}
+.v1-data-description{font-size:13px;line-height:1.55;color:#cbd5e1;margin:0 0 10px}
+.v1-data-status{padding:12px;border:1px solid rgba(56,189,248,.2);border-radius:9px;background:rgba(15,23,42,.42)}
+.v1-data-status strong{display:block;font-size:14px;color:#fbbf24;margin-bottom:5px}
+.v1-data-status p{font-size:13px;line-height:1.55;color:#cbd5e1;margin:0}
+.v1-data-list{display:grid;grid-template-columns:1fr;gap:6px;margin-top:10px}
+.v1-data-list>div{display:flex;flex-direction:column;gap:3px;padding:10px 11px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:rgba(15,23,42,.45)}
+.v1-data-list b{font-size:13px;color:#e2e8f0}
+.v1-data-list span{font-size:12px;line-height:1.45;color:#94a3b8}
+.v1-data-source{font-size:11px;line-height:1.5;color:#64748b;margin-top:10px}
+.v1-index{padding:10px;border-radius:9px;gap:5px}
+.v1-index-main strong{font-size:13px}
+.v1-index-main span{font-size:12px}
+.v1-index-main small{font-size:11px}
+.v1-index-tech{font-size:10px;line-height:1.45;white-space:normal}
+.v1-index-group-title{font-size:11px;margin-bottom:7px}
+@media(max-width:720px){
+ .v1-card{padding:11px 12px}
+ .v1-market-card{padding:14px}
+ .v1-section>summary,.v1-category>summary{font-size:14px;min-height:44px}
+ .v1-data-heading strong{font-size:14px}
+ .v1-data-heading small{font-size:12px}
+ .v1-article-title{font-size:14px}
+ .v1-article-meta{font-size:11px}
+ .v1-index-grid{grid-template-columns:1fr}
+}
