@@ -140,7 +140,7 @@
   }
 
   function render(data){
-    const scan=data.scan||{},summary=scan.summary||{},root=document.getElementById('results');if(!root)return;
+    const scan=data.scan||data.news||{},summary=scan.summary||{},root=document.getElementById('results');if(!root)return;
     root.innerHTML=`<section class="v1-card v1-market-card"><div class="v1-card-head"><div><b>MARKET SENTIMENT</b><small>Analisi AI integrata di news, market data, sentiment globale e Strategy Lab</small></div><div><button type="button" class="v1-news-search-btn" onclick="window.ML.manualNewsSearch(this)">🔎 Cerca notizie</button></div></div><div id="v1-market-content" class="v1-market-content"><div class="v1-ai-loading">Preparazione del quadro AI…</div></div></section><section class="v1-card v1-indices-card"><details class="v1-section" open><summary>📈 INDICI DI BORSA <b>${(data.market?.indices||[]).filter(x=>x.ok).length} strumenti</b></summary><div class="v1-index-universe">${renderIndices(data.market)}</div></details></section>`+
       renderNewsAccordion(scan,'geopolitics','🌍 GEOPOLITICA','Conflitti, sanzioni, dazi e rischi per commercio e mercati.')+
       renderNewsAccordion(scan,'flows','💸 POSIZIONAMENTO E FLUSSI','Notizie su flussi ETF, afflussi, deflussi e posizionamento; non sono serie quantitative certificate.')+
