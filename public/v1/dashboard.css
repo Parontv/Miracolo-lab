@@ -48,3 +48,9 @@ body[data-active-panel="radar"] .side-col{display:none}
  .v1-article-meta{font-size:11px}
  .v1-index-grid{grid-template-columns:1fr}
 }
+
+/* Compact quantitative submenu headers: title only, feed-consistent. */
+.v1-data-heading{display:contents}
+.v1-data-heading small,.v1-data-description{display:none!important}
+.v1-data-status{padding:10px 2px;border:0;background:transparent}
+.v1-data-status strong{font-size:13px;font-weight:500;color:#94a3b8;margin:0}
