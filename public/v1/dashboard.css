@@ -54,3 +54,15 @@ body[data-active-panel="radar"] .side-col{display:none}
 .v1-data-heading small,.v1-data-description{display:none!important}
 .v1-data-status{padding:10px 2px;border:0;background:transparent}
 .v1-data-status strong{font-size:13px;font-weight:500;color:#94a3b8;margin:0}
+
+/* Restore original compact pixel sizing for dashboard accordions. */
+.v1-card{padding:10px 12px;margin-bottom:10px}
+.v1-section>summary,.v1-category>summary{font-size:10px;line-height:normal;min-height:0;gap:7px;letter-spacing:.3px}
+.v1-section>summary b,.v1-category>summary span{font-size:10px}
+.v1-data-body{padding:8px 0 3px}
+.v1-index{padding:7px 8px;gap:3px;border-radius:8px}
+.v1-index-main strong{font-size:10px}
+.v1-index-main span{font-size:10px}
+.v1-index-main small{font-size:8px}
+.v1-index-tech{font-size:7.5px;white-space:nowrap}
+.v1-index-group-title{font-size:8px;margin-bottom:5px}
