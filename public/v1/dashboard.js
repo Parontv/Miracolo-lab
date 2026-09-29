@@ -142,9 +142,19 @@
     }).join('')+'</div>';
   }
   function renderDataAccordion(market,key,label,description,pattern){
-    const content=pattern?metricRows(market,pattern):'<div class="v1-empty">Integrazione quantitativa da completare. Qui saranno mostrati valori, unità, fonte, data di rilevazione e grafico storico. Le notizie restano nel Newsfeed.</div>';
-    return '<section class="v1-card"><details class="v1-section"><summary>'+label+'</summary><div style="padding:12px"><p class="v1-data-description">'+description+'</p>'+content+'</div></details></section>';
+    let content='';
+    if(pattern){
+      content=metricRows(market,pattern);
+    }else if(key==='macro'){
+      content='<div class="v1-data-status"><strong>Dati macroeconomici non ancora collegati</strong><p>Questa sezione è predisposta per dati ufficiali, ma al momento il monitor di mercato non restituisce serie quantitative macro. Non mostro articoli né valori inventati.</p></div>'+
+      '<div class="v1-data-list"><div><b>Inflazione</b><span>CPI / HICP e inflazione core · variazione annua e mensile</span></div><div><b>Crescita</b><span>PIL reale · variazione trimestrale e annua</span></div><div><b>Lavoro</b><span>Disoccupazione, occupazione e salari</span></div><div><b>Attività</b><span>PMI manifatturiero e servizi, produzione industriale</span></div><div><b>Liquidità</b><span>Aggregati monetari e condizioni finanziarie</span></div></div>'+
+      '<div class="v1-data-source">Fonti da integrare: Eurostat, ISTAT, BLS, BEA e FRED. Ogni indicatore dovrà riportare valore, unità, periodo di riferimento, pubblicazione e fonte.</div>';
+    }else{
+      content='<div class="v1-data-status"><strong>Serie quantitative non ancora collegate</strong><p>Il pannello è predisposto, ma non sono disponibili dati strutturati per questa sezione.</p></div>';
+    }
+    return '<section class="v1-card v1-data-card"><details class="v1-section"><summary><span class="v1-data-heading"><strong>'+label+'</strong><small>'+description+'</small></span></summary><div class="v1-data-body">'+content+'</div></details></section>';
   }
+
   function render(data){
     const scan=data.scan||data.news||{},summary=scan.summary||{},root=document.getElementById('results');if(!root)return;
     const market=data.market||{};
