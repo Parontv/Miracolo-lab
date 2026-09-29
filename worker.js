@@ -33,7 +33,7 @@ async function quantitativeData(env){
   try{
    const r=await get('https://fred.stlouisfed.org/graph/fredgraph.csv?id='+encodeURIComponent(series));
    if(!r.ok)throw Error('HTTP '+r.status);
-   const csv=await r.text(),rows=csv.trim().split(/\\r?\\n/).slice(1);
+   const csv=await r.text(),rows=csv.trim().split(/\r?\n/).slice(1);
    const observations=rows.map(line=>{const p=line.split(',');return{date:(p[0]||'').replace(/^"|"$/g,''),value:Number((p[1]||'').replace(/^"|"$/g,''))}}).filter(x=>x.date&&Number.isFinite(x.value));
    const last=observations.at(-1);
    if(!last)throw Error('serie vuota');
