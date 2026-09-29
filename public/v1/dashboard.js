@@ -141,16 +141,35 @@
       return '<div class="v1-index"><div class="v1-index-main"><strong>'+esc(x.name)+'</strong><span>'+(Number.isFinite(ch)?(ch>=0?'+':'')+ch.toFixed(2)+'%':'—')+'</span><small>'+(Number.isFinite(value)?value.toLocaleString('it-IT',{maximumFractionDigits:4}):'—')+(x.currency?' '+esc(x.currency):'')+'</small></div><div class="v1-index-tech">Fonte: '+esc(x.source||'feed mercato')+' · '+esc(x.timestamp||market?.timestamp||'data non indicata')+'</div></div>';
     }).join('')+'</div>';
   }
+  function renderQuantGroup(quant,key){
+    const rows=quant?.groups?.[key]||[];
+    const good=rows.filter(x=>x.status==='ok'&&Number.isFinite(Number(x.value)));
+    if(!good.length){
+      const unavailable=rows.length?rows.map(x=>esc(x.label)).join(' · '):'';
+      return '<div class="v1-empty">Dati non disponibili al momento.'+(unavailable?' Serie previste: '+unavailable+'.':'')+'</div>';
+    }
+    return '<div class="v1-index-grid">'+good.map(x=>
+      '<div class="v1-index"><div class="v1-index-main"><strong>'+esc(x.label)+'</strong><span>'+Number(x.value).toLocaleString('it-IT',{maximumFractionDigits:3})+'</span><small>'+esc(x.unit||'')+'</small></div><div class="v1-index-tech">Periodo: '+esc(x.period||'—')+' · Frequenza: '+esc(x.frequency||'—')+'<br>Fonte: '+esc(x.source||'—')+'</div></div>'
+    ).join('')+'</div>';
+  }
   function renderDataAccordion(market,key,label,description,pattern){
     let content='';
-    if(pattern){
+    const quant=market?.quantitative;
+    if(key==='macro'){
+      content=renderQuantGroup(quant,'macro')+
+        '<div class="v1-data-source">Serie macroeconomiche USA da FRED. I valori sono quelli dell’ultima osservazione pubblicata: il periodo può essere precedente alla data odierna.</div>';
+    }else if(key==='central'){
+      content=renderQuantGroup(quant,'central')+
+        '<div class="v1-data-source">Il tasso effettivo Fed Funds è un tasso di mercato osservato, non il limite superiore/inferiore dell’intervallo obiettivo deciso dalla Federal Reserve.</div>';
+    }else if(key==='credit'){
+      content=renderQuantGroup(quant,'credit')+
+        '<div class="v1-data-source">Spread di credito USA pubblicati da FRED; non sono quotazioni intraday e possono essere soggetti a revisione.</div>';
+    }else if(key==='flows'){
+      content='<div class="v1-data-status"><strong>Flussi e posizionamento: feed non ancora collegati</strong></div>'+
+        '<div class="v1-data-source">Da integrare con dati pubblici CFTC Commitments of Traders e flussi ETF accessibili senza abbonamento. Le notizie sui flussi restano nel News Feed e non vengono trasformate in numeri.</div>';
+    }else if(pattern){
       content=metricRows(market,pattern);
-    }else if(key==='macro'){
-      content='<div class="v1-data-status"><strong>Dati macro non disponibili</strong></div>'+
-      '<div class="v1-data-list"><div><b>Inflazione</b><span>CPI / HICP e inflazione core · variazione annua e mensile</span></div><div><b>Crescita</b><span>PIL reale · variazione trimestrale e annua</span></div><div><b>Lavoro</b><span>Disoccupazione, occupazione e salari</span></div><div><b>Attività</b><span>PMI manifatturiero e servizi, produzione industriale</span></div><div><b>Liquidità</b><span>Aggregati monetari e condizioni finanziarie</span></div></div>'+
-      '<div class="v1-data-source">Fonti da integrare: Eurostat, ISTAT, BLS, BEA e FRED. Ogni indicatore dovrà riportare valore, unità, periodo di riferimento, pubblicazione e fonte.</div>';
-    }else{
-      content='<div class="v1-data-status"><strong>Nessun dato quantitativo disponibile</strong></div>';
+      if(key==='rates')content=renderQuantGroup(quant,'rates')+content;
     }
     return '<section class="v1-card v1-data-card"><details class="v1-section"><summary><strong>'+label+'</strong></summary><div class="v1-data-body">'+content+'</div></details></section>';
   }
