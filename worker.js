@@ -23,7 +23,7 @@ const QUANT_SERIES=[
  ['credit','Spread corporate BBB USA',' BAMLC0A4CBBB','Option-adjusted spread, punti percentuali','giornaliera'],
  ['credit','Condizioni finanziarie USA (NFCI)','NFCI','Indice Chicago Fed','settimanale']
 ];
-const QUANT_CACHE_KEY='quantitative/latest';
+const QUANT_CACHE_KEY='quantitative/latest-v2';
 async function quantitativeData(env){
  const cached=await readKV(env,QUANT_CACHE_KEY);
  if(cached&&Date.now()-Date.parse(cached.timestamp||'')<6*60*60*1000)return cached;
@@ -42,7 +42,7 @@ async function quantitativeData(env){
  }));
  for(const x of results)groups[x.category].push(x);
  const out={timestamp:new Date().toISOString(),source:'FRED',groups,coverage:{available:results.filter(x=>x.status==='ok').length,total:results.length}};
- await writeKV(env,QUANT_CACHE_KEY,out,21600);
+ if(out.coverage.available>0)await writeKV(env,QUANT_CACHE_KEY,out,21600);
  return out;
 }
 
