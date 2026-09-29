@@ -161,7 +161,7 @@
     const equity=(market.indices||[]).filter(x=>x.ok&&['usa','europe','asia','other'].includes(indexGroup(x.name)[1])&&!['commodities','fx'].includes(indexGroup(x.name)[1]));
     const equityMarket={...market,indices:equity};
     root.innerHTML='<section class="v1-card v1-market-card"><div class="v1-card-head"><div><b>MARKET SENTIMENT</b><small>Quadro AI di mercato e contesto Strategy Lab</small></div><div><button type="button" class="v1-news-search-btn" onclick="window.ML.manualNewsSearch(this)">🔎 Aggiorna notizie</button></div></div><div id="v1-market-content" class="v1-market-content"><div class="v1-ai-loading">Preparazione del quadro AI…</div></div></section>'+
-      '<section class="v1-card v1-indices-card"><details class="v1-section" open><summary>📈 INDICI DI BORSA <b>'+equity.length+' strumenti</b></summary><div class="v1-index-universe">'+renderIndices(equityMarket)+'</div></details></section>'+
+      '<section class="v1-card v1-indices-card"><details class="v1-section"><summary>📈 INDICI DI BORSA <b>'+equity.length+' strumenti</b></summary><div class="v1-index-universe">'+renderIndices(equityMarket)+'</div></details></section>'+
       renderDataAccordion(market,'rates','🏦 OBBLIGAZIONI E RENDIMENTI','Rendimenti sovrani e curve: Treasury USA, Bund, BTP e spread. I dati vengono mostrati solo se presenti nei feed quantitativi.',/treasury|yield|bund|btp|gilt|10y|2y|30y|5y|^rates/i)+
       renderDataAccordion(market,'macro','📊 MACROECONOMIA','Inflazione, PIL, occupazione, PMI, liquidità e indicatori economici.',null)+
       renderDataAccordion(market,'central','🏛️ BANCHE CENTRALI','Tassi ufficiali e storico delle decisioni Fed, BCE e altre banche centrali.',null)+
