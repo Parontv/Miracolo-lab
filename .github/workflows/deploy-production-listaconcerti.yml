@@ -31,7 +31,7 @@ jobs:
         run: |
           python - <<'PY'
           import urllib.request,sys,time
-          base='https://listaconcerti.workers.dev'
+          base='https://miracolo-lab.listaconcerti.workers.dev'
           html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+str(time.time_ns()),headers={'Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
           required=['strategy-lab-ui.css?v=3.0.0','strategy-lab-ui.js?v=3.0.0','sl2-submenu{display:none!important','ml-method-toggle']
           for marker in required:
