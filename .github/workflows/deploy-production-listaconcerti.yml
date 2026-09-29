@@ -26,7 +26,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
-        run: npx wrangler@4 deploy --name listaconcerti
+        run: npx wrangler@4 deploy --name miracolo-lab
       - name: Verify production Strategy Lab UI
         run: |
           python - <<'PY'
