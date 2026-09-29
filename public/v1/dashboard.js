@@ -132,9 +132,22 @@
     return html;
   }
 
+
+  function renderNewsAccordion(scan,key,label,description){
+    const items=scan?.categories?.[key]||[];
+    const cards=items.slice(0,30).map(x=>`<article class="v1-index" style="margin:8px 0"><strong>${esc(x.title||'Notizia')}</strong><div class="v1-index-tech">${esc(x.source||'Fonte')} · ${esc(x.date||'Data non disponibile')}</div><p>${esc(x.description||'')}</p>${x.url?'<a href="'+esc(x.url)+'" target="_blank" rel="noopener">Apri fonte</a>':''}</article>`).join('');
+    return `<section class="v1-card"><details class="v1-section"><summary>${label} <b>${items.length} elementi</b></summary><div style="padding:12px"><p>${description}</p>${cards||'<div class="v1-empty">Nessun elemento disponibile in questo aggiornamento.</div>'}</div></details></section>`;
+  }
+
   function render(data){
     const scan=data.scan||{},summary=scan.summary||{},root=document.getElementById('results');if(!root)return;
-    root.innerHTML=`<section class="v1-card v1-market-card"><div class="v1-card-head"><div><b>MARKET SENTIMENT</b><small>Analisi AI integrata di news, market data, sentiment globale e Strategy Lab</small></div><div><button type="button" class="v1-news-search-btn" onclick="window.ML.manualNewsSearch(this)">🔎 Cerca notizie</button></div></div><div id="v1-market-content" class="v1-market-content"><div class="v1-ai-loading">Preparazione del quadro AI…</div></div></section><section class="v1-card v1-indices-card"><details class="v1-section" open><summary>📈 INDICI DI BORSA <b>${(data.market?.indices||[]).filter(x=>x.ok).length} strumenti</b></summary><div class="v1-index-universe">${renderIndices(data.market)}</div></details></section>`;
+    root.innerHTML=`<section class="v1-card v1-market-card"><div class="v1-card-head"><div><b>MARKET SENTIMENT</b><small>Analisi AI integrata di news, market data, sentiment globale e Strategy Lab</small></div><div><button type="button" class="v1-news-search-btn" onclick="window.ML.manualNewsSearch(this)">🔎 Cerca notizie</button></div></div><div id="v1-market-content" class="v1-market-content"><div class="v1-ai-loading">Preparazione del quadro AI…</div></div></section><section class="v1-card v1-indices-card"><details class="v1-section" open><summary>📈 INDICI DI BORSA <b>${(data.market?.indices||[]).filter(x=>x.ok).length} strumenti</b></summary><div class="v1-index-universe">${renderIndices(data.market)}</div></details></section>`+
+      renderNewsAccordion(scan,'geopolitics','🌍 GEOPOLITICA','Conflitti, sanzioni, dazi e rischi per commercio e mercati.')+
+      renderNewsAccordion(scan,'flows','💸 POSIZIONAMENTO E FLUSSI','Notizie su flussi ETF, afflussi, deflussi e posizionamento; non sono serie quantitative certificate.')+
+      renderNewsAccordion(scan,'rates','🏦 OBBLIGAZIONI E CREDITO','Notizie su rendimenti, aste, spread e credito. I valori numerici vanno verificati separatamente.')+
+      renderNewsAccordion(scan,'macro','📊 MACROECONOMIA','Inflazione, crescita, lavoro, liquidità e indicatori economici.')+
+      renderNewsAccordion(scan,'central','🏛️ BANCHE CENTRALI','Comunicati e notizie sulle principali banche centrali.')+
+      renderNewsAccordion(scan,'volatility','⚠️ VOLATILITÀ E OPZIONI','Notizie su VIX, volatilità implicita, opzioni e open interest');
     const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v??'—'};set('hNews',summary.news);set('hSocial',summary.social);set('hStrong',summary.strong);set('hTime',new Date().toLocaleTimeString('it-IT'));renderAI().catch(e=>console.warn('Market Sentiment render:',e.message));
   }
 
