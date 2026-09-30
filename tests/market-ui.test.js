@@ -60,4 +60,5 @@ assert.match(strategy,/function boot\(\)\{loadSaved\(\);try\{render\('jesse','In
 assert.match(nav,/window\.ML_STRATEGY_LAB\?\.render\(\)/);
 assert.match(strategy,/async function autoRun\(\)/);
 assert.match(strategy,/dataErrors/);
+assert.match(strategy,/status:state\.running\?'running':'ready',render\}/);
 console.log('Strategy Lab mount and navigation guards: PASS');
