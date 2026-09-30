@@ -3,13 +3,14 @@ import re
 
 p=Path('worker.js')
 s=p.read_text()
-s=s.replace('async function market(){', 'async function market(env){', 1)
+s=re.sub(r'async function market\(env(?:=\{\})?\)\{', 'async function market(env){', s, count=1)
 s=re.sub(r'(?<![A-Za-z0-9_])market\(\)', 'market(env)', s)
 
-start=s.find('async function market(env){')
+m=re.search(r'async function market\(env\)\{', s)
+start=m.start() if m else -1
 end=s.find('async function universe', start)
 if start<0 or end<0:
-    raise SystemExit('market boundaries not found')
+    raise SystemExit('market boundaries not found after flexible signature match')
 
 market=r'''const INSTITUTIONAL_KEY='institutional/latest';
 const INSTITUTIONAL_TTL=900;
