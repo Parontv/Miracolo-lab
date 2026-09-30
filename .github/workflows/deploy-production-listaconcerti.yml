@@ -11,8 +11,8 @@ on:
       - '.github/workflows/deploy-production-listaconcerti.yml'
   workflow_dispatch:
 concurrency:
-  group: listaconcerti-production-deploy
-  cancel-in-progress: true
+  group: miracolo-lab-production
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -20,6 +20,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Validate source before deploy
+        run: |
+          node --check worker.js
+          node --check ai-worker.js
+          node --check public/v1/market.js
+          node tests/news-contract.test.js
+          node tests/market-ui.test.js
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
       - name: Deploy production Worker
