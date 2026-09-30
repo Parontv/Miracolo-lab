@@ -1,14 +1,5 @@
 name: Deploy Production Listaconcerti
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'index.html'
-      - 'public/**'
-      - 'ai-worker.js'
-      - 'worker.js'
-      - 'wrangler.toml'
-      - '.github/workflows/deploy-production-listaconcerti.yml'
   workflow_dispatch:
 concurrency:
   group: miracolo-lab-production
