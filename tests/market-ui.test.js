@@ -24,7 +24,7 @@ assert.match(css,/\.market-chart/);
 
 // Investimenti charts must remain isolated from Market and use recorded portfolio history.
 const strategy=fs.readFileSync('public/v1/strategy-lab.js','utf8');
-assert.match(html,/strategy-lab\.js\?v=2\.3\.0/);
+assert.match(html,/strategy-lab\\.js\\?v=2\\.3\\.2/);
 assert.match(strategy,/id:'learning'/);
 assert.match(strategy,/id:'memory'/);
 assert.match(strategy,/id:'jesse'/);
