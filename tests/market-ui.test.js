@@ -57,7 +57,7 @@ console.log('News pipeline linkage: PASS');
 
 // Strategy Lab must mount synchronously and remain reachable through panel navigation.
 assert.match(strategy,/function boot\(\)\{loadSaved\(\);try\{render\('jesse','Inizializzazione Strategy Lab…','Overview'\)/);
-assert.match(nav,/window\.ML_STRATEGY_LAB\?\.render\(\)/);
+assert.match(nav,/lab\?\.render\('jesse'/);
 assert.match(nav,/requestAnimationFrame\(paint\)/);
 assert.match(nav,/Modulo non inizializzato/);
 assert.match(strategy,/async function autoRun\(\)/);
