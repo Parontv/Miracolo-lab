@@ -59,6 +59,7 @@ jobs:
           node --check public/v1/news-feed-bridge.js
           node --check public/v1/market.js
           node --check public/v1/strategy-lab.js
+          node --check public/v1/tab-navigation.js
           node --check public/v1/investments.js
           node --check public/v1/investment-charts.js
           node --check ai-worker.js
