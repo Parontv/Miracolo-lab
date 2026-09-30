@@ -4,8 +4,8 @@ on:
     branches: [main]
   workflow_dispatch:
 concurrency:
-  group: miracolo-lab-deploy
-  cancel-in-progress: true
+  group: miracolo-lab-production
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
