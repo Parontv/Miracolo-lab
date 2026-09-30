@@ -54,3 +54,10 @@ assert.match(bridge,/window\.ML\.on\('data'/);
 
 console.log('Market UI static integrity: PASS');
 console.log('News pipeline linkage: PASS');
+
+// Strategy Lab must mount synchronously and remain reachable through panel navigation.
+assert.match(strategy,/function boot\(\)\{loadSaved\(\);try\{render\('jesse','Inizializzazione Strategy Lab…','Overview'\)/);
+assert.match(nav,/window\.ML_STRATEGY_LAB\?\.render\(\)/);
+assert.match(strategy,/async function autoRun\(\)/);
+assert.match(strategy,/dataErrors/);
+console.log('Strategy Lab mount and navigation guards: PASS');
