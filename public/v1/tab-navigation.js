@@ -20,8 +20,20 @@
       tab.setAttribute('aria-selected',active?'true':'false');
     });
     if(id==='market'||id==='strategy'){
-      if(id==='strategy'&&typeof originalSetPanel==='function') originalSetPanel(id);
-      if(id==='strategy'&&typeof window.ML_STRATEGY_LAB?.render==='function') window.ML_STRATEGY_LAB.render();
+      if(id==='strategy'){
+        if(typeof originalSetPanel==='function') originalSetPanel(id);
+        const paint=()=>{
+          const lab=window.ML_STRATEGY_LAB;
+          if(typeof lab?.render==='function') lab.render('jesse','Strategy Lab pronto','Overview');
+          else {
+            const side=document.getElementById('sidePanel');
+            if(side) side.innerHTML='<div class="panel-section"><b>Strategy Lab</b><p>Modulo non inizializzato. Ricarica la pagina; se il problema continua, controllare gli errori JavaScript.</p></div>';
+          }
+        };
+        paint();
+        requestAnimationFrame(paint);
+        setTimeout(paint,80);
+      }
       window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
       return;
     }
