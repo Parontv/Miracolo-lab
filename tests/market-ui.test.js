@@ -26,7 +26,7 @@ assert.match(market,/HistogramSeries/);
 assert.match(market,/LineSeries/);
 assert.match(css,/\.market-chart/);
 
-// Investimenti charts must remain isolated from Market and use recorded portfolio history.
+// Strategy Lab remains the analytical layer.
 assert.match(html,/strategy-lab\.js\?v=2\.3\.2/);
 for(const id of ['learning','memory','jesse','technical','multi','historical','backtest'])assert.match(strategy,new RegExp(`id:'${id}'`));
 assert.match(strategy,/Accuracy/);
@@ -43,19 +43,20 @@ assert.match(investmentCharts,/ml_portfolio_v7\.history/);
 assert.match(investmentCharts,/AreaSeries/);
 assert.match(investmentCss,/\.iv-chart-section/);
 
-// News pipeline must remain connected to the canonical adapter and bridge.
+// News pipeline remains connected to the canonical adapter and bridge.
 assert.match(data,/ML_NEWS_CONTRACT/);
 assert.match(data,/\/api\/live/);
 assert.match(data,/\/api\/full-scan/);
 assert.match(bridge,/window\.ML\.on\('data'/);
 
-// Bot is the single operational trading surface: paper-only, explicit multi-agent action.
+// Bot is the single operational trading surface: one button, paper-only.
 assert.match(html,/trading-agents\.js\?v=1\.0\.3/);
 assert.match(html,/trading-agents\.css\?v=1\.0\.3/);
-assert.match(bot,/bot-multi/);
-assert.match(bot,/MULTI-AGENT DECISION/);
+assert.match(bot,/AVVIA ANALISI COMPLETA/);
+assert.doesNotMatch(bot,/bot-multi/);
 assert.match(bot,/\/api\/market-monitor-v2/);
 assert.match(bot,/\/api\/market-monitor\?ts=/);
+assert.match(bot,/\/api\/full-scan\?ts=/);
 assert.match(bot,/Promise\.allSettled/);
 assert.match(bot,/paper trading|paper only/i);
 assert.match(bot,/rischio massimo €10/i);
@@ -65,20 +66,17 @@ assert.match(bot,/status==='OPEN'/);
 assert.match(bot,/status='CLOSED'/);
 assert.match(bot,/STOP/);
 assert.match(bot,/TARGET/);
-assert.match(bot,/strategyLab|ml_strategy_lab_v23/);
 
-// Strategy Lab outputs must be usable by the operational Bot.
+// Strategy Lab outputs are consumed by the operational Bot.
+assert.match(bot,/ml_strategy_lab_v23/);
 assert.match(bot,/Strategy Lab/);
-assert.match(bot,/Jesse/);
-assert.match(bot,/WolfBot/);
-assert.match(bot,/Historical/);
-assert.match(bot,/Backtest/);
-assert.match(bot,/Learning/);
-assert.match(bot,/Memory/);
+for(const name of ['Jesse','WolfBot','Multi-Agent','Historical','Backtest','Learning','Memory'])assert.match(bot,new RegExp(name));
 assert.match(bot,/strategyConsensus/);
 assert.match(bot,/decisionSource/);
+assert.match(bot,/availableCount/);
+assert.match(bot,/WEIGHTS/);
 
 console.log('Market UI static integrity: PASS');
 console.log('News pipeline linkage: PASS');
-console.log('Bot-only trading surface integrity: PASS');
+console.log('Single-button Bot workflow: PASS');
 console.log('Strategy Lab → Bot decision linkage: PASS');
