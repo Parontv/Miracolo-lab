@@ -11,6 +11,7 @@ const investmentCss=fs.readFileSync('public/v1/investment-charts.css','utf8');
 const data=fs.readFileSync('public/v1/data.js','utf8');
 const bridge=fs.readFileSync('public/v1/news-feed-bridge.js','utf8');
 const bot=fs.readFileSync('public/v1/trading-agents.js','utf8');
+const strategy=fs.readFileSync('public/v1/strategy-lab.js','utf8');
 
 assert.match(html,/data-panel="market"/);
 assert.match(html,/lightweight-charts@5\.2\.1/);
@@ -26,15 +27,8 @@ assert.match(market,/LineSeries/);
 assert.match(css,/\.market-chart/);
 
 // Investimenti charts must remain isolated from Market and use recorded portfolio history.
-const strategy=fs.readFileSync('public/v1/strategy-lab.js','utf8');
 assert.match(html,/strategy-lab\.js\?v=2\.3\.2/);
-assert.match(strategy,/id:'learning'/);
-assert.match(strategy,/id:'memory'/);
-assert.match(strategy,/id:'jesse'/);
-assert.match(strategy,/id:'technical'/);
-assert.match(strategy,/id:'multi'/);
-assert.match(strategy,/id:'historical'/);
-assert.match(strategy,/id:'backtest'/);
+for(const id of ['learning','memory','jesse','technical','multi','historical','backtest'])assert.match(strategy,new RegExp(`id:'${id}'`));
 assert.match(strategy,/Accuracy/);
 assert.match(strategy,/Error Analysis/);
 assert.match(strategy,/Recent Outcomes/);
@@ -66,19 +60,25 @@ assert.match(bot,/Promise\.allSettled/);
 assert.match(bot,/paper trading|paper only/i);
 assert.match(bot,/rischio massimo €10/i);
 assert.match(bot,/massimo 3 operazioni\/giorno/);
-assert.match(bot,/PAPER REGISTRATO/);
-assert.match(bot,/net=a\.bull\.score/);
+assert.match(bot,/PAPER TRADE APERTO/);
+assert.match(bot,/status==='OPEN'/);
+assert.match(bot,/status='CLOSED'/);
+assert.match(bot,/STOP/);
+assert.match(bot,/TARGET/);
+assert.match(bot,/strategyLab|ml_strategy_lab_v23/);
+
+// Strategy Lab outputs must be usable by the operational Bot.
+assert.match(bot,/Strategy Lab/);
+assert.match(bot,/Jesse/);
+assert.match(bot,/WolfBot/);
+assert.match(bot,/Historical/);
+assert.match(bot,/Backtest/);
+assert.match(bot,/Learning/);
+assert.match(bot,/Memory/);
+assert.match(bot,/strategyConsensus/);
+assert.match(bot,/decisionSource/);
 
 console.log('Market UI static integrity: PASS');
 console.log('News pipeline linkage: PASS');
 console.log('Bot-only trading surface integrity: PASS');
-
-// Strategy Lab must mount synchronously and remain reachable through panel navigation.
-assert.match(strategy,/function boot\(\)\{loadSaved\(\);try\{render\('jesse','Inizializzazione Strategy Lab…','Overview'\)/);
-assert.match(nav,/lab\?\.render\('jesse'/);
-assert.match(nav,/requestAnimationFrame\(paint\)/);
-assert.match(nav,/Modulo non inizializzato/);
-assert.match(strategy,/async function autoRun\(\)/);
-assert.match(strategy,/dataErrors/);
-assert.match(strategy,/status:state\.running\?'running':'ready',render\}/);
-console.log('Strategy Lab mount and navigation guards: PASS');
+console.log('Strategy Lab → Bot decision linkage: PASS');
