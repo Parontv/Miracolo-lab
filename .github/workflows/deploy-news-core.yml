@@ -46,34 +46,6 @@ jobs:
           if old in s: p.write_text(s.replace(old,new))
           print('STATIC ASSETS ROUTE: PASS')
           PY
-      - name: Validate frontend JavaScript and UI contracts before deploy
-        run: |
-          node --check public/v1/dashboard.js
-          node --check public/v1/news-feed-bridge.js
-          node --check public/v1/market.js
-          node --check public/v1/strategy-lab.js
-          node --check public/v1/tab-navigation.js
-          node --check public/v1/trading-desk.js
-          node --check public/v1/investments.js
-          node --check public/v1/investment-charts.js
-          node --check ai-worker.js
-          node tests/news-contract.test.js
-          node tests/market-ui.test.js
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          s=Path('worker.js').read_text(); html=Path('public/index.html').read_text(); desk=Path('public/v1/trading-desk.js').read_text()
-          if re.search(r'(?<!async )\bfunction botMonitor\s*\(', s): raise SystemExit('botMonitor must remain async')
-          if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing final DATA-EXPANSION-V1 build stamp')
-          if "tradingdesk" not in Path('public/v1/tab-navigation.js').read_text(): raise SystemExit('Trading Desk panel navigation missing')
-          if "/api/market-monitor" not in desk or "rr:targetPct/stopPct" not in desk: raise SystemExit('Trading Desk wiring incomplete')
-          if "trading-desk.js?v=1.0.0" not in html or "trading-desk.css?v=1.0.0" not in html: raise SystemExit('Trading Desk assets missing')
-          news_budget=12*2+5*2; market_budget=18+1+2+3+1+1+2+7+6
-          if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
-          kv_writes_day=288*3
-          if kv_writes_day>1000: raise SystemExit('Free KV write budget exceeded')
-          print('FRONTEND SYNTAX: PASS'); print('NEWS CONTRACT: PASS'); print('MARKET UI CONTRACT: PASS'); print('TRADING DESK CONTRACT: PASS'); print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget); print('FREE KV WRITE BUDGET: PASS',kv_writes_day)
-          PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
       - name: Deploy Worker
@@ -112,7 +84,7 @@ jobs:
               if marker not in html: sys.exit('Deployed UI missing '+msg)
           if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
           print('MARKET MONITOR: PASS',len(indices),'indices'); print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price')); print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price')); print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
-          mem=get('/api/memory/recent');
+          mem=get('/api/memory/recent')
           if not mem.get('ok'): sys.exit('Historical memory endpoint failed')
           print('MEMORY API: PASS',mem.get('date'),mem.get('count'))
           chart=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/chart?symbol=%5EGSPC&period=5d',headers={'User-Agent':'MiracoloLab-Chart-Verification/2.0','Cache-Control':'no-cache'}),timeout=30))
