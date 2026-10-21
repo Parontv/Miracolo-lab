@@ -49,29 +49,49 @@ jobs:
         run: npx wrangler@4 deploy
       - name: Verify production endpoints and UI
         run: |
+          set -e
           python - <<'PY'
-          import json,urllib.request,sys,time
+          import json,urllib.request,sys,time,traceback
           base='https://miracolo-lab.listaconcerti.workers.dev'
           h={'User-Agent':'MiracoloLab-Deployment-Verification/1.0','Cache-Control':'no-cache'}
-          def get(path):
-              u=base+path+('&' if '?' in path else '?')+'ts='+str(time.time_ns())
-              return json.load(urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=45))
-          v=get('/version'); print('VERSION',json.dumps(v))
-          if not v.get('ok'): sys.exit('version failed')
-          health=get('/api/health'); print('HEALTH',json.dumps(health))
-          if not health.get('ok'): sys.exit('health failed')
-          live=get('/api/live'); print('LIVE_BYTES',len(json.dumps(live)))
-          if 'universe' in live and isinstance(live['universe'],dict) and 'tickers' in live['universe']: sys.exit('live payload still contains full universe tickers')
-          mm=get('/api/market-monitor'); print('MARKET_MONITOR_QUANTITATIVE', 'quantitative' in mm)
-          if 'quantitative' not in mm: sys.exit('quantitative missing from market monitor')
-          ai=get('/api/ai'); print('AI_STATUS',ai.get('status'),ai.get('generatedAt'))
-          chart=get('/api/chart?symbol=%5EGSPC&period=5d'); print('CHART_CANDLES',len(chart.get('candles') or []))
-          if not chart.get('ok') or len(chart.get('candles') or [])<2: sys.exit('chart failed')
-          html=urllib.request.urlopen(urllib.request.Request(base+'/',headers=h),timeout=30).read().decode('utf-8','replace')
-          required=['data.js?v=1.4.1','dashboard.js?v=1.5.4','strategy-lab.js?v=2.3.2','market.js?v=1.0.0','trading-agents.js?v=1.0.3','trading-agents.css?v=1.0.3','tab-navigation.js?v=1.6.4']
-          for marker in required:
-              if marker not in html: sys.exit('UI missing '+marker)
-          for marker in ['trading-desk.js','trading-desk.css']:
-              if marker in html: sys.exit('legacy trading desk still referenced')
-          print('UI ENTRYPOINTS: PASS')
+          report=[]; failed=False
+          def get(name,path):
+              global failed
+              try:
+                  u=base+path+('&' if '?' in path else '?')+'ts='+str(time.time_ns())
+                  data=json.load(urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=45))
+                  report.append({'name':name,'path':path,'ok':True,'data':data})
+                  print(name,json.dumps(data)[:6000])
+                  return data
+              except Exception as e:
+                  failed=True; report.append({'name':name,'path':path,'ok':False,'error':repr(e)}); print(name,'ERROR',repr(e)); return None
+          v=get('VERSION','/version')
+          if not v or not v.get('ok'): failed=True
+          health=get('HEALTH','/api/health')
+          if not health or not health.get('ok'): failed=True
+          live=get('LIVE','/api/live')
+          if live and isinstance(live.get('universe'),dict) and 'tickers' in live['universe']: failed=True; print('LIVE_PAYLOAD_TOO_LARGE: universe.tickers present')
+          mm=get('MARKET_MONITOR','/api/market-monitor')
+          if not mm or 'quantitative' not in mm: failed=True; print('MARKET_MONITOR_QUANTITATIVE: MISSING')
+          ai=get('AI','/api/ai')
+          chart=get('CHART','/api/chart?symbol=%5EGSPC&period=5d')
+          if not chart or not chart.get('ok') or len(chart.get('candles') or [])<2: failed=True
+          try:
+              req=urllib.request.Request(base+'/',headers=h); html=urllib.request.urlopen(req,timeout=30).read().decode('utf-8','replace')
+              required=['data.js?v=1.4.1','dashboard.js?v=1.5.4','strategy-lab.js?v=2.3.2','market.js?v=1.0.0','trading-agents.js?v=1.0.3','trading-agents.css?v=1.0.3','tab-navigation.js?v=1.6.4']
+              missing=[x for x in required if x not in html]; legacy=[x for x in ['trading-desk.js','trading-desk.css'] if x in html]
+              report.append({'name':'UI','ok':not missing and not legacy,'missing':missing,'legacy':legacy}); print('UI',json.dumps({'missing':missing,'legacy':legacy}))
+              if missing or legacy: failed=True
+          except Exception as e:
+              failed=True; report.append({'name':'UI','ok':False,'error':repr(e)}); print('UI ERROR',repr(e))
+          open('/tmp/production-verification.json','w').write(json.dumps(report,indent=2,default=str))
+          if failed: sys.exit('production verification failed; see artifact production-verification')
+          print('PRODUCTION VERIFICATION: PASS')
           PY
+      - name: Upload production verification diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-verification
+          path: /tmp/production-verification.json
+          if-no-files-found: ignore
