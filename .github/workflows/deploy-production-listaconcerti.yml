@@ -1,50 +1,45 @@
-name: Deploy Production Listaconcerti
+name: Production verification (manual)
 on:
   workflow_dispatch:
 concurrency:
   group: miracolo-lab-production
   cancel-in-progress: false
 jobs:
-  deploy:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Validate source before deploy
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate source
         run: |
-          node --check worker.js
-          node --check ai-worker.js
-          node --check public/v1/market.js
+          set -e
+          find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
+          find scripts -type f -name '*.py' -print0 | xargs -0 -n1 python -m py_compile
           node tests/news-contract.test.js
           node tests/market-ui.test.js
-      - name: Install Wrangler
-        run: npm install --no-save wrangler@4
-      - name: Deploy production Worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
-        run: npx wrangler@4 deploy --name miracolo-lab
-      - name: Verify production Miracolo Lab
+      - name: Verify current production
         run: |
           python - <<'PY'
-          import urllib.request,sys,time,json
+          import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
+          h={'Cache-Control':'no-cache','Pragma':'no-cache','User-Agent':'MiracoloLab-Manual-Verification/1.0'}
           def get(path):
-              req=urllib.request.Request(base+path,headers={'Cache-Control':'no-cache','Pragma':'no-cache'})
-              return urllib.request.urlopen(req,timeout=45).read().decode('utf-8','replace')
-          html=get('/?ts='+str(time.time_ns()))
-          if 'Miracolo Lab' not in html: sys.exit('Production HTML does not identify Miracolo Lab')
-          print('PRODUCTION HTML: PASS')
-          raw=get('/api/market-monitor')
-          data=json.loads(raw)
-          quant=data.get('quantitative')
-          if not isinstance(quant,dict): sys.exit('API missing quantitative payload')
-          coverage=quant.get('coverage',{})
-          groups=quant.get('groups',{})
-          if not isinstance(groups,dict): sys.exit('API missing quantitative groups')
-          print('QUANTITATIVE API: PASS; coverage='+json.dumps(coverage))
-          for name in ('macro','central','rates','credit'):
-              if name not in groups: sys.exit('Missing quantitative group: '+name)
-          print('QUANTITATIVE GROUPS: PASS')
+              req=urllib.request.Request(base+path+('&' if '?' in path else '?')+'ts='+str(time.time_ns()),headers=h)
+              return json.load(urllib.request.urlopen(req,timeout=45))
+          v=get('/version'); print('VERSION:',json.dumps(v))
+          health=get('/api/health'); print('HEALTH:',json.dumps(health))
+          mm=get('/api/market-monitor'); print('QUANTITATIVE:',isinstance(mm.get('quantitative'),dict))
+          ai=get('/api/ai'); print('AI:',json.dumps({k:ai.get(k) for k in ('status','model','generatedAt','build')}))
+          chart=get('/api/chart?symbol=%5EGSPC&period=5d'); print('CHART_CANDLES:',len(chart.get('candles') or []))
+          if not health.get('ok'): sys.exit('Production health failed')
+          if not isinstance(mm.get('quantitative'),dict): sys.exit('Production quantitative payload missing')
+          if not chart.get('ok') or len(chart.get('candles') or [])<2: sys.exit('Production chart failed')
+          print('PRODUCTION VERIFICATION: PASS')
           PY
