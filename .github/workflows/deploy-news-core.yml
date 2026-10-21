@@ -59,7 +59,7 @@ jobs:
           import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'; expected='ML-20260910-DATA-EXPANSION-V1'
           def get(path):
-              nonce=str(time.time_ns()); return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/9.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=60))
+              nonce=str(time.time_ns()); return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/10.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=60))
           version=None
           for attempt in range(10):
               try:
@@ -79,8 +79,8 @@ jobs:
           if not pmap.get('GOLD',{}).get('ok'): sys.exit('Portfolio GOLD price unavailable after deployment')
           if not cmap.get('BTC',{}).get('ok') or not cmap.get('ETH',{}).get('ok'): sys.exit('Portfolio crypto prices unavailable after deployment')
           if float(pmap['GOLD'].get('price') or 0)<=0 or float(cmap['BTC'].get('price') or 0)<=0 or float(cmap['ETH'].get('price') or 0)<=0: sys.exit('Portfolio price payload contains invalid zero values')
-          nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/5.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.5.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.3.2','Strategy Lab'),('market.js?v=1.0.0','Market tab'),('investment-charts.js?v=1.0.1','Investment charts'),('lightweight-charts@5.2.1','Lightweight Charts'),('trading-desk.js?v=1.0.0','Trading Desk'),('trading-desk.css?v=1.0.0','Trading Desk CSS'),('Miracolo Lab','header')]:
+          nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/6.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
+          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.5.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.3.2','Strategy Lab'),('market.js?v=1.0.0','Market tab'),('investment-charts.js?v=1.0.1','Investment charts'),('lightweight-charts@5.2.1','Lightweight Charts'),('trading-desk.js?v=1.0.1','Trading Desk'),('trading-desk.css?v=1.0.1','Trading Desk CSS'),('tab-navigation.js?v=1.6.3','navigation'),('Miracolo Lab','header')]:
               if marker not in html: sys.exit('Deployed UI missing '+msg)
           if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
           print('MARKET MONITOR: PASS',len(indices),'indices'); print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price')); print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price')); print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
