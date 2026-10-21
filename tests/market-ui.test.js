@@ -10,11 +10,14 @@ const investmentCharts=fs.readFileSync('public/v1/investment-charts.js','utf8');
 const investmentCss=fs.readFileSync('public/v1/investment-charts.css','utf8');
 const data=fs.readFileSync('public/v1/data.js','utf8');
 const bridge=fs.readFileSync('public/v1/news-feed-bridge.js','utf8');
+const desk=fs.readFileSync('public/v1/trading-desk.js','utf8');
+const deskCss=fs.readFileSync('public/v1/trading-desk.css','utf8');
 
 assert.match(html,/data-panel="market"/);
 assert.match(html,/lightweight-charts@5\.2\.1/);
 assert.match(html,/\/v1\/market\.js\?v=1\.0\.0/);
 assert.match(nav,/const PANELS=\['radar','market'/);
+assert.match(nav,/['\"]tradingdesk['\"]/);
 assert.match(market,/\/api\/chart/);
 assert.match(market,/\/api\/market-monitor/);
 assert.match(market,/CandlestickSeries/);
@@ -37,7 +40,7 @@ assert.match(strategy,/Error Analysis/);
 assert.match(strategy,/Recent Outcomes/);
 assert.match(strategy,/data-section/);
 assert.match(html,/investment-charts\.js\?v=1\.0\.1/);
-assert.match(html,/investment-charts\.css\?v=1\.0.1/);
+assert.match(html,/investment-charts\.css\?v=1\.0\.1/);
 assert.match(investments,/const ROOT='ml_portfolio_v7'/);
 assert.match(investments,/HK=ROOT\+'\.history'/);
 assert.match(investments,/positions:t\.rows\.map/);
@@ -52,8 +55,24 @@ assert.match(data,/\/api\/live/);
 assert.match(data,/\/api\/full-scan/);
 assert.match(bridge,/window\.ML\.on\('data'/);
 
+// Trading Desk must be a real panel, use canonical market data, and stay paper-only.
+assert.match(html,/trading-desk\.css\?v=1\.0\.0/);
+assert.match(html,/trading-desk\.js\?v=1\.0\.0/);
+assert.match(nav,/tradingdesk/);
+assert.match(desk,/\/api\/market-monitor/);
+assert.match(desk,/SCANSIONE ORA/);
+assert.match(desk,/Solo paper trading/);
+assert.match(desk,/Rischio max\/trade: 0,5%/);
+assert.match(desk,/Massimo: 3 operazioni\/giorno/);
+assert.match(desk,/No real-money execution|Nessuna esecuzione reale/);
+assert.match(desk,/rr:targetPct\/stopPct/);
+assert.match(desk,/lastJournalKey/);
+assert.match(deskCss,/\.mltd-grid/);
+assert.match(deskCss,/@media\(max-width:800px\)/);
+
 console.log('Market UI static integrity: PASS');
 console.log('News pipeline linkage: PASS');
+console.log('Trading Desk integrity: PASS');
 
 // Strategy Lab must mount synchronously and remain reachable through panel navigation.
 assert.match(strategy,/function boot\(\)\{loadSaved\(\);try\{render\('jesse','Inizializzazione Strategy Lab…','Overview'\)/);
