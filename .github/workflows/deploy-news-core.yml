@@ -41,31 +41,28 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('worker.js')
-          s=p.read_text()
-          old="}}return new Response('Not found',{status:404})}};"
-          new="}}if(u.pathname==='/'&&env.ASSETS)return env.ASSETS.fetch(new Request(new URL('/index.html',req.url),req));if(env.ASSETS)return env.ASSETS.fetch(req);return new Response('Not found',{status:404})}};"
-          if old not in s and "if(env.ASSETS)return env.ASSETS.fetch(req)" not in s:
-              raise SystemExit('Generated Worker route tail not found')
-          if old in s:
-              s=s.replace(old,new)
-              p.write_text(s)
+          p=Path('worker.js'); s=p.read_text(); old="}}return new Response('Not found',{status:404})}};"; new="}}if(u.pathname==='/'&&env.ASSETS)return env.ASSETS.fetch(new Request(new URL('/index.html',req.url),req));if(env.ASSETS)return env.ASSETS.fetch(req);return new Response('Not found',{status:404})}};"
+          if old not in s and "if(env.ASSETS)return env.ASSETS.fetch(req)" not in s: raise SystemExit('Generated Worker route tail not found')
+          if old in s: p.write_text(s.replace(old,new))
           print('STATIC ASSETS ROUTE: PASS')
           PY
       - name: Validate JavaScript and UI contracts before deploy
         run: |
-          node --check worker.js
-          node --check public/v1/dashboard.js
-          node --check public/v1/news-feed-bridge.js
-          node --check public/v1/market.js
-          node --check public/v1/strategy-lab.js
-          node --check public/v1/tab-navigation.js
-          node --check public/v1/trading-desk.js
-          node --check public/v1/investments.js
-          node --check public/v1/investment-charts.js
-          node --check ai-worker.js
-          node tests/news-contract.test.js
-          node tests/market-ui.test.js
+          set +e
+          node --check worker.js; r1=$?
+          node --check public/v1/dashboard.js; r2=$?
+          node --check public/v1/news-feed-bridge.js; r3=$?
+          node --check public/v1/market.js; r4=$?
+          node --check public/v1/strategy-lab.js; r5=$?
+          node --check public/v1/tab-navigation.js; r6=$?
+          node --check public/v1/trading-desk.js; r7=$?
+          node --check public/v1/investments.js; r8=$?
+          node --check public/v1/investment-charts.js; r9=$?
+          node --check ai-worker.js; r10=$?
+          node tests/news-contract.test.js; r11=$?
+          node tests/market-ui.test.js; r12=$?
+          echo "CHECK_STATUS worker=$r1 dashboard=$r2 bridge=$r3 market=$r4 strategy=$r5 tabs=$r6 desk=$r7 investments=$r8 charts=$r9 ai=$r10 news_test=$r11 market_ui_test=$r12"
+          if [ $r1 -ne 0 ] || [ $r2 -ne 0 ] || [ $r3 -ne 0 ] || [ $r4 -ne 0 ] || [ $r5 -ne 0 ] || [ $r6 -ne 0 ] || [ $r7 -ne 0 ] || [ $r8 -ne 0 ] || [ $r9 -ne 0 ] || [ $r10 -ne 0 ] || [ $r11 -ne 0 ] || [ $r12 -ne 0 ]; then exit 1; fi
           python - <<'PY'
           from pathlib import Path
           import re
@@ -80,7 +77,7 @@ jobs:
           if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
           kv_writes_day=288*3
           if kv_writes_day>1000: raise SystemExit('Free KV write budget exceeded')
-          print('STATIC JS SYNTAX: PASS'); print('NEWS CONTRACT: PASS'); print('MARKET UI CONTRACT: PASS'); print('TRADING DESK CONTRACT: PASS'); print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget); print('FREE KV WRITE BUDGET: PASS',kv_writes_day)
+          print('STATIC CONTRACTS: PASS')
           PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
@@ -106,15 +103,12 @@ jobs:
           if not version or version.get('build')!=expected: sys.exit('Deployed Worker build stamp is not DATA-EXPANSION-V1 after propagation window')
           health=get('/api/health')
           if not health.get('ok'): sys.exit('Health endpoint failed')
-          market=get('/api/market-monitor')
-          indices=market.get('indices') or []
+          market=get('/api/market-monitor'); indices=market.get('indices') or []
           if len(indices)<3: sys.exit('Market monitor returned fewer than 3 indices')
           names=' '.join(str(x.get('name','')) for x in indices)
-          if not any('S&P' in names or 'SP500' in names for _ in [0]): sys.exit('S&P 500 missing from market monitor')
-          prices=get('/api/prices?symbols=GOLD,SWDA,XMME')
-          crypto=get('/api/crypto')
-          pmap={str(x.get('symbol','')).upper():x for x in prices.get('prices') or []}
-          cmap={str(x.get('symbol','')).upper():x for x in crypto.get('coins') or []}
+          if 'S&P' not in names and 'SP500' not in names: sys.exit('S&P 500 missing from market monitor')
+          prices=get('/api/prices?symbols=GOLD,SWDA,XMME'); crypto=get('/api/crypto')
+          pmap={str(x.get('symbol','')).upper():x for x in prices.get('prices') or []}; cmap={str(x.get('symbol','')).upper():x for x in crypto.get('coins') or []}
           if not pmap.get('GOLD',{}).get('ok'): sys.exit('Portfolio GOLD price unavailable after deployment')
           if not cmap.get('BTC',{}).get('ok') or not cmap.get('ETH',{}).get('ok'): sys.exit('Portfolio crypto prices unavailable after deployment')
           if float(pmap['GOLD'].get('price') or 0)<=0 or float(cmap['BTC'].get('price') or 0)<=0 or float(cmap['ETH'].get('price') or 0)<=0: sys.exit('Portfolio price payload contains invalid zero values')
@@ -122,17 +116,13 @@ jobs:
           for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.5.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.3.2','Strategy Lab'),('market.js?v=1.0.0','Market tab'),('investment-charts.js?v=1.0.1','Investment charts'),('lightweight-charts@5.2.1','Lightweight Charts'),('trading-desk.js?v=1.0.0','Trading Desk'),('trading-desk.css?v=1.0.0','Trading Desk CSS'),('Miracolo Lab','header')]:
               if marker not in html: sys.exit('Deployed UI missing '+msg)
           if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
-          print('MARKET MONITOR: PASS',len(indices),'indices')
-          print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price'))
-          print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price'))
-          print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
-          mem=get('/api/memory/recent')
+          print('MARKET MONITOR: PASS',len(indices),'indices'); print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price')); print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price')); print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
+          mem=get('/api/memory/recent');
           if not mem.get('ok'): sys.exit('Historical memory endpoint failed')
           print('MEMORY API: PASS',mem.get('date'),mem.get('count'))
           chart=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/chart?symbol=%5EGSPC&period=5d',headers={'User-Agent':'MiracoloLab-Chart-Verification/2.0','Cache-Control':'no-cache'}),timeout=30))
           if not chart.get('ok') or len(chart.get('candles') or [])<2: sys.exit('Market chart endpoint failed')
-          print('MARKET CHART API: PASS',len(chart.get('candles') or []),'candles')
-          print('DEPLOYED UI ENTRYPOINTS: PASS'); print('LEGACY STRATEGY SUBMENU: ABSENT')
+          print('MARKET CHART API: PASS',len(chart.get('candles') or []),'candles'); print('DEPLOYED UI ENTRYPOINTS: PASS'); print('LEGACY STRATEGY SUBMENU: ABSENT')
           PY
       - name: Verify News Core after deployment
         run: |
