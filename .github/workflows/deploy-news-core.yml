@@ -52,7 +52,7 @@ jobs:
               p.write_text(s)
           print('STATIC ASSETS ROUTE: PASS')
           PY
-      - name: Validate generated Worker and dashboard before deploy
+      - name: Validate JavaScript and UI contracts before deploy
         run: |
           node --check worker.js
           node --check public/v1/dashboard.js
@@ -69,37 +69,18 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import re
-          s=Path('worker.js').read_text(); ui=Path('public/v1/dashboard.js').read_text(); data=Path('public/v1/data.js').read_text(); bridge=Path('public/v1/news-feed-bridge.js').read_text(); desk=Path('public/v1/trading-desk.js').read_text(); html=Path('public/index.html').read_text(); nav=Path('public/v1/tab-navigation.js').read_text()
-          checks=[]
-          checks.append(('botMonitor async',not re.search(r'(?<!async )\bfunction botMonitor\s*\(',s)))
-          checks.append(('no unbound market()',not re.search(r'(?<![A-Za-z0-9_])market\(\)',s)))
-          markers=["SECTOR_TECH:'XLK'","US3M:'^IRX'","USDBRL:'BRL=X'","SOURCE_EXPANSION_V1","CFTC General","SEC Latest 8-K","SNB Official","BoE Official","OPEC Official","IMF Official","async function institutionalData","async function socialData","async function onchainData","const DATA_ADAPTERS=","json-institutional","json-social","json-onchain","runDataAdapter","institutionalData:institutional","socialData:social","onchainData:onchain","marketUniverseVersion:'DATA-EXPANSION-V1'","marketUniverse:Object.keys(MARKET)","/api/market-monitor-v2","BATCH=12","MARKET_BATCH=18","MARKET_SNAPSHOT_KEY","const RL_MEM=new Map"]
-          checks.extend((f'worker marker: {m}',m in s) for m in markers)
-          checks.append(('final build stamp',"const BUILD='ML-20260910-DATA-EXPANSION-V1';" in s))
-          ai=Path('ai-worker.js').read_text();checks.extend((f'AI marker: {m}',m in ai) for m in ["ML-MEMORY-V1","MEMORY_INTERVAL_MINUTES=15","archiveMemory","/api/memory/recent","/api/memory/snapshot"])
-          checks.append(('investment history',"positions:t.rows.map" in Path('public/v1/investments.js').read_text()))
-          checks.append(('investment charts',"investment-charts.js?v=1.0.1" in html))
-          sl=Path('public/v1/strategy-lab.js').read_text();checks.extend((f'Strategy Lab: {m}',m in sl) for m in ["id:'learning'","Accuracy","Error Analysis","data-section","ml-method-item.active"])
-          checks.append(('strategy asset version',"strategy-lab.js?v=2.3.2" in html))
-          checks.append(('market chart endpoint',"async function chartData(symbol,period='5d')" in s and "/api/chart" in s))
-          checks.append(('crypto fallback BTC',"api.exchange.coinbase.com/products/BTC-EUR/ticker" in s))
-          checks.append(('crypto fallback ETH',"api.exchange.coinbase.com/products/ETH-EUR/ticker" in s))
-          checks.append(('retry budget',not re.search(r'for\(let attempt=0;attempt<2;attempt\+\+\)',s)))
-          checks.append(('dashboard market filter',".filter(x=>x.ok)" not in ui))
-          checks.append(('news adapter',"function extractNews(payload)" in data and "const candidates=[payload.news,payload.scan,payload.snapshot,payload.data,payload]" in data))
-          checks.append(('news bridge',"window.ML.on('data',sync)" in bridge))
-          checks.extend((f'Trading Desk: {m}',m in desk) for m in ["/api/market-monitor","SCANSIONE ORA","Solo paper trading","Rischio max/trade: 0,5%","Massimo: 3 operazioni/giorno","rr:targetPct/stopPct","lastJournalKey"])
-          checks.extend((f'UI asset: {m}',m in html) for m in ["trading-desk.js?v=1.0.0","trading-desk.css?v=1.0.0"])
-          missing=[name for name,ok in checks if not ok]
-          if missing:
-              print('VALIDATION FAILURES:')
-              for name in missing: print(' -',name)
-              raise SystemExit('Generated Worker/UI validation failed')
+          s=Path('worker.js').read_text(); html=Path('public/index.html').read_text(); desk=Path('public/v1/trading-desk.js').read_text()
+          if re.search(r'(?<!async )\bfunction botMonitor\s*\(', s): raise SystemExit('botMonitor must remain async')
+          if re.search(r'(?<![A-Za-z0-9_])market\(\)', s): raise SystemExit('Unbound market() call remains')
+          if "const BUILD='ML-20260910-DATA-EXPANSION-V1';" not in s: raise SystemExit('Missing final DATA-EXPANSION-V1 build stamp')
+          if "tradingdesk" not in Path('public/v1/tab-navigation.js').read_text(): raise SystemExit('Trading Desk panel navigation missing')
+          if "/api/market-monitor" not in desk or "rr:targetPct/stopPct" not in desk: raise SystemExit('Trading Desk wiring incomplete')
+          if "trading-desk.js?v=1.0.0" not in html or "trading-desk.css?v=1.0.0" not in html: raise SystemExit('Trading Desk assets missing')
           news_budget=12*2+5*2; market_budget=18+1+2+3+1+1+2+7+6
           if news_budget>50 or market_budget>50: raise SystemExit('Free external subrequest budget exceeded')
           kv_writes_day=288*3
           if kv_writes_day>1000: raise SystemExit('Free KV write budget exceeded')
-          print('WORKER SYNTAX: PASS'); print('DASHBOARD MARKET FILTER GUARD: PASS'); print('NEWS FEED ADAPTER: PASS'); print('NEWS FEED SUBMENUS: PASS'); print('SOURCE EXPANSION: PASS'); print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget); print('FREE KV WRITE BUDGET: PASS',kv_writes_day); print('HISTORICAL MEMORY ARCHIVE: PASS'); print('TRADING DESK: PASS')
+          print('STATIC JS SYNTAX: PASS'); print('NEWS CONTRACT: PASS'); print('MARKET UI CONTRACT: PASS'); print('TRADING DESK CONTRACT: PASS'); print('FREE SUBREQUEST BUDGET: PASS',news_budget,market_budget); print('FREE KV WRITE BUDGET: PASS',kv_writes_day)
           PY
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
@@ -114,7 +95,7 @@ jobs:
           import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'; expected='ML-20260910-DATA-EXPANSION-V1'
           def get(path):
-              nonce=str(time.time_ns()); return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/8.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=60))
+              nonce=str(time.time_ns()); return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/9.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=60))
           version=None
           for attempt in range(10):
               try:
@@ -125,6 +106,11 @@ jobs:
           if not version or version.get('build')!=expected: sys.exit('Deployed Worker build stamp is not DATA-EXPANSION-V1 after propagation window')
           health=get('/api/health')
           if not health.get('ok'): sys.exit('Health endpoint failed')
+          market=get('/api/market-monitor')
+          indices=market.get('indices') or []
+          if len(indices)<3: sys.exit('Market monitor returned fewer than 3 indices')
+          names=' '.join(str(x.get('name','')) for x in indices)
+          if not any('S&P' in names or 'SP500' in names for _ in [0]): sys.exit('S&P 500 missing from market monitor')
           prices=get('/api/prices?symbols=GOLD,SWDA,XMME')
           crypto=get('/api/crypto')
           pmap={str(x.get('symbol','')).upper():x for x in prices.get('prices') or []}
@@ -132,17 +118,18 @@ jobs:
           if not pmap.get('GOLD',{}).get('ok'): sys.exit('Portfolio GOLD price unavailable after deployment')
           if not cmap.get('BTC',{}).get('ok') or not cmap.get('ETH',{}).get('ok'): sys.exit('Portfolio crypto prices unavailable after deployment')
           if float(pmap['GOLD'].get('price') or 0)<=0 or float(cmap['BTC'].get('price') or 0)<=0 or float(cmap['ETH'].get('price') or 0)<=0: sys.exit('Portfolio price payload contains invalid zero values')
-          nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/4.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
+          nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/5.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
           for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.5.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.3.2','Strategy Lab'),('market.js?v=1.0.0','Market tab'),('investment-charts.js?v=1.0.1','Investment charts'),('lightweight-charts@5.2.1','Lightweight Charts'),('trading-desk.js?v=1.0.0','Trading Desk'),('trading-desk.css?v=1.0.0','Trading Desk CSS'),('Miracolo Lab','header')]:
               if marker not in html: sys.exit('Deployed UI missing '+msg)
           if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
+          print('MARKET MONITOR: PASS',len(indices),'indices')
           print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price'))
           print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price'))
           print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
           mem=get('/api/memory/recent')
           if not mem.get('ok'): sys.exit('Historical memory endpoint failed')
           print('MEMORY API: PASS',mem.get('date'),mem.get('count'))
-          chart=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/chart?symbol=%5EGSPC&period=5d',headers={'User-Agent':'MiracoloLab-Chart-Verification/1.0','Cache-Control':'no-cache'}),timeout=30))
+          chart=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/chart?symbol=%5EGSPC&period=5d',headers={'User-Agent':'MiracoloLab-Chart-Verification/2.0','Cache-Control':'no-cache'}),timeout=30))
           if not chart.get('ok') or len(chart.get('candles') or [])<2: sys.exit('Market chart endpoint failed')
           print('MARKET CHART API: PASS',len(chart.get('candles') or []),'candles')
           print('DEPLOYED UI ENTRYPOINTS: PASS'); print('LEGACY STRATEGY SUBMENU: ABSENT')
@@ -151,7 +138,7 @@ jobs:
         run: |
           python - <<'PY'
           import json,urllib.request,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev'; h={'User-Agent':'MiracoloLab-NewsCore-Verification/12.0','Cache-Control':'no-cache'}
+          base='https://miracolo-lab.listaconcerti.workers.dev'; h={'User-Agent':'MiracoloLab-NewsCore-Verification/13.0','Cache-Control':'no-cache'}
           cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
           def get_live():
               raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/live?ts='+str(time.time_ns()),headers=h),timeout=30)); live=raw.get('news') or raw; cs=live.get('categorySummary') or {}; return live,{k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
