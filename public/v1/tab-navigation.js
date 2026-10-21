@@ -1,7 +1,7 @@
 /* Miracolo Lab — Top tab navigation */
 (()=>{
   'use strict';
-  const PANELS=['radar','market','investimenti','bot','strategy','blackswan','settings','tradingdesk'];
+  const PANELS=['radar','market','investimenti','bot','strategy','blackswan','settings'];
   const originalSetPanel=window.setPanel;
   function activate(id){
     if(!PANELS.includes(id)) id='radar';
@@ -19,30 +19,17 @@
       tab.classList.toggle('active',active);
       tab.setAttribute('aria-selected',active?'true':'false');
     });
-    if(id==='tradingdesk'){
-      if(typeof window.MiracoloTradingDesk?.open==='function') window.MiracoloTradingDesk.open();
-      else {
-        const sidePanel=document.getElementById('sidePanel');
-        if(sidePanel) sidePanel.innerHTML='<div class="panel-section"><b>Trading Desk</b><p>Modulo non inizializzato. Ricarica la pagina; se il problema continua, controllare gli errori JavaScript.</p></div>';
-      }
-      window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
-      return;
-    }
-    if(id==='market'||id==='strategy'){
-      if(id==='strategy'){
-        if(typeof originalSetPanel==='function') originalSetPanel(id);
-        const paint=()=>{
-          const lab=window.ML_STRATEGY_LAB;
-          if(typeof lab?.render==='function') lab.render('jesse','Strategy Lab pronto','Overview');
-          else {
-            const side=document.getElementById('sidePanel');
-            if(side) side.innerHTML='<div class="panel-section"><b>Strategy Lab</b><p>Modulo non inizializzato. Ricarica la pagina; se il problema continua, controllare gli errori JavaScript.</p></div>';
-          }
-        };
-        paint();
-        requestAnimationFrame(paint);
-        setTimeout(paint,80);
-      }
+    if(id==='strategy'){
+      if(typeof originalSetPanel==='function') originalSetPanel(id);
+      const paint=()=>{
+        const lab=window.ML_STRATEGY_LAB;
+        if(typeof lab?.render==='function') lab.render('jesse','Strategy Lab pronto','Overview');
+        else {
+          const side=document.getElementById('sidePanel');
+          if(side) side.innerHTML='<div class="panel-section"><b>Strategy Lab</b><p>Modulo non inizializzato. Ricarica la pagina; se il problema continua, controllare gli errori JavaScript.</p></div>';
+        }
+      };
+      paint(); requestAnimationFrame(paint); setTimeout(paint,80);
       window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
       return;
     }
