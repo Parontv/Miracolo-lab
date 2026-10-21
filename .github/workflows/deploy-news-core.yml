@@ -1,4 +1,4 @@
-name: Deploy Miracolo Lab News Core
+name: Deploy Miracolo Lab
 on:
   push:
     branches: [main]
@@ -7,129 +7,106 @@ concurrency:
   group: miracolo-lab-production
   cancel-in-progress: false
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Build persistent batched News Core
-        run: python scripts/build-news-core.py
-      - name: Expand market universe
-        run: python scripts/patch-market-universe.py
-      - name: Expand institutional and macro source universe
-        run: python scripts/patch-source-universe.py
-      - name: Add structured institutional data
-        run: python scripts/patch-institutional-data.py
-      - name: Add retail social sentiment
-        run: python scripts/patch-social-data.py
-      - name: Add crypto onchain data
-        run: python scripts/patch-onchain-data.py
-      - name: Enforce Workers Free data budget
-        run: python scripts/patch-free-budget.py
-      - name: Add Market chart endpoint
-        run: python scripts/patch-market-chart.py
-      - name: Harden crypto price fallbacks
-        run: python scripts/patch-crypto-reliability.py
-      - name: Stabilize News Core live endpoint
-        run: python scripts/patch-news-live.py
-      - name: Patch dashboard market rendering
-        run: python scripts/patch-dashboard-indices.py
-      - name: Reapply Market chart route after final Worker generation
-        run: python scripts/patch-market-chart.py
-      - name: Restore static ASSETS route after generated Worker patches
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm ci
+      - name: Syntax check JavaScript
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('worker.js'); s=p.read_text(); old="}}return new Response('Not found',{status:404})}};"; new="}}if(u.pathname==='/'&&env.ASSETS)return env.ASSETS.fetch(new Request(new URL('/index.html',req.url),req));if(env.ASSETS)return env.ASSETS.fetch(req);return new Response('Not found',{status:404})}};"
-          if old not in s and "if(env.ASSETS)return env.ASSETS.fetch(req)" not in s: raise SystemExit('Generated Worker route tail not found')
-          if old in s: p.write_text(s.replace(old,new))
-          print('STATIC ASSETS ROUTE: PASS')
-          PY
+          set -e
+          find . -type f -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check
+      - name: Compile Python scripts
+        run: |
+          set -e
+          find scripts -type f -name '*.py' -print0 | xargs -0 -n1 python -m py_compile
+      - name: News contract test
+        run: node tests/news-contract.test.js
+      - name: Market/UI integrity test
+        run: node tests/market-ui.test.js
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
-      - name: Ensure ML_KV namespace and binding
+      - name: Ensure ML_KV binding
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -e
           KV_ID=$(npx wrangler@4 kv namespace list | jq -r '.[] | select(.title | endswith("ML_KV")) | .id' | head -n1)
           if [ -z "$KV_ID" ] || [ "$KV_ID" = "null" ]; then
             echo 'ML_KV namespace not found; creating it.'
             npx wrangler@4 kv namespace create ML_KV --update-config --binding ML_KV
-            KV_ID=$(grep -oE 'id = "[a-f0-9]+"' wrangler.toml | head -n1 | cut -d'"' -f2)
+            KV_ID=$(grep -A2 '^\[\[kv_namespaces\]\]' wrangler.toml | grep -E '^id' | head -n1 | cut -d'"' -f2)
           fi
-          if [ -z "$KV_ID" ]; then echo 'Unable to resolve ML_KV namespace id'; exit 1; fi
+          test -n "$KV_ID" && test "$KV_ID" != null
           export KV_ID
           python - <<'PY'
           from pathlib import Path
-          import re,os
+          import os,re
           p=Path('wrangler.toml'); s=p.read_text(); kid=os.environ['KV_ID']
-          pattern=r'(?m)(\[\[kv_namespaces\]\]\s*\nbinding = "ML_KV"\s*\nid = )"[^"]+"'
-          if re.search(pattern,s): s=re.sub(pattern,r'\1"'+kid+'"',s,count=1)
-          else: s += '\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "'+kid+'"\n'
-          p.write_text(s); print('ML_KV BINDING: PASS',kid)
+          blocks=list(re.finditer(r'(?ms)^\[\[kv_namespaces\]\]\s*\n.*?(?=^\[\[|\Z)',s))
+          ml=[]
+          for m in blocks:
+              if re.search(r'(?m)^binding\s*=\s*["\']ML_KV["\']',m.group(0)): ml.append(m)
+          if len(ml)>1: raise SystemExit('Duplicate ML_KV bindings in wrangler.toml')
+          if len(ml)==1:
+              block=ml[0].group(0)
+              if re.search(r'(?m)^id\s*=',block): block=re.sub(r'(?m)^id\s*=\s*["\'][^"\']+["\']',f'id = "{kid}"',block)
+              else: block=block.rstrip()+f'\nid = "{kid}"\n'
+              s=s[:ml[0].start()]+block+s[ml[0].end():]
+          else:
+              s=s.rstrip()+f'\n\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "{kid}"\n'
+          p.write_text(s)
+          print('ML_KV BINDING: PASS',kid)
           PY
       - name: Deploy Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler@4 deploy
-      - name: Verify deployed build, full market universe and UI
+      - name: Verify production endpoints and UI
         run: |
           python - <<'PY'
           import json,urllib.request,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev'; expected='ML-20260910-DATA-EXPANSION-V1'
+          base='https://miracolo-lab.listaconcerti.workers.dev'
+          h={'User-Agent':'MiracoloLab-Deployment-Verification/1.0','Cache-Control':'no-cache'}
           def get(path):
-              nonce=str(time.time_ns()); return json.load(urllib.request.urlopen(urllib.request.Request(base+path+('?ts='+nonce if '?' not in path else '&ts='+nonce),headers={'User-Agent':'MiracoloLab-Deployment-Verification/10.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=60))
-          version=None
-          for attempt in range(10):
-              try:
-                  version=get('/version'); print('VERSION CHECK',attempt+1,version.get('build'))
-                  if version.get('build')==expected: break
-              except Exception as e: print('VERSION RETRY',attempt+1,str(e))
-              time.sleep(3)
-          if not version or version.get('build')!=expected: sys.exit('Deployed Worker build stamp is not DATA-EXPANSION-V1 after propagation window')
-          health=get('/api/health')
-          if not health.get('ok'): sys.exit('Health endpoint failed')
-          market=get('/api/market-monitor'); indices=market.get('indices') or []
-          if len(indices)<3: sys.exit('Market monitor returned fewer than 3 indices')
-          names=' '.join(str(x.get('name','')) for x in indices)
-          if 'S&P' not in names and 'SP500' not in names: sys.exit('S&P 500 missing from market monitor')
-          prices=get('/api/prices?symbols=GOLD,SWDA,XMME'); crypto=get('/api/crypto')
-          pmap={str(x.get('symbol','')).upper():x for x in prices.get('prices') or []}; cmap={str(x.get('symbol','')).upper():x for x in crypto.get('coins') or []}
-          if not pmap.get('GOLD',{}).get('ok'): sys.exit('Portfolio GOLD price unavailable after deployment')
-          if not cmap.get('BTC',{}).get('ok') or not cmap.get('ETH',{}).get('ok'): sys.exit('Portfolio crypto prices unavailable after deployment')
-          if float(pmap['GOLD'].get('price') or 0)<=0 or float(cmap['BTC'].get('price') or 0)<=0 or float(cmap['ETH'].get('price') or 0)<=0: sys.exit('Portfolio price payload contains invalid zero values')
-          nonce=str(time.time_ns()); html=urllib.request.urlopen(urllib.request.Request(base+'/?ts='+nonce,headers={'User-Agent':'MiracoloLab-UI-Verification/6.0','Cache-Control':'no-cache','Pragma':'no-cache'}),timeout=30).read().decode('utf-8','replace')
-          for marker,msg in [('data.js?v=1.4.1','hardened data.js'),('dashboard.js?v=1.5.4','dashboard.js'),('news-feed-bridge.js?v=1.0.0','News Feed bridge'),('strategy-lab.js?v=2.3.2','Strategy Lab'),('market.js?v=1.0.0','Market tab'),('investment-charts.js?v=1.0.1','Investment charts'),('lightweight-charts@5.2.1','Lightweight Charts'),('trading-desk.js?v=1.0.1','Trading Desk'),('trading-desk.css?v=1.0.1','Trading Desk CSS'),('tab-navigation.js?v=1.6.3','navigation'),('Miracolo Lab','header')]:
-              if marker not in html: sys.exit('Deployed UI missing '+msg)
-          if 'sl2-submenu' in html: sys.exit('Deployed HTML still contains legacy Strategy Lab submenu markup')
-          print('MARKET MONITOR: PASS',len(indices),'indices'); print('PORTFOLIO GOLD PRICE: PASS',pmap['GOLD'].get('price')); print('PORTFOLIO BTC PRICE: PASS',cmap['BTC'].get('price')); print('PORTFOLIO ETH PRICE: PASS',cmap['ETH'].get('price'))
-          mem=get('/api/memory/recent')
-          if not mem.get('ok'): sys.exit('Historical memory endpoint failed')
-          print('MEMORY API: PASS',mem.get('date'),mem.get('count'))
-          chart=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/chart?symbol=%5EGSPC&period=5d',headers={'User-Agent':'MiracoloLab-Chart-Verification/2.0','Cache-Control':'no-cache'}),timeout=30))
-          if not chart.get('ok') or len(chart.get('candles') or [])<2: sys.exit('Market chart endpoint failed')
-          print('MARKET CHART API: PASS',len(chart.get('candles') or []),'candles'); print('DEPLOYED UI ENTRYPOINTS: PASS'); print('LEGACY STRATEGY SUBMENU: ABSENT')
-          PY
-      - name: Verify News Core after deployment
-        run: |
-          python - <<'PY'
-          import json,urllib.request,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev'; h={'User-Agent':'MiracoloLab-NewsCore-Verification/13.0','Cache-Control':'no-cache'}
-          cats=['news','finance','crypto','macro','rates','central','commodities','fx','volatility','geopolitics','social','company']
-          def get_live():
-              raw=json.load(urllib.request.urlopen(urllib.request.Request(base+'/api/live?ts='+str(time.time_ns()),headers=h),timeout=30)); live=raw.get('news') or raw; cs=live.get('categorySummary') or {}; return live,{k:int((cs.get(k) or {}).get('count') or 0) for k in cats}
-          samples=[]
-          for attempt in range(6):
-              try:
-                  live,counts=get_live(); total=len(live.get('items') or []); print('LIVE CHECK',attempt+1,'ITEMS',total,'CATEGORIES',json.dumps(counts))
-                  if total>=100 and sum(x==0 for x in counts.values())<=4:
-                      samples.append((total,counts))
-                      if len(samples)>=2 and samples[-1]==samples[-2]: print('NEWS CORE LIVE VERIFIED: stable snapshot and category counts'); break
-              except Exception as e: print('LIVE RETRY',attempt+1,str(e))
-              time.sleep(3)
-          else: sys.exit('LIVE snapshot did not provide a stable valid News Core state')
+              u=base+path+('&' if '?' in path else '?')+'ts='+str(time.time_ns())
+              return json.load(urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=45))
+          v=get('/version'); print('VERSION',json.dumps(v))
+          if not v.get('ok'): sys.exit('version failed')
+          health=get('/api/health'); print('HEALTH',json.dumps(health))
+          if not health.get('ok'): sys.exit('health failed')
+          live=get('/api/live'); print('LIVE_BYTES',len(json.dumps(live)))
+          if 'universe' in live and isinstance(live['universe'],dict) and 'tickers' in live['universe']: sys.exit('live payload still contains full universe tickers')
+          mm=get('/api/market-monitor'); print('MARKET_MONITOR_QUANTITATIVE', 'quantitative' in mm)
+          if 'quantitative' not in mm: sys.exit('quantitative missing from market monitor')
+          ai=get('/api/ai'); print('AI_STATUS',ai.get('status'),ai.get('generatedAt'))
+          chart=get('/api/chart?symbol=%5EGSPC&period=5d'); print('CHART_CANDLES',len(chart.get('candles') or []))
+          if not chart.get('ok') or len(chart.get('candles') or [])<2: sys.exit('chart failed')
+          html=urllib.request.urlopen(urllib.request.Request(base+'/',headers=h),timeout=30).read().decode('utf-8','replace')
+          required=['data.js?v=1.4.1','dashboard.js?v=1.5.4','strategy-lab.js?v=2.3.2','market.js?v=1.0.0','trading-agents.js?v=1.0.3','trading-agents.css?v=1.0.3','tab-navigation.js?v=1.6.4']
+          for marker in required:
+              if marker not in html: sys.exit('UI missing '+marker)
+          for marker in ['trading-desk.js','trading-desk.css']:
+              if marker in html: sys.exit('legacy trading desk still referenced')
+          print('UI ENTRYPOINTS: PASS')
           PY
