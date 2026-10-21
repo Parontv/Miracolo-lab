@@ -1,104 +1,23 @@
 /* Miracolo Lab — Trading Desk v1
-   Practical paper-trading cockpit. Uses existing /api/live and /api/chart data.
+   Practical paper-trading cockpit. Uses existing /api/live and /api/full-scan data.
    No real-money execution. */
 (function(){'use strict';
-  const esc=s=>String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
-  const n=(v,d=2)=>Number.isFinite(Number(v))?Number(v).toFixed(d):'—';
-  const pct=v=>Number.isFinite(Number(v))?(Number(v)>0?'+':'')+n(v,2)+'%':'—';
-  const state={live:null,chart:null,lastScan:null};
-
-  function pickIndices(live){
-    const m=live?.market||live?.data?.market||live?.state?.market||live?.result?.market||live?.data||live||{};
-    const arr=[...(Array.isArray(m.indices)?m.indices:[]),...(Array.isArray(m.markets)?m.markets:[])];
-    return arr.filter(x=>x&&((x.name||x.ticker||x.symbol||x.id)));
-  }
-  function find(arr,patterns){return arr.find(x=>patterns.some(p=>p.test(String(x.name||x.ticker||x.symbol||''))))||null}
-  function val(x,k){return x?Number(x[k]):NaN}
-
-  async function getJSON(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);return r.json()}
-
-  function scoreMarket(arr){
-    const sp=find(arr,[/S&P.?500/i,/SP500/i]), nd=find(arr,[/NASDAQ.?100/i,/NDX/i]), dax=find(arr,[/DAX/i]), vix=find(arr,[/VIX/i]), dxy=find(arr,[/DXY/i]), gold=find(arr,[/GOLD/i]);
-    const moves=[sp,nd,dax].map(x=>val(x,'changePct')).filter(Number.isFinite);
-    const breadth=moves.length?moves.reduce((a,b)=>a+b,0)/moves.length:0;
-    const rsi=[sp,nd,dax].map(x=>val(x,'rsi')).filter(Number.isFinite);
-    let technical=0;
-    if(breadth>0.35)technical+=2; else if(breadth>0.05)technical+=1; else if(breadth<-0.35)technical-=2; else if(breadth<-0.05)technical-=1;
-    if(rsi.length){const r=rsi.reduce((a,b)=>a+b,0)/rsi.length;if(r>72)technical-=1;if(r<30)technical+=1;}
-    const v=val(vix,'changePct'); if(Number.isFinite(v)&&v>3)technical-=1;
-    const fx=val(dxy,'changePct'); if(Number.isFinite(fx)&&fx>0.4)technical-=0.5;
-    const gd=val(gold,'changePct'); if(Number.isFinite(gd)&&gd>0.8)technical-=0.25;
-    const direction=technical>=2?'LONG':technical<=-2?'SHORT':'WAIT';
-    return {direction,technical,breadth,rsi,vix,dxy,gold,sp,nd,dax};
-  }
-
-  function candidate(arr){
-    const s=scoreMarket(arr), base=s.nd||s.sp||s.dax; const price=val(base,'price');
-    if(s.direction==='WAIT'||!Number.isFinite(price))return {...s,base,price,confidence:Math.max(45,Math.min(65,55+Math.round(Math.abs(s.technical)*4))),reason:'I segnali disponibili non sono sufficientemente allineati.'};
-    const vol=Number.isFinite(s.vix)?Math.abs(s.vix):0;
-    const stopPct=Math.max(0.45,Math.min(1.2,0.55+vol/10));
-    const targetPct=stopPct*2.2;
-    const stop=price*(s.direction==='LONG'?1-stopPct/100:1+stopPct/100);
-    const target=price*(s.direction==='LONG'?1+targetPct/100:1-targetPct/100);
-    const confidence=Math.max(60,Math.min(86,60+Math.round(Math.abs(s.technical)*7)+(s.breadth>0.5||s.breadth<-0.5?4:0)));
-    return {...s,base,price,stop,target,stopPct,targetPct,confidence,reason:s.direction==='LONG'?'Momentum e breadth favoriscono una posizione rialzista, senza evidenza sufficiente per aumentare il rischio.':'Pressione su momentum e breadth; il setup favorisce una posizione ribassista ma va confermato.'};
-  }
-
-  function renderShell(){
-    if(document.getElementById('mlTradingDesk'))return;
-    const el=document.createElement('section');el.id='mlTradingDesk';el.className='mltd';
-    el.innerHTML=`<div class="mltd-head"><div><div class="mltd-kicker">TRADING DESK</div><h1>Decisione operativa</h1><p>Un solo pannello: scansione, setup, rischio e diario. Solo paper trading.</p></div><button id="mltdScan" class="mltd-primary">SCANSIONE ORA</button></div><div id="mltdStatus" class="mltd-status">Pronto per la prima scansione.</div><div id="mltdGrid" class="mltd-grid"></div><div class="mltd-lower"><div class="mltd-card"><h2>Perché</h2><div id="mltdWhy">Premi “Scansione ora”.</div></div><div class="mltd-card"><h2>Regole</h2><ul><li>Capitale paper: €2.000</li><li>Rischio max/trade: 0,5% (€10)</li><li>Massimo: 3 operazioni/giorno</li><li>Stop obbligatorio</li><li>Nessuna esecuzione reale</li></ul></div></div><div class="mltd-card mltd-journal"><div class="mltd-journal-head"><h2>Diario decisioni</h2><button id="mltdClear">Cancella</button></div><div id="mltdJournal">Nessuna decisione registrata.</div></div>`;
-    document.body.appendChild(el);
-    document.getElementById('mltdScan').onclick=scan;
-    document.getElementById('mltdClear').onclick=()=>{localStorage.removeItem('mltdJournal');renderJournal()};
-    renderJournal();
-  }
-
-  function render(data){
-    const s=data, dir=s.direction;
-    const cards=[
-      ['SETUP',dir,dir==='WAIT'?'wait':'hot'],
-      ['STRUMENTO',s.base?.name||s.base?.ticker||s.base?.symbol||'—',''],
-      ['CONFIDENCE',s.confidence+'%',''],
-      ['R/R',s.target&&s.stop?'1 : 2,2':'—',''],
-      ['PREZZO',n(s.price),''],
-      ['STOP',n(s.stop),''],
-      ['TARGET',n(s.target),'']
-    ];
-    document.getElementById('mltdGrid').innerHTML=cards.map(c=>`<div class="mltd-metric ${c[2]}"><span>${c[0]}</span><b>${esc(c[1])}</b></div>`).join('');
-    document.getElementById('mltdWhy').innerHTML=`<p>${esc(s.reason)}</p><p><b>Market:</b> S&P ${pct(val(s.sp,'changePct'))} · Nasdaq ${pct(val(s.nd,'changePct'))} · DAX ${pct(val(s.dax,'changePct'))}</p><p><b>Volatilità:</b> VIX ${pct(s.vix)} · <b>Dollaro:</b> DXY ${pct(s.dxy)} · <b>Oro:</b> ${pct(s.gold)}</p><p class="mltd-note">Questa è una valutazione quantitativa locale basata sui dati restituiti dall'app. Non è una previsione garantita.</p>`;
-    document.getElementById('mltdStatus').textContent='Scansione completata · '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-    if(dir!=='WAIT')addJournal(s);
-  }
-
-  async function scan(){
-    const status=document.getElementById('mltdStatus');status.textContent='Scansione in corso…';
-    try{
-      const live=await getJSON('/api/live'); state.live=live;
-      let arr=pickIndices(live);
-      if(!arr.length){try{const full=await getJSON('/api/full-scan');arr=pickIndices(full);state.live=full}catch{}}
-      if(!arr.length)throw Error('Il feed live non contiene indici leggibili.');
-      const s=candidate(arr);state.lastScan=s;render(s);
-    }catch(e){status.textContent='Scansione non disponibile: '+e.message;document.getElementById('mltdWhy').innerHTML='<p>Non invento un segnale: il backend non ha restituito dati sufficienti.</p>'}
-  }
-
-  function addJournal(s){
-    const key='mltdJournal',items=JSON.parse(localStorage.getItem(key)||'[]');
-    const row={time:new Date().toISOString(),direction:s.direction,symbol:s.base?.name||s.base?.ticker||s.base?.symbol,price:s.price,stop:s.stop,target:s.target,confidence:s.confidence};
-    items.unshift(row);localStorage.setItem(key,JSON.stringify(items.slice(0,20)));renderJournal();
-  }
-  function renderJournal(){
-    const el=document.getElementById('mltdJournal');if(!el)return;const items=JSON.parse(localStorage.getItem('mltdJournal')||'[]');
-    if(!items.length){el.textContent='Nessuna decisione registrata.';return}
-    el.innerHTML=items.map(x=>`<div class="mltd-row"><span>${new Date(x.time).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><b>${esc(x.direction)} · ${esc(x.symbol)}</b><span>${n(x.price)} → ${n(x.target)} · conf. ${x.confidence}%</span></div>`).join('');
-  }
-
-  function openDesk(){renderShell();document.getElementById('mlTradingDesk').scrollIntoView({behavior:'smooth',block:'start'});scan()}
-  function install(){
-    const nav=document.querySelector('.top-tabs');if(!nav)return;
-    if(!document.getElementById('mltdNav')){const b=document.createElement('button');b.id='mltdNav';b.className='top-tab';b.innerHTML='<span>🎯</span>Trading Desk';b.onclick=openDesk;nav.appendChild(b)}
-    renderShell();
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
-  window.MiracoloTradingDesk={open:openDesk,scan};
+const esc=s=>String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
+const n=(v,d=2)=>Number.isFinite(Number(v))?Number(v).toFixed(d):'—';
+const pct=v=>Number.isFinite(Number(v))?(Number(v)>0?'+':'')+n(v,2)+'%':'—';
+const state={live:null,lastScan:null};
+function pickIndices(live){const m=live?.market||live?.data?.market||live?.state?.market||live?.result?.market||live?.data||live||{};const arr=[...(Array.isArray(m.indices)?m.indices:[]),...(Array.isArray(m.markets)?m.markets:[])];return arr.filter(x=>x&&((x.name||x.ticker||x.symbol||x.id)));}
+function find(arr,patterns){return arr.find(x=>patterns.some(p=>p.test(String(x.name||x.ticker||x.symbol||''))))||null}
+function val(x,k){return x?Number(x[k]):NaN}
+async function getJSON(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);return r.json()}
+function scoreMarket(arr){const sp=find(arr,[/S&P.?500/i,/SP500/i]),nd=find(arr,[/NASDAQ.?100/i,/NDX/i]),dax=find(arr,[/DAX/i]),vix=find(arr,[/VIX/i]),dxy=find(arr,[/DXY/i]),gold=find(arr,[/GOLD/i]);const moves=[sp,nd,dax].map(x=>val(x,'changePct')).filter(Number.isFinite);const breadth=moves.length?moves.reduce((a,b)=>a+b,0)/moves.length:0;const rsi=[sp,nd,dax].map(x=>val(x,'rsi')).filter(Number.isFinite);let technical=0;if(breadth>0.35)technical+=2;else if(breadth>0.05)technical+=1;else if(breadth<-0.35)technical-=2;else if(breadth<-0.05)technical-=1;if(rsi.length){const r=rsi.reduce((a,b)=>a+b,0)/rsi.length;if(r>72)technical-=1;if(r<30)technical+=1}const v=val(vix,'changePct');if(Number.isFinite(v)&&v>3)technical-=1;const fx=val(dxy,'changePct');if(Number.isFinite(fx)&&fx>0.4)technical-=0.5;const gd=val(gold,'changePct');if(Number.isFinite(gd)&&gd>0.8)technical-=0.25;const direction=technical>=2?'LONG':technical<=-2?'SHORT':'WAIT';return{direction,technical,breadth,rsi,vix,dxy,gold,sp,nd,dax}}
+function candidate(arr){const s=scoreMarket(arr),base=s.nd||s.sp||s.dax,price=val(base,'price');if(s.direction==='WAIT'||!Number.isFinite(price))return{...s,base,price,confidence:Math.max(45,Math.min(65,55+Math.round(Math.abs(s.technical)*4))),reason:'I segnali disponibili non sono sufficientemente allineati.'};const vol=Number.isFinite(s.vix)?Math.abs(s.vix):0,stopPct=Math.max(.45,Math.min(1.2,.55+vol/10)),targetPct=stopPct*2.2,stop=price*(s.direction==='LONG'?1-stopPct/100:1+stopPct/100),target=price*(s.direction==='LONG'?1+targetPct/100:1-targetPct/100),confidence=Math.max(60,Math.min(86,60+Math.round(Math.abs(s.technical)*7)+(Math.abs(s.breadth)>.5?4:0)));return{...s,base,price,stop,target,stopPct,targetPct,confidence,reason:s.direction==='LONG'?'Momentum e breadth favoriscono una posizione rialzista, senza evidenza sufficiente per aumentare il rischio.':'Pressione su momentum e breadth; il setup favorisce una posizione ribassista ma va confermato.'}}
+function renderShell(){if(document.getElementById('mlTradingDesk'))return;const el=document.createElement('section');el.id='mlTradingDesk';el.className='mltd';el.innerHTML=`<div class="mltd-head"><div><div class="mltd-kicker">TRADING DESK</div><h1>Decisione operativa</h1><p>Scansione, setup, rischio e diario in un solo pannello. Solo paper trading.</p></div><button id="mltdScan" class="mltd-primary">SCANSIONE ORA</button></div><div id="mltdStatus" class="mltd-status">Pronto per la prima scansione.</div><div id="mltdGrid" class="mltd-grid"></div><div class="mltd-lower"><div class="mltd-card"><h2>Perché</h2><div id="mltdWhy">Premi “Scansione ora”.</div></div><div class="mltd-card"><h2>Regole</h2><ul><li>Capitale paper: €2.000</li><li>Rischio max/trade: 0,5% (€10)</li><li>Massimo: 3 operazioni/giorno</li><li>Stop obbligatorio</li><li>Nessuna esecuzione reale</li></ul></div></div><div class="mltd-card mltd-journal"><div class="mltd-journal-head"><h2>Diario decisioni</h2><button id="mltdClear">Cancella</button></div><div id="mltdJournal">Nessuna decisione registrata.</div></div>`;document.body.appendChild(el);document.getElementById('mltdScan').onclick=scan;document.getElementById('mltdClear').onclick=()=>{localStorage.removeItem('mltdJournal');renderJournal()};renderJournal()}
+function render(data){const s=data,dir=s.direction,cards=[['SETUP',dir,dir==='WAIT'?'wait':'hot'],['STRUMENTO',s.base?.name||s.base?.ticker||s.base?.symbol||'—',''],['CONFIDENCE',s.confidence+'%',''],['R/R',s.target&&s.stop?'1 : 2,2':'—',''],['PREZZO',n(s.price),''],['STOP',n(s.stop),''],['TARGET',n(s.target),'']];document.getElementById('mltdGrid').innerHTML=cards.map(c=>`<div class="mltd-metric ${c[2]}"><span>${c[0]}</span><b>${esc(c[1])}</b></div>`).join('');document.getElementById('mltdWhy').innerHTML=`<p>${esc(s.reason)}</p><p><b>Market:</b> S&P ${pct(val(s.sp,'changePct'))} · Nasdaq ${pct(val(s.nd,'changePct'))} · DAX ${pct(val(s.dax,'changePct'))}</p><p><b>Volatilità:</b> VIX ${pct(s.vix)} · <b>Dollaro:</b> DXY ${pct(s.dxy)} · <b>Oro:</b> ${pct(s.gold)}</p><p class="mltd-note">Valutazione quantitativa locale sui dati restituiti dall'app. Non è una previsione garantita.</p>`;document.getElementById('mltdStatus').textContent='Scansione completata · '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});if(dir!=='WAIT')addJournal(s)}
+async function scan(){const status=document.getElementById('mltdStatus');status.textContent='Scansione in corso…';try{const live=await getJSON('/api/live');state.live=live;let arr=pickIndices(live);if(!arr.length){try{const full=await getJSON('/api/full-scan');arr=pickIndices(full);state.live=full}catch{}}if(!arr.length)throw Error('Il feed live non contiene indici leggibili.');const s=candidate(arr);state.lastScan=s;render(s)}catch(e){status.textContent='Scansione non disponibile: '+e.message;document.getElementById('mltdWhy').innerHTML='<p>Non invento un segnale: il backend non ha restituito dati sufficienti.</p>'}}
+function addJournal(s){const key='mltdJournal',items=JSON.parse(localStorage.getItem(key)||'[]'),row={time:new Date().toISOString(),direction:s.direction,symbol:s.base?.name||s.base?.ticker||s.base?.symbol,price:s.price,stop:s.stop,target:s.target,confidence:s.confidence};items.unshift(row);localStorage.setItem(key,JSON.stringify(items.slice(0,20)));renderJournal()}
+function renderJournal(){const el=document.getElementById('mltdJournal');if(!el)return;const items=JSON.parse(localStorage.getItem('mltdJournal')||'[]');if(!items.length){el.textContent='Nessuna decisione registrata.';return}el.innerHTML=items.map(x=>`<div class="mltd-row"><span>${new Date(x.time).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><b>${esc(x.direction)} · ${esc(x.symbol)}</b><span>${n(x.price)} → ${n(x.target)} · conf. ${x.confidence}%</span></div>`).join('')}
+function openDesk(){renderShell();const el=document.getElementById('mlTradingDesk');el.style.display='block';el.scrollIntoView({behavior:'smooth',block:'start'});scan()}
+function install(){const nav=document.querySelector('.top-tabs');if(!nav)return;if(!document.getElementById('mltdNav')){const b=document.createElement('button');b.id='mltdNav';b.className='top-tab';b.innerHTML='<span>🎯</span>Trading Desk';b.onclick=openDesk;nav.appendChild(b)}renderShell()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();window.MiracoloTradingDesk={open:openDesk,scan};
 })();
