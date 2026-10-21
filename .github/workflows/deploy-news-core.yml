@@ -42,41 +42,6 @@ jobs:
           node-version: 22
       - name: Install Wrangler
         run: npm install --no-save wrangler@4
-      - name: Ensure ML_KV binding
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          KV_ID=$(npx wrangler@4 kv namespace list | jq -r '.[] | select(.title | endswith("ML_KV")) | .id' | head -n1 || true)
-          if [ -z "$KV_ID" ] || [ "$KV_ID" = "null" ]; then
-            echo 'ML_KV namespace not found; creating it without --update-config.'
-            CREATE_OUT=$(npx wrangler@4 kv namespace create ML_KV 2>&1)
-            echo "$CREATE_OUT"
-            KV_ID=$(printf '%s\n' "$CREATE_OUT" | grep -Eo '[0-9a-fA-F]{32}' | head -n1 || true)
-          fi
-          test -n "$KV_ID" && test "$KV_ID" != null
-          export KV_ID
-          python - <<'PY'
-          from pathlib import Path
-          import os,re
-          p=Path('wrangler.toml'); s=p.read_text(); kid=os.environ['KV_ID']
-          blocks=list(re.finditer(r'(?ms)^\[\[kv_namespaces\]\]\s*\n.*?(?=^\[\[|^\[assets\]|\Z)',s))
-          ml=[]
-          for m in blocks:
-              if re.search(r'(?m)^binding\s*=\s*["\']ML_KV["\']',m.group(0)): ml.append(m)
-          if len(ml)>1: raise SystemExit('Duplicate ML_KV bindings in wrangler.toml')
-          if len(ml)==1:
-              block=ml[0].group(0)
-              if re.search(r'(?m)^id\s*=',block): block=re.sub(r'(?m)^id\s*=\s*["\'][^"\']+["\']',f'id = "{kid}"',block)
-              else: block=block.rstrip()+f'\nid = "{kid}"\n'
-              s=s[:ml[0].start()]+block+s[ml[0].end():]
-          else:
-              marker='\n[assets]'; insert=f'\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "{kid}"\n'
-              if marker in s: s=s.replace(marker,insert+marker,1)
-              else: s=s.rstrip()+insert+'\n'
-          p.write_text(s); print('ML_KV BINDING: PASS',kid)
-          PY
       - name: Deploy Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
