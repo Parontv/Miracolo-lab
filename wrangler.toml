@@ -1,5 +1,5 @@
 name = "miracolo-lab"
-main = "ai-worker.js"
+main = "live-worker.js"
 compatibility_date = "2026-08-27"
 
 [triggers]
@@ -10,10 +10,9 @@ BOT_MODE = "AUTONOMOUS"
 HEARTBEAT_INTERVAL = "5m"
 
 # V1 durable state: cursor, autonomous snapshot and API rate-limit counters.
-# Wrangler automatically provisions this KV namespace on deployment because no id is specified.
+# Wrangler can automatically provision this KV namespace on deployment.
 [[kv_namespaces]]
 binding = "ML_KV"
-
 
 # Permanent historical memory: market photographs, AI analysis and daily news archives.
 
