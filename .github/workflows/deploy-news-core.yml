@@ -61,22 +61,16 @@ jobs:
             KV_ID=$(grep -oE 'id = "[a-f0-9]+"' wrangler.toml | head -n1 | cut -d'"' -f2)
           fi
           if [ -z "$KV_ID" ]; then echo 'Unable to resolve ML_KV namespace id'; exit 1; fi
+          export KV_ID
           python - <<'PY'
           from pathlib import Path
           import re,os
-          p=Path('wrangler.toml'); s=p.read_text(); kid=os.environ.get('KV_ID')
-          if not kid: raise SystemExit('KV_ID environment value missing')
-          if re.search(r'(?m)^\[\[kv_namespaces\]\]\s*\nbinding = "ML_KV"\s*\nid = "[^"]+"',s):
-              s=re.sub(r'(?m)(\[\[kv_namespaces\]\]\s*\nbinding = "ML_KV"\s*\nid = )"[^"]+"',r'\1"'+kid+'"',s,count=1)
-          else:
-              s += '\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "'+kid+'"\n'
-          p.write_text(s)
-          print('ML_KV BINDING: PASS',kid)
+          p=Path('wrangler.toml'); s=p.read_text(); kid=os.environ['KV_ID']
+          pattern=r'(?m)(\[\[kv_namespaces\]\]\s*\nbinding = "ML_KV"\s*\nid = )"[^"]+"'
+          if re.search(pattern,s): s=re.sub(pattern,r'\1"'+kid+'"',s,count=1)
+          else: s += '\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "'+kid+'"\n'
+          p.write_text(s); print('ML_KV BINDING: PASS',kid)
           PY
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
-          KV_ID: ${{ env.KV_ID }}
       - name: Deploy Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
