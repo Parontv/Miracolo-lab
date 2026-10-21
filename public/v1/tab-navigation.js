@@ -1,7 +1,7 @@
 /* Miracolo Lab — Top tab navigation */
 (()=>{
   'use strict';
-  const PANELS=['radar','market','investimenti','bot','strategy','blackswan','settings'];
+  const PANELS=['radar','market','investimenti','bot','strategy','blackswan','settings','tradingdesk'];
   const originalSetPanel=window.setPanel;
   function activate(id){
     if(!PANELS.includes(id)) id='radar';
@@ -14,11 +14,21 @@
     if(body) body.classList.toggle('tab-inside-panel',!dashboard);
     if(feed) feed.classList.toggle('panel-workspace-hidden',!dashboard);
     if(side) side.classList.remove('panel-workspace-hidden');
-    document.querySelectorAll('.top-tab[data-panel]').forEach(tab=>{
+    document.querySelectorAll('.top-tab').forEach(tab=>{
       const active=tab.dataset.panel===id;
       tab.classList.toggle('active',active);
       tab.setAttribute('aria-selected',active?'true':'false');
     });
+    if(id==='tradingdesk'){
+      if(typeof window.MiracoloTradingDesk?.open==='function'){
+        window.MiracoloTradingDesk.open();
+      }else{
+        const sidePanel=document.getElementById('sidePanel');
+        if(sidePanel)sidePanel.innerHTML='<div class="panel-section"><b>Trading Desk</b><p>Modulo non inizializzato. Ricarica la pagina; se il problema continua, controllare gli errori JavaScript.</p></div>';
+      }
+      window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
+      return;
+    }
     if(id==='market'||id==='strategy'){
       if(id==='strategy'){
         if(typeof originalSetPanel==='function') originalSetPanel(id);
@@ -34,7 +44,7 @@
         requestAnimationFrame(paint);
         setTimeout(paint,80);
       }
-      window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
+      window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}});
       return;
     }
     if(typeof originalSetPanel==='function') originalSetPanel(id);
@@ -42,8 +52,8 @@
   }
   window.setPanel=function(id){activate(id);};
   document.addEventListener('DOMContentLoaded',()=>{
-    document.querySelectorAll('.top-tab[data-panel]').forEach(tab=>{
-      tab.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();activate(tab.dataset.panel);},true);
+    document.querySelectorAll('.top-tab').forEach(tab=>{
+      tab.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();activate(tab.dataset.panel||'radar');},true);
     });
     activate('radar');
   });
