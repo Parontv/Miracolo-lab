@@ -20,11 +20,10 @@
       tab.setAttribute('aria-selected',active?'true':'false');
     });
     if(id==='tradingdesk'){
-      if(typeof window.MiracoloTradingDesk?.open==='function'){
-        window.MiracoloTradingDesk.open();
-      }else{
+      if(typeof window.MiracoloTradingDesk?.open==='function') window.MiracoloTradingDesk.open();
+      else {
         const sidePanel=document.getElementById('sidePanel');
-        if(sidePanel)sidePanel.innerHTML='<div class="panel-section"><b>Trading Desk</b><p>Modulo non inizializzato. Ricarica la pagina; se il problema continua, controllare gli errori JavaScript.</p></div>';
+        if(sidePanel) sidePanel.innerHTML='<div class="panel-section"><b>Trading Desk</b><p>Modulo non inizializzato. Ricarica la pagina; se il problema continua, controllare gli errori JavaScript.</p></div>';
       }
       window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
       return;
@@ -44,7 +43,7 @@
         requestAnimationFrame(paint);
         setTimeout(paint,80);
       }
-      window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}});
+      window.dispatchEvent(new CustomEvent('miracolo:panelchange',{detail:{panel:id}}));
       return;
     }
     if(typeof originalSetPanel==='function') originalSetPanel(id);
