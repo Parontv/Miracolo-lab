@@ -10,14 +10,14 @@ const investmentCharts=fs.readFileSync('public/v1/investment-charts.js','utf8');
 const investmentCss=fs.readFileSync('public/v1/investment-charts.css','utf8');
 const data=fs.readFileSync('public/v1/data.js','utf8');
 const bridge=fs.readFileSync('public/v1/news-feed-bridge.js','utf8');
-const desk=fs.readFileSync('public/v1/trading-desk.js','utf8');
-const deskCss=fs.readFileSync('public/v1/trading-desk.css','utf8');
+const bot=fs.readFileSync('public/v1/trading-agents.js','utf8');
 
 assert.match(html,/data-panel="market"/);
 assert.match(html,/lightweight-charts@5\.2\.1/);
 assert.match(html,/\/v1\/market\.js\?v=1\.0\.0/);
-assert.match(nav,/const PANELS=\['radar','market'/);
-assert.match(nav,/['\"]tradingdesk['\"]/);
+assert.match(nav,/const PANELS=\['radar','market','investimenti','bot','strategy','blackswan','settings'\]/);
+assert.doesNotMatch(nav,/tradingdesk/);
+assert.doesNotMatch(html,/trading-desk\.(js|css)/);
 assert.match(market,/\/api\/chart/);
 assert.match(market,/\/api\/market-monitor/);
 assert.match(market,/CandlestickSeries/);
@@ -55,24 +55,23 @@ assert.match(data,/\/api\/live/);
 assert.match(data,/\/api\/full-scan/);
 assert.match(bridge,/window\.ML\.on\('data'/);
 
-// Trading Desk must be a real panel, use canonical market data, and stay paper-only.
-assert.match(html,/trading-desk\.css\?v=1\.0\.0/);
-assert.match(html,/trading-desk\.js\?v=1\.0\.0/);
-assert.match(nav,/tradingdesk/);
-assert.match(desk,/\/api\/market-monitor/);
-assert.match(desk,/SCANSIONE ORA/);
-assert.match(desk,/Solo paper trading/);
-assert.match(desk,/Rischio max\/trade: 0,5%/);
-assert.match(desk,/Massimo: 3 operazioni\/giorno/);
-assert.match(desk,/No real-money execution|Nessuna esecuzione reale/);
-assert.match(desk,/rr:targetPct\/stopPct/);
-assert.match(desk,/lastJournalKey/);
-assert.match(deskCss,/\.mltd-grid/);
-assert.match(deskCss,/@media\(max-width:800px\)/);
+// Bot is the single operational trading surface: paper-only, explicit multi-agent action.
+assert.match(html,/trading-agents\.js\?v=1\.0\.3/);
+assert.match(html,/trading-agents\.css\?v=1\.0\.3/);
+assert.match(bot,/bot-multi/);
+assert.match(bot,/MULTI-AGENT DECISION/);
+assert.match(bot,//api/market-monitor-v2/);
+assert.match(bot,//api/market-monitor\?ts=/);
+assert.match(bot,/Promise\.allSettled/);
+assert.match(bot,/paper trading|paper only/i);
+assert.match(bot,/Rischio massimo €10/);
+assert.match(bot,/massimo 3 operazioni\/giorno/);
+assert.match(bot,/PAPER REGISTRATO/);
+assert.match(bot,/net=a\.bull\.score/);
 
 console.log('Market UI static integrity: PASS');
 console.log('News pipeline linkage: PASS');
-console.log('Trading Desk integrity: PASS');
+console.log('Bot-only trading surface integrity: PASS');
 
 // Strategy Lab must mount synchronously and remain reachable through panel navigation.
 assert.match(strategy,/function boot\(\)\{loadSaved\(\);try\{render\('jesse','Inizializzazione Strategy Lab…','Overview'\)/);
