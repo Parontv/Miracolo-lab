@@ -12,20 +12,22 @@ let busy=false;
 function active(){return document.body.dataset.activePanel==='bot'||window.__mlPanel==='bot'}
 function mount(){if(!active())return null;const side=document.getElementById('sidePanel');if(!side)return null;let b=document.getElementById(BOX);if(!b){b=document.createElement('div');b.id=BOX;b.className='panel-section';side.prepend(b)}return b}
 function shell(b){if(!b)return;if(!b.querySelector('.bot-cockpit'))b.innerHTML='<div class="panel-section-label">BOT · OPERATIVO</div><section class="bot-cockpit"><header class="bot-cockpit-head"><div><div class="bot-kicker">AI TRADING BOT</div><h1>Centro operativo</h1><p>Il Bot raccoglie mercato, news e macro, confronta specialisti e decide se esiste un setup. Solo paper trading.</p></div><div class="bot-status" id="botStatus">READY</div></header><div class="bot-actions"><button class="bot-run" type="button">▶ SCANSIONA MERCATO</button><button class="bot-multi" type="button">🧠 MULTI-AGENT DECISION</button><span class="bot-last" id="botLast">Nessuna scansione eseguita</span></div><div class="bot-result" id="botResult"><div class="bot-empty"><b>Il Bot è pronto.</b><span>Avvia una scansione o Multi-Agent Decision. Se i dati non sono sufficienti, il Bot mostrerà WAIT e non inventerà un segnale.</span></div></div></section>'}
-async function fetchJson(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`${url} HTTP ${r.status}`);return r.json()}
+async function fetchJson(url,timeoutMs=12000){const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),timeoutMs);try{const r=await fetch(url,{cache:'no-store',signal:ctl.signal});if(!r.ok)throw new Error(`${url} HTTP ${r.status}`);return await r.json()}catch(e){if(e.name==='AbortError')throw new Error(`${url} timeout dopo ${timeoutMs/1000}s`);throw e}finally{clearTimeout(timer)}}
 async function get(){
- const results=await Promise.allSettled([
-  fetchJson('/api/market-monitor-v2?ts='+Date.now()),
-  fetchJson('/api/market-monitor?ts='+Date.now()),
-  fetchJson('/api/ai?ts='+Date.now()),
-  fetchJson('/api/bot-monitor?ts='+Date.now()),
-  fetchJson('/api/full-scan?ts='+Date.now())
- ]);
+ const urls=[
+  '/api/market-monitor-v2?ts='+Date.now(),
+  '/api/market-monitor?ts='+Date.now(),
+  '/api/ai?ts='+Date.now(),
+  '/api/bot-monitor?ts='+Date.now()
+ ];
+ const results=await Promise.allSettled(urls.map(u=>fetchJson(u)));
  const value=i=>results[i].status==='fulfilled'?results[i].value:null;
  const market=value(0)||value(1);
  const aiRaw=value(2);
- return{market,ai:aiRaw?.ai||aiRaw||null,bot:value(3),scan:value(4),availability:results.map(x=>x.status),partial:results.some(x=>x.status==='rejected'),errors:results.map((x,i)=>x.status==='rejected'?`Fonte ${i+1}: ${x.reason?.message||'errore'}`:null).filter(Boolean)};
+ const errors=results.map((x,i)=>x.status==='rejected'?`Fonte ${i+1}: ${x.reason?.message||'errore'}`:null).filter(Boolean);
+ return{market,ai:aiRaw?.ai||aiRaw||null,bot:value(3),scan:null,availability:results.map(x=>x.status),partial:results.some(x=>x.status==='rejected'),errors};
 }
+async function backgroundFullScan(){try{return await fetchJson('/api/full-scan?ts='+Date.now(),20000)}catch(e){return{ok:false,error:e.message}}}
 function indices(c){return Array.isArray(c?.market?.indices)?c.market.indices:Array.isArray(c?.indices)?c.indices:[]}
 function specialist(c){
  const ix=indices(c), crypto=Array.isArray(c.market?.crypto)?c.market.crypto:[], tech=Array.isArray(c.bot?.candidates)?c.bot.candidates:[];
@@ -65,8 +67,28 @@ function choose(c,a){
 function paperJournal(d){if(!d.approved||!d.base)return;const key=`${d.direction}|${d.base.symbol||d.base.name}|${Math.round(d.price||0)}`;let rows=[];try{rows=JSON.parse(localStorage.getItem('mlBotJournal')||'[]')}catch{}if(rows.some(x=>x.key===key))return;rows.unshift({key,time:new Date().toISOString(),direction:d.direction,symbol:d.base.symbol||d.base.name,price:d.price,stop:d.stop,target:d.target,confidence:d.confidence,status:'PROPOSTA'});localStorage.setItem('mlBotJournal',JSON.stringify(rows.slice(0,30)))}
 function journalHTML(){let rows=[];try{rows=JSON.parse(localStorage.getItem('mlBotJournal')||'[]')}catch{}if(!rows.length)return '<span>Nessun paper trade registrato.</span>';return rows.slice(0,8).map(x=>`<div><span>${new Date(x.time).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><b>${esc(x.direction)} · ${esc(x.symbol)}</b><span>${x.price!=null?Number(x.price).toFixed(2):'—'} · ${esc(x.status)}</span></div>`).join('')}
 function render(c,a,d){const b=mount();if(!b)return;const r=b.querySelector('#botResult'),base=d.base||{};const agents=[['Market Agent',`Azionario ${pct(a.sentiment.equity)} · tecnico ${a.technical.score.toFixed(1)}`],['News Agent',c.ai?.commentary||c.ai?.summary||'Nessun commento AI disponibile'],['Macro Agent',`score ${a.macro.score.toFixed(1)} · tassi ${pct(a.macro.rates)} · DXY ${pct(a.macro.dollar)}`],['Risk Agent',`${d.risk} · stop obbligatorio · paper only`]];const sourceNote=c.partial?`Dati parziali: ${c.errors.join(' · ')}`:'Tutte le fonti principali hanno risposto.';r.innerHTML=`<div class="bot-decision ${d.direction.toLowerCase()}"><div class="bot-decision-main"><small>DECISIONE DEL BOT</small><strong>${d.direction}</strong><span>${esc(d.reason)}</span></div><div class="bot-decision-stats"><div><small>CONVICTION</small><b>${d.confidence}%</b></div><div><small>RISCHIO</small><b>${d.risk}</b></div><div><small>STATO</small><b>${d.approved?'PAPER · PROPOSTA':'NESSUN TRADE'}</b></div></div></div>${d.approved?`<div class="bot-trade-card"><div class="bot-trade-title"><div><small>SETUP OPERATIVO</small><h2>${esc(base.name||base.symbol||'Mercato')}</h2></div><span>${esc(d.direction)}</span></div><div class="bot-trade-grid"><div><small>ENTRY</small><b>${d.price!==null?d.price.toFixed(2):'—'}</b></div><div><small>STOP</small><b>${d.stop!==null?d.stop.toFixed(2):'—'}</b></div><div><small>TARGET</small><b>${d.target!==null?d.target.toFixed(2):'—'}</b></div><div><small>R/R</small><b>1 : ${d.rr.toFixed(1)}</b></div></div><div class="bot-riskline">Capitale paper €2.000 · rischio massimo €10 (0,5%) · massimo 3 operazioni/giorno</div><button class="bot-paper-btn" type="button" data-paper-approve="1">✓ REGISTRA COME PAPER TRADE</button></div>`:'<div class="bot-no-trade"><b>WAIT — nessuna operazione</b><span>Il Bot preferisce non entrare quando le evidenze non sono abbastanza solide.</span></div>'}<div class="bot-agents"><div class="bot-section-title">Decisione multi-agent</div>${agents.map(x=>`<article><b>${esc(x[0])}</b><span>${esc(x[1])}</span></article>`).join('')}</div><div class="bot-explain"><b>Fonti: </b>${esc(sourceNote)}</div><div class="bot-section-title bot-journal-title">Diario paper</div><div class="bot-journal" id="botJournal">${journalHTML()}</div>`;paperJournal(d);const j=b.querySelector('#botJournal');if(j)j.innerHTML=journalHTML()}
-async function run(){if(busy||!active())return;busy=true;const b=mount();shell(b);const btn=b?.querySelector('.bot-multi'),runBtn=b?.querySelector('.bot-run'),st=b?.querySelector('#botStatus');if(btn){btn.disabled=true;btn.textContent='⏳ MULTI-AGENT IN ANALISI…'}if(runBtn)runBtn.disabled=true;if(st)st.textContent='SCANSIONE';try{const c=await get(),a=specialist(c),d=choose(c,a);render(c,a,d);if(b?.querySelector('#botLast'))b.querySelector('#botLast').textContent='Decisione aggiornata '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});if(st)st.textContent=d.approved?'SEGNALE':'WAIT';window.ML_TRADING_BOT={context:c,agents:a,decision:d,updatedAt:new Date().toISOString()}}catch(e){if(st)st.textContent='ERRORE';if(b)b.querySelector('#botResult').innerHTML=`<div class="bot-error"><b>Multi-Agent Decision non disponibile.</b><span>${esc(e.message||e)}</span><small>Il Bot non genera segnali in assenza di dati verificabili.</small></div>`}finally{busy=false;if(btn){btn.disabled=false;btn.textContent='🧠 MULTI-AGENT DECISION'}if(runBtn)runBtn.disabled=false}}
-function bind(b){if(!b)return;shell(b);if(b.dataset.botBound==='1')return;b.dataset.botBound='1';b.addEventListener('click',e=>{if(e.target.closest('.bot-run')||e.target.closest('.bot-multi'))run();if(e.target.closest('[data-paper-approve]')){let rows=[];try{rows=JSON.parse(localStorage.getItem('mlBotJournal')||'[]')}catch{}if(rows[0]){rows[0].status='PAPER REGISTRATO';localStorage.setItem('mlBotJournal',JSON.stringify(rows));const j=b.querySelector('#botJournal');if(j)j.innerHTML=journalHTML()}}})}
+function setBusy(b,on){const btn=b?.querySelector('.bot-multi'),runBtn=b?.querySelector('.bot-run'),st=b?.querySelector('#botStatus');if(btn){btn.disabled=on;btn.textContent=on?'⏳ MULTI-AGENT IN ANALISI…':'🧠 MULTI-AGENT DECISION'}if(runBtn)runBtn.disabled=on;if(st)st.textContent=on?'SCANSIONE':'READY'}
+async function run(){
+ if(busy)return;
+ const b=mount();if(!b)return;
+ busy=true;shell(b);setBusy(b,true);
+ const r=b.querySelector('#botResult');
+ if(r)r.innerHTML='<div class="bot-loading"><b>Scansione in corso…</b><span>Sto interrogando mercato, AI, candidati e risk engine.</span><small>La scansione non esegue ordini reali.</small></div>';
+ try{
+  const c=await get();
+  const a=specialist(c),d=choose(c,a);
+  render(c,a,d);
+  if(b.querySelector('#botLast'))b.querySelector('#botLast').textContent='Decisione aggiornata '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const st=b.querySelector('#botStatus');if(st)st.textContent=d.approved?'SEGNALE':'WAIT';
+  window.ML_TRADING_BOT={context:c,agents:a,decision:d,updatedAt:new Date().toISOString()};
+  // Full scan is deliberately non-blocking: it can be expensive and must never leave the UI spinning.
+  backgroundFullScan().then(scan=>{window.ML_TRADING_BOT.scan=scan;const note=b.querySelector('.bot-explain');if(note&&scan?.ok===false)note.innerHTML=`<b>Nota scansione completa:</b> ${esc(scan.error||'non disponibile')}`}).catch(()=>{});
+ }catch(e){
+  const st=b.querySelector('#botStatus');if(st)st.textContent='ERRORE';
+  if(r)r.innerHTML=`<div class="bot-error"><b>Scansione non disponibile.</b><span>${esc(e.message||e)}</span><small>Nessun segnale viene generato senza dati verificabili. Controlla la disponibilità delle API del Worker.</small></div>`;
+ }finally{busy=false;setBusy(b,false)}
+}
+function bind(b){if(!b)return;shell(b);if(b.dataset.botBound==='1')return;b.dataset.botBound='1';b.addEventListener('click',e=>{const action=e.target.closest('.bot-run,.bot-multi');if(action){e.preventDefault();e.stopPropagation();run();return}if(e.target.closest('[data-paper-approve]')){let rows=[];try{rows=JSON.parse(localStorage.getItem('mlBotJournal')||'[]')}catch{}if(rows[0]){rows[0].status='PAPER REGISTRATO';localStorage.setItem('mlBotJournal',JSON.stringify(rows));const j=b.querySelector('#botJournal');if(j)j.innerHTML=journalHTML()}}})}
 function boot(){bind(mount());window.addEventListener('miracolo:panelchange',e=>{if(e.detail?.panel==='bot')setTimeout(()=>bind(mount()),30)})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.runMiracoloBot=run;
