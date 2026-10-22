@@ -27,6 +27,8 @@ jobs:
           find scripts -type f -name '*.py' -print0 | xargs -0 -n1 python -m py_compile
       - name: News contract test
         run: node tests/news-contract.test.js
+      - name: Bot engine test
+        run: node --test tests/bot-server-engine.test.mjs
       - name: Market/UI integrity test
         run: node tests/market-ui.test.js
   deploy:
@@ -51,7 +53,7 @@ jobs:
         run: |
           set -e
           python - <<'PY'
-          import json,urllib.request,sys,time,traceback
+          import json,urllib.request,sys,time
           base='https://miracolo-lab.listaconcerti.workers.dev'
           h={'User-Agent':'MiracoloLab-Deployment-Verification/1.0','Cache-Control':'no-cache'}
           report=[]; failed=False
@@ -73,15 +75,22 @@ jobs:
           if live and isinstance(live.get('universe'),dict) and 'tickers' in live['universe']: failed=True; print('LIVE_PAYLOAD_TOO_LARGE: universe.tickers present')
           mm=get('MARKET_MONITOR','/api/market-monitor')
           if not mm or 'quantitative' not in mm: failed=True; print('MARKET_MONITOR_QUANTITATIVE: MISSING')
-          ai=get('AI','/api/ai')
+          bot=get('BOT_DECISION','/api/bot/decision')
+          if bot and bot.get('ok'):
+              decision=bot.get('decision') or {}
+              if decision.get('direction') not in (-1,0,1): failed=True; print('BOT_CONTRACT_DIRECTION: INVALID')
+              if 'coverage' not in decision or 'evidence' not in decision or 'asOf' not in decision: failed=True; print('BOT_CONTRACT: MISSING_FIELDS')
+              if bot.get('mode')!='PAPER': failed=True; print('BOT_MODE: NOT_PAPER')
+          elif bot and bot.get('status')!='NO_DATA': failed=True; print('BOT_ENDPOINT: INVALID')
           chart=get('CHART','/api/chart?symbol=%5EGSPC&period=5d')
           if not chart or not chart.get('ok') or len(chart.get('candles') or [])<2: failed=True
           try:
               req=urllib.request.Request(base+'/',headers=h); html=urllib.request.urlopen(req,timeout=30).read().decode('utf-8','replace')
-              required=['data.js?v=1.4.1','dashboard.js?v=1.5.4','strategy-lab.js?v=2.3.2','market.js?v=1.0.0','trading-agents.js?v=1.0.3','trading-agents.css?v=1.0.3','tab-navigation.js?v=1.6.4']
-              missing=[x for x in required if x not in html]; legacy=[x for x in ['trading-desk.js','trading-desk.css'] if x in html]
-              report.append({'name':'UI','ok':not missing and not legacy,'missing':missing,'legacy':legacy}); print('UI',json.dumps({'missing':missing,'legacy':legacy}))
-              if missing or legacy: failed=True
+              required=['data.js?v=1.4.1','dashboard.js?v=1.5.4','strategy-lab.js?v=2.3.2','market.js?v=1.0.0','trading-agents.js?v=1.0.4','trading-agents.css?v=1.0.4','tab-navigation.js?v=1.6.5','bot-engine.js?v=2.0.0','bot-workspace-v1.js?v=3.0.0']
+              legacy=['bot-decision-engine.js','bot-tab-bridge.js','bot-unified-ui.js','bot-compact-runtime-v22.js','trading-desk.js','trading-desk.css']
+              missing=[x for x in required if x not in html]; found_legacy=[x for x in legacy if x in html]
+              report.append({'name':'UI','ok':not missing and not found_legacy,'missing':missing,'legacy':found_legacy}); print('UI',json.dumps({'missing':missing,'legacy':found_legacy}))
+              if missing or found_legacy: failed=True
           except Exception as e:
               failed=True; report.append({'name':'UI','ok':False,'error':repr(e)}); print('UI ERROR',repr(e))
           open('/tmp/production-verification.json','w').write(json.dumps(report,indent=2,default=str))
