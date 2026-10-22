@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rsiWilder, technicalFromHistory, fuse, marketVote } from '../bot-server-engine-v4.js';
+import { rsiWilder, technicalFromHistory, fuse, marketVote } from '../bot-server-engine-v5.js';
 
 test('missing close observations are excluded instead of becoming zero',()=>{
   const history=Array.from({length:40},(_,i)=>({close:i===39?null:100+i,high:101+i,low:99+i,asOf:new Date(Date.now()-(40-i)*86400000).toISOString()}));
