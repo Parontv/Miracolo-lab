@@ -1,14 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import vm from 'node:vm';
-
-const source=fs.readFileSync(new URL('../bot-server-engine.js',import.meta.url),'utf8');
-const context={console,setTimeout,clearTimeout,Date,Math,Number,String,Array,Object,JSON,Promise,RegExp};
-vm.createContext(context);
-const executable=source.replace(/export\s+async\s+function\s+runBot/g,'async function runBot').replace(/export\s+async\s+function\s+getBotDecision/g,'async function getBotDecision').replace(/export\s*\{[^}]+\};?/g,'').concat('\nthis.__test={rsiWilder,technicalFromHistory,fuse};');
-vm.runInContext(executable,context);
-const {rsiWilder,technicalFromHistory,fuse}=context.__test;
+import { rsiWilder, technicalFromHistory, fuse } from '../bot-server-engine.js';
 
 test('null and empty numeric inputs never become zero',()=>{
  const history=Array.from({length:40},(_,i)=>({close:i===39?null:100+i,high:101+i,low:99+i,asOf:new Date(Date.now()-(40-i)*86400000).toISOString()}));
