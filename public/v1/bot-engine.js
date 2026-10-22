@@ -1,29 +1,26 @@
-/* Miracolo Lab — Bot Engine v1.0
- * Single server/client orchestration entrypoint for the Bot surface.
- * PAPER trading only. UI is intentionally kept outside this module.
+/* Miracolo Lab — Bot client controller v2
+ * The Worker is the only decision maker. This file only starts a PAPER scan,
+ * renders the returned decision event, and exposes the local journal for legacy UI.
  */
 (()=>{
 'use strict';
-const J='mlBotJournal',S='ml_strategy_lab_v23',CAPITAL=2000,RISK=10,MAX=3,MIN=65;
-const W={jesse:.16,wolfbot:.16,multi:.20,historical:.10,backtest:.14,learning:.10,memory:.04,market:.05,news:.05,macro:.10};
-const num=v=>v===null||v===undefined||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
-const avg=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:null;
-const dir=x=>{const a=String(x?.action??x?.direction??x?.signal??'').toUpperCase();return a==='BUY'||a==='LONG'?1:a==='SELL'||a==='SHORT'?-1:0};
-const cf=x=>Math.max(0,Math.min(100,num(x?.confidence??x?.score)??50));
-function journal(){try{const x=JSON.parse(localStorage.getItem(J)||'[]');return Array.isArray(x)?x:[]}catch(_){return[]}}
-function save(x){localStorage.setItem(J,JSON.stringify(x.slice(0,200)))}
-function strategy(){try{return JSON.parse(localStorage.getItem(S)||'{}')||{}}catch(_){return{}}}
-async function get(url,ms=18000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(url+(url.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store',signal:c.signal});if(!r.ok)throw Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(t)}}
-function candidates(bot){return(Array.isArray(bot?.candidates)?bot.candidates:[]).map(x=>{const p=num(x?.price??x?.last??x?.close),ch=num(x?.changePct??x?.changePercent??x?.change??x?.pct),raw=num(x?.score??x?.fused);return{...x,price:p,changePct:ch,score:raw!==null?(raw>1?raw:(raw+1)*50):50+(ch??0)*8}}).filter(x=>x.price!==null)}
-function market(m,b){const a=[...(Array.isArray(m?.indices)?m.indices:[]),...(Array.isArray(b?.indices)?b.indices:[]),...(Array.isArray(m?.markets)?m.markets:[])],v=a.map(x=>num(x?.changePct??x?.change)).filter(x=>x!==null),mean=avg(v)??0,z=a.find(x=>/VIX/i.test(String(x?.name||x?.symbol||''))),vz=num(z?.changePct??z?.change);let d=mean>.15?1:mean<-.15?-1:0;if(vz!==null&&vz>2)d--;if(vz!==null&&vz<-2)d++;return{direction:d>0?1:d<0?-1:0,confidence:Math.round(Math.min(90,55+Math.abs(mean)*18)),count:a.length,mean,vix:vz}}
-function news(live,ai){const a=[live?.news?.items,live?.newsFeed,live?.news?.top,ai?.news?.items].find(Array.isArray)||[];let s=0;for(const x of a){const q=num(x?.score??x?.sentimentScore);if(q!==null)s+=q;else{const t=String(x?.title||x?.description||'').toLowerCase();s+=(t.match(/rally|surge|beat|upgrade|inflow|record|rate cut|strong growth/g)||[]).length-(t.match(/crash|plunge|selloff|downgrade|outflow|recession|rate hike|panic|default/g)||[]).length}}const n=a.length?s/a.length:0;return{direction:n>.08?1:n<-.08?-1:0,confidence:Math.round(Math.min(90,55+Math.abs(n)*30)),count:a.length}}
-function macro(full){const g=full?.groups||full?.quantitative?.groups||{},a=Object.values(g).flatMap(x=>Array.isArray(x)?x:[]),find=s=>a.find(x=>String(x?.label||'').toLowerCase().includes(s)),u=find('disoccupazione'),h=find('high yield'),count=[u,h].filter(Boolean).length;let d=0;if(u?.value!=null)d+=u.value<4.5?1:-1;if(h?.value!=null)d+=h.value<4?-1:1;return{direction:d>0?1:d<0?-1:0,confidence:count?Math.round(Math.min(85,55+Math.abs(d)/count*25)):0,count}}
-function modules(){const s=strategy(),out=[];for(const [id,name] of [['jesse','Jesse'],['wolfbot','WolfBot'],['multi','Multi-Agent'],['historical','Historical'],['backtest','Backtest'],['learning','Learning'],['memory','Memory']]){const x=s?.results?.[id]||s?.results?.[name],d=dir(x);out.push({id,name,direction:d,action:d>0?'LONG':d<0?'SHORT':'WAIT',confidence:x?cf(x):0,weight:W[id],reason:x?.reason||'Nessun output valido registrato.'})}return out}
-function consensus(ms,m,n,ma){const e=[...ms,{id:'market',name:'Market',direction:m.direction,action:m.direction>0?'LONG':m.direction<0?'SHORT':'WAIT',confidence:m.confidence,weight:W.market,reason:'Indici e VIX'},{id:'news',name:'News',direction:n.direction,action:n.direction>0?'LONG':n.direction<0?'SHORT':'WAIT',confidence:n.confidence,weight:W.news,reason:`${n.count} notizie`},{id:'macro',name:'Macro/FRED',direction:ma.direction,action:ma.direction>0?'LONG':ma.direction<0?'SHORT':'WAIT',confidence:ma.confidence,weight:W.macro,reason:`${ma.count} osservazioni`}];let total=0,w=0;for(const x of e)if(x.direction&&x.confidence>0){total+=x.direction*x.weight*x.confidence/100;w+=x.weight}const score=w?total/w:0,d=score>=.20?1:score<=-.20?-1:0;return{evidence:e,score,usedWeight:w,action:d>0?'LONG':d<0?'SHORT':'WAIT',confidence:Math.round(Math.min(92,55+Math.abs(score)*40))}}
-function setup(c,d){if(d.action==='WAIT')return{ok:false,reason:'WAIT: consenso insufficiente.'};if(!c)return{ok:false,reason:'Nessun candidato con prezzo disponibile.'};if(d.confidence<MIN)return{ok:false,reason:`Confidence ${d.confidence}% sotto soglia ${MIN}%.`};const r=journal(),o=r.filter(x=>x.status==='OPEN'),day=new Date().toLocaleDateString('it-IT'),sym=c.symbol||c.ticker||c.name;if(r.filter(x=>new Date(x.time).toLocaleDateString('it-IT')===day).length>=MAX)return{ok:false,reason:'Limite di 3 operazioni giornaliere raggiunto.'};if(o.length>=MAX)return{ok:false,reason:'Massimo 3 posizioni contemporanee.'};if(o.some(x=>x.symbol===sym))return{ok:false,reason:'Posizione già aperta su questo asset.'};const stop=d.action==='LONG'?c.price*.994:c.price*1.006,target=d.action==='LONG'?c.price*1.018:c.price*.982,qty=Math.floor((RISK/Math.abs(c.price-stop))*1000)/1000;if(!qty||qty*c.price>CAPITAL)return{ok:false,reason:'Rischio o capitale non compatibili.'};return{ok:true,symbol:sym,price:c.price,stop,target,qty,notional:qty*c.price,rr:3}}
-function openPaper(x,d){if(!x.ok)return{ok:false,reason:x.reason};const r=journal(),p={id:'paper-'+Date.now(),time:new Date().toISOString(),symbol:x.symbol,direction:d.action,entry:x.price,current:x.price,stop:x.stop,target:x.target,qty:x.qty,notional:x.notional,risk:RISK,status:'OPEN',confidence:d.confidence,consensus:d.score};r.unshift(p);save(r);return{ok:true,position:p}}
-function update(c){const r=journal();for(const p of r.filter(x=>x.status==='OPEN')){const q=c.find(x=>(x.symbol||x.ticker||x.name)===p.symbol);if(!q?.price)continue;p.current=q.price;p.pnl=(p.direction==='LONG'?p.current-p.entry:p.entry-p.current)*p.qty;if((p.direction==='LONG'&&p.current<=p.stop)||(p.direction==='SHORT'&&p.current>=p.stop)){p.status='CLOSED';p.closeReason='STOP';p.closeTime=new Date().toISOString()}else if((p.direction==='LONG'&&p.current>=p.target)||(p.direction==='SHORT'&&p.current<=p.target)){p.status='CLOSED';p.closeReason='TARGET';p.closeTime=new Date().toISOString()}}save(r)}
-async function run(){if(window.__mlBotBusy)return window.ML_BOT_DECISION||null;window.__mlBotBusy=true;try{const rs=await Promise.allSettled([get('/api/full-scan',22000),get('/api/bot-monitor',16000),get('/api/ai',16000),get('/api/market-monitor',16000)]),v=i=>rs[i].status==='fulfilled'?rs[i].value:null,full=v(0)||{},bot=v(1)||{},ai0=v(2)||{},m0=v(3)||{},ai=ai0.ai||ai0,c=candidates(bot);update(c);const m=market(m0,bot),n=news(full,ai),ma=macro(full),d=consensus(modules(),m,n,ma),candidate=c.sort((a,b)=>((b.score-50)*(d.action==='LONG'?1:-1))-((a.score-50)*(d.action==='LONG'?1:-1)))[0]||null,x=setup(candidate,d),opened=x.ok?openPaper(x,d):{ok:false,reason:x.reason};const con=d.evidence.filter(e=>e.direction&&e.confidence>0);window.ML_BOT_DECISION={...d,candidate,risk:x,opened,at:new Date().toISOString(),sources:{market:m.count,news:n.count,macro:ma.count},contributors:con.length};window.dispatchEvent(new CustomEvent('miracolo:botdecision',{detail:window.ML_BOT_DECISION}));return window.ML_BOT_DECISION}finally{window.__mlBotBusy=false}}
-window.MiracoloBot={run,journal,update,params:{capital:CAPITAL,risk:RISK,maxPositions:MAX,minConfidence:MIN}};
+const JOURNAL='mlBotJournal';
+const params={capital:2000,risk:10,maxTradesPerDay:3,minConfidence:65};
+function localJournal(){try{const x=JSON.parse(localStorage.getItem(JOURNAL)||'[]');return Array.isArray(x)?x:[]}catch{return[]}}
+function emit(detail){window.ML_BOT_DECISION=detail;window.dispatchEvent(new CustomEvent('miracolo:botdecision',{detail}));return detail}
+async function request(path,options={}){const response=await fetch(path+(path.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store',...options,headers:{Accept:'application/json',...(options.headers||{})}});let data=null;try{data=await response.json()}catch{data={}}if(!response.ok)throw Error(data?.message||data?.error||`HTTP ${response.status}`);return data}
+async function run(){
+ if(window.__mlBotBusy)return window.ML_BOT_DECISION||null;
+ window.__mlBotBusy=true;
+ emit({mode:'PAPER',status:'RUNNING',action:'WAIT',confidence:0,reason:'Scansione completa in corso…',asOf:new Date().toISOString()});
+ try{
+  const result=await request('/api/bot/run',{method:'POST'});
+  return emit(result);
+ }catch(error){
+  return emit({mode:'PAPER',status:'ERROR',action:'WAIT',confidence:0,reason:`Scansione non completata: ${error.message||error}`,asOf:new Date().toISOString(),paper:{capital:params.capital,riskPerTrade:params.risk,maxTradesPerDay:params.maxTradesPerDay,positions:[],journal:localJournal()}});
+ }finally{window.__mlBotBusy=false}
+}
+async function load(){try{return emit(await request('/api/bot/decision'))}catch{return null}}
+window.MiracoloBot={run,load,journal:localJournal,params};
 window.MiracoloOperationalBot=window.MiracoloBot;
 })();
