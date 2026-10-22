@@ -9,7 +9,7 @@
   window.ML.on = (name, fn) => { if (!listeners.has(name)) listeners.set(name, new Set()); listeners.get(name).add(fn); return () => listeners.get(name)?.delete(fn); };
   window.ML.set = patch => { Object.assign(state, patch || {}); emit('state', state); };
   window.ML.emit = emit;
-  const valid = ['radar','investimenti','bot','strategy','blackswan','settings'];
+  const valid = ['radar','market','investimenti','bot','strategy','blackswan','settings'];
   const syncVersion = () => {
     const meta = document.querySelector('meta[name="version"]');
     const version = meta?.getAttribute('content')?.trim() || '1.0';
