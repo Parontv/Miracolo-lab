@@ -4,16 +4,16 @@ on:
   push:
     branches: [main]
     paths:
-      - 'bot-server-engine-v9.js'
+      - 'bot-server-engine-v10.js'
       - 'live-worker.js'
-      - 'tests/bot-engine-v9.test.mjs'
+      - 'tests/bot-v10.test.mjs'
       - 'public/v1/bot-engine.js'
       - 'public/v1/bot-workspace-v1.js'
   pull_request:
     paths:
-      - 'bot-server-engine-v9.js'
+      - 'bot-server-engine-v10.js'
       - 'live-worker.js'
-      - 'tests/bot-engine-v9.test.mjs'
+      - 'tests/bot-v10.test.mjs'
       - 'public/v1/bot-engine.js'
       - 'public/v1/bot-workspace-v1.js'
 
@@ -27,9 +27,9 @@ jobs:
           node-version: 22
       - name: Syntax check
         run: |
-          node --check bot-server-engine-v9.js
+          node --check bot-server-engine-v10.js
           node --check live-worker.js
           node --check public/v1/bot-engine.js
           node --check public/v1/bot-workspace-v1.js
-      - name: Behavioral test
-        run: node tests/bot-engine-v9.test.mjs
+      - name: Behavioral and quantitative tests
+        run: node tests/bot-v10.test.mjs
