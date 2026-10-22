@@ -1,4 +1,4 @@
-/* Miracolo Lab — Unified Bot UI v2.1
+/* Miracolo Lab — Unified Bot UI v2.2
  * One compact visual workspace. All Bot engines remain child modules.
  */
 (()=>{
