@@ -9,12 +9,12 @@ const investmentCharts=fs.readFileSync('public/v1/investment-charts.js','utf8');
 const investmentCss=fs.readFileSync('public/v1/investment-charts.css','utf8');
 const data=fs.readFileSync('public/v1/data.js','utf8');
 const bridge=fs.readFileSync('public/v1/news-feed-bridge.js','utf8');
-const botBridge=fs.readFileSync('public/v1/bot-tab-bridge.js','utf8');
-const botWorkspace=fs.readFileSync('public/v1/bot-workspace-v1.js','utf8');
-const strategy=fs.readFileSync('public/v1/strategy-lab.js','utf8');
+const bot=fs.readFileSync('public/v1/bot-workspace-v1.js','utf8');
+const botEngine=fs.readFileSync('public/v1/bot-engine.js','utf8');
+const server=fs.readFileSync('bot-server-engine-v4.js','utf8');
 function has(re,text,msg){assert.match(text,re,msg)}
 
-// Navigation: Strategy Lab is internal now, not a user-facing tab.
+// Navigation: Strategy Lab is internal, not a user-facing tab.
 has(/data-panel="bot"/,html);assert.doesNotMatch(html,/data-panel="strategy"/);assert.doesNotMatch(nav,/['"]strategy['"]/);assert.doesNotMatch(html,/trading-desk\.(js|css)/);
 
 // Market UI.
@@ -27,29 +27,19 @@ has(/investment-charts\.js\?v=1\.0\.1/,html);has(/investment-charts\.css\?v=1\.0
 // News pipeline.
 has(/ML_NEWS_CONTRACT/,data);has(/\/api\/live/,data);has(/\/api\/full-scan/,data);has(/window\.ML\.on\('data'/,bridge);
 
-// Single operational Bot surface.
-has(/bot-workspace-v1\.js/,html);has(/bot-tab-bridge\.js/,html);has(/bot-decision-engine\.js/,html);
-has(/Avvia tutto/,botWorkspace);has(/PAPER ONLY/,botWorkspace);has(/Fonti utilizzate/,botWorkspace);has(/Analisi del Bot/,botWorkspace);has(/Operazioni PAPER/,botWorkspace);has(/Journal/,botWorkspace);
-for(const name of ['Jesse','WolfBot','Multi-Agent','Historical','Backtest','Learning','Memory','Macro\/FRED'])has(new RegExp(name),botWorkspace);
+// Single Bot surface: UI + one client controller + one server brain.
+has(/bot-workspace-v1\.js/,html);has(/bot-engine\.js/,html);has(/bot-engine-v4|bot-server-engine-v4/,html+server);
+has(/Avvia tutto/,bot);has(/PAPER ONLY/,bot);has(/Fonti utilizzate/,bot);has(/Analisi del Bot/,bot);has(/Operazioni PAPER/,bot);has(/Journal/,bot);
+for(const name of ['Jesse','WolfBot','Multi-Agent','Historical','Backtest','Learning','Memory','Macro\/FRED'])has(new RegExp(name),bot);
 
-// Sources come from the real scan payload, not an undefined S.sources object.
-has(/ML\?\.state/,botWorkspace);has(/scan\.items/,botWorkspace);has(/api\/full-scan/,botWorkspace);has(/Fonti realmente ricevute/,botWorkspace);
+// Client must call the server and emit one decision event.
+has(/\/api\/bot\/run/,botEngine);has(/miracolo:botdecision/,botEngine);has(/window\.MiracoloBot/,botEngine);assert.doesNotMatch(botEngine,/stopImmediatePropagation/);assert.doesNotMatch(botEngine,/capture\s*:\s*true/);
 
-// Operational Bot: scan → consensus → risk → paper execution.
-has(/\/api\/full-scan/,botBridge);has(/\/api\/bot-monitor/,botBridge);has(/\/api\/ai/,botBridge);has(/Promise\.allSettled/,botBridge);
-has(/CAPITAL=2000/,botBridge);has(/RISK=10/,botBridge);has(/MAX=3/,botBridge);has(/PAPER TRADE APERTO/,botBridge);has(/status==='OPEN'/,botBridge);has(/status='CLOSED'/,botBridge);has(/STOP/,botBridge);has(/TARGET/,botBridge);
-has(/Macro\/FRED/,botBridge);has(/W\.macro/,botBridge);has(/consensus\(modules\(\),m,n,ma\)/,botBridge);
-
-// Strategy engines remain internal components of the Bot.
-for(const id of ['learning','memory','jesse','technical','multi','historical','backtest'])has(new RegExp(`id:'${id}'`),strategy);
-has(/ml_strategy_lab_v23/,botBridge);for(const name of ['Jesse','WolfBot','Multi-Agent','Historical','Backtest','Learning','Memory'])has(new RegExp(name),botBridge);
-
-// Canonical click binding.
-has(/addEventListener\('click'/,botWorkspace);has(/querySelector\('\.bot-run'\)/,botWorkspace);has(/window\.runMiracoloBotDecision=run/,botBridge);
+// Server decision contract and PAPER limits.
+has(/BOT-SERVER-V4/,server);has(/mode:'PAPER'/,server);has(/MAX_TRADES=3/,server);has(/RISK=10/,server);has(/CAPITAL=2000/,server);has(/WAIT — copertura/,server);has(/calibrazione non disponibile/,server);has(/rsiWilder/,server);has(/atr\(/,server);has(/VIX/,server);has(/high.?yield|High Yield/,server);has(/api\/bot\/decision|bot\/decision-v4/,fs.readFileSync('live-worker.js','utf8'));
 
 console.log('Market UI static integrity: PASS');
 console.log('News pipeline linkage: PASS');
-console.log('Single operational Bot surface: PASS');
-console.log('Consultable source panels: PASS');
-console.log('Strategy engines → Bot consensus linkage: PASS');
-console.log('Paper execution controls: PASS');
+console.log('Single Bot surface: PASS');
+console.log('Server decision contract: PASS');
+console.log('Paper limits: PASS');
