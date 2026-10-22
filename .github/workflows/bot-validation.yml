@@ -1,0 +1,35 @@
+name: Bot Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bot-server-engine-v9.js'
+      - 'live-worker.js'
+      - 'tests/bot-engine-v9.test.mjs'
+      - 'public/v1/bot-engine.js'
+      - 'public/v1/bot-workspace-v1.js'
+  pull_request:
+    paths:
+      - 'bot-server-engine-v9.js'
+      - 'live-worker.js'
+      - 'tests/bot-engine-v9.test.mjs'
+      - 'public/v1/bot-engine.js'
+      - 'public/v1/bot-workspace-v1.js'
+
+jobs:
+  validate-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check
+        run: |
+          node --check bot-server-engine-v9.js
+          node --check live-worker.js
+          node --check public/v1/bot-engine.js
+          node --check public/v1/bot-workspace-v1.js
+      - name: Behavioral test
+        run: node tests/bot-engine-v9.test.mjs
