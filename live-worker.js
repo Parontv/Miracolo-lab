@@ -14,7 +14,7 @@ function slimLive(data){
     delete news.categories;
     out.news=news;
   }
-  if(out.ai&&typeof out.ai==='object') out.ai={...out.ai,commentary:String(out.ai.commentary||'').slice(0,3500),thesis:String(out.ai.thesis||'').slice(0,1800));
+  if(out.ai&&typeof out.ai==='object') out.ai={...out.ai,commentary:String(out.ai.commentary||'').slice(0,3500),thesis:String(out.ai.thesis||'').slice(0,1800)};
   return out;
 }
 
