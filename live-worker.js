@@ -1,6 +1,6 @@
 /* Production entrypoint wrapper: live data + one server-side Bot brain. */
 import aiWorker from './ai-worker.js';
-import { runBot, getBotDecision } from './bot-server-engine.js';
+import { runBot, getBotDecision } from './bot-server-engine-v4.js';
 
 function slimLive(data){
   const out={...data};
