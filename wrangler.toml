@@ -6,11 +6,11 @@ compatibility_date = "2026-08-27"
 crons = ["*/5 * * * *"]
 
 [vars]
-BOT_MODE = "AUTONOMOUS"
+BOT_MODE = "PAPER"
 HEARTBEAT_INTERVAL = "5m"
 
 # V1 durable state: cursor, autonomous snapshot and API rate-limit counters.
-# Wrangler can automatically provision this KV namespace on deployment.
+# ML_KV must be bound to the existing Cloudflare KV namespace in the deployment environment.
 [[kv_namespaces]]
 binding = "ML_KV"
 
