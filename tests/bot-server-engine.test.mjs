@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rsiWilder, technicalFromHistory, fuse, marketVote } from '../bot-server-engine-v5.js';
+import { rsiWilder, technicalFromHistory, fuse, marketVote } from '../bot-server-engine-v8.js';
 
 test('missing close observations are excluded instead of becoming zero',()=>{
   const history=Array.from({length:40},(_,i)=>({close:i===39?null:100+i,high:101+i,low:99+i,asOf:new Date(Date.now()-(40-i)*86400000).toISOString()}));
@@ -20,10 +20,10 @@ test('fusion defaults to WAIT when coverage is insufficient',()=>{
   assert.match(result.reason,/WAIT/);
 });
 
-test('fusion groups Jesse and WolfBot into one technical family',()=>{
+test('fusion groups Jesse and WolfBot into one technical family by family contract',()=>{
   const now=new Date().toISOString();
   const v=(family,weight)=>({family,direction:1,strength:.8,confidence:80,coverage:1,weight,evidence:[family],asOf:now});
-  const result=fuse([v('market',.18),v('news',.14),v('macro',.16),v('jesse',.16),v('wolfbot',.16)]);
+  const result=fuse([v('market',.18),v('news',.14),v('macro',.16),v('technical',.16)]);
   assert.equal(result.direction,1);
   assert.equal(result.families,4);
   assert.ok(result.coverage>=.60);
