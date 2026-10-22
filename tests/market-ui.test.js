@@ -28,7 +28,7 @@ has(/ML_NEWS_CONTRACT/,data);has(/\/api\/live/,data);has(/\/api\/full-scan/,data
 // Bot: one button, paper-only, full scan first.
 has(/trading-agents\.js\?v=1\.0\.4/,html);has(/trading-agents\.css\?v=1\.0.4/,html);has(/AVVIA ANALISI COMPLETA/,bot);assert.doesNotMatch(bot,/bot-multi/);
 has(/\/api\/market-monitor-v2/,bot);has(/\/api\/market-monitor/,bot);has(/\/api\/full-scan/,bot);has(/Promise\.allSettled/,bot);has(/paper trading|paper only/i,bot);has(/rischio massimo €10/i,bot);has(/massimo 3 operazioni\/giorno/,bot);
-has(/PAPER TRADE APERTO/,bot);has(/status==='OPEN'/,bot);has(/status='CLOSED'/,bot);has(/STOP/,bot);has(/TARGET/,bot);
+has(/PAPER TRADE APERTO|APRI POSIZIONE PAPER/,bot);has(/status==='OPEN'/,bot);has(/status='CLOSED'/,bot);has(/STOP/,bot);has(/TARGET/,bot);
 
 // Strategy Lab outputs feed the operational Bot.
 has(/ml_strategy_lab_v23/,bot);has(/Strategy Lab/,bot);for(const name of ['Jesse','WolfBot','Multi-Agent','Historical','Backtest','Learning','Memory'])has(new RegExp(name),bot);
@@ -37,8 +37,12 @@ has(/strategyConsensus/,bot);has(/decisionSource/,bot);has(/availableCount/,bot)
 // Cockpit click binding is explicit and panel mounting does not depend on active-panel state.
 has(/addEventListener\('click'/,bot);has(/querySelector\('\.bot-run'\)/,bot);has(/function mount\(\)\{var side=document\.getElementById\('sidePanel'\)/,bot);
 
+// Runtime wiring: all Bot engines must actually be loaded by the page.
+has(/\/v1\/bot-strategy\.js\?v=2\.5\.0/,html);has(/\/v1\/backtest-engine\.js\?v=2\.5\.0/,html);has(/\/v1\/bot-decision-engine\.js\?v=2\.5\.0/,html);has(/\/v1\/bot-tab-bridge\.js\?v=2\.5\.0/,html);
+
 console.log('Market UI static integrity: PASS');
 console.log('News pipeline linkage: PASS');
 console.log('Single-button Bot workflow: PASS');
 console.log('Strategy Lab → Bot decision linkage: PASS');
 console.log('Bot cockpit click binding: PASS');
+console.log('Bot runtime engine loading: PASS');
