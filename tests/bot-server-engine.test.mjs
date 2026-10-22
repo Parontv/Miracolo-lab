@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rsiWilder, technicalFromHistory, fuse } from '../bot-server-engine.js';
 
-test('null and empty numeric inputs never become zero',()=>{
+test('missing close observations are excluded instead of becoming zero',()=>{
  const history=Array.from({length:40},(_,i)=>({close:i===39?null:100+i,high:101+i,low:99+i,asOf:new Date(Date.now()-(40-i)*86400000).toISOString()}));
- assert.equal(technicalFromHistory(history),null);
+ const result=technicalFromHistory(history);
+ assert.ok(result);
+ assert.notEqual(result.price,0);
 });
 
 test('RSI uses Wilder smoothing and returns no data for insufficient history',()=>{
