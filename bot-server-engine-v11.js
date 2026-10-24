@@ -16,7 +16,8 @@ export async function runBot(env){
  const journal=await get(env,'bot/journal-v10',[]);
  const preliminaryRisk=riskEngine({decision:current?.decision||{},positions,journal,eventRisk:{level:eventLevel(contract.summary),count:contract.summary.criticalCount}});
  if(!preliminaryRisk.allowed&&preliminaryRisk.flags.length){
-   const blocked={...(current||{}),version:'BOT-SERVER-V11',mode:'PAPER',decision:{...(current?.decision||{}),direction:0,reason:preliminaryRisk.reason,evidence:[...(current?.decision?.evidence||[]),'RISK ENGINE V1']},newsEvent:contract.summary,risk:preliminaryRisk};
+   const currentDecision=current?.decision||{};
+   const blocked={...(current||{}),version:'BOT-SERVER-V11',mode:'PAPER',decision:{...currentDecision,direction:0,reason:preliminaryRisk.reason,evidence:currentDecision.evidence||[],contributors:currentDecision.contributors||[],coverage:currentDecision.coverage||0,confidence:currentDecision.confidence||0,score:currentDecision.score||0,asOf:currentDecision.asOf||new Date().toISOString()},modules:Array.isArray(current?.modules)?current.modules:[],paper:{capital:2000,riskPerTrade:10,maxTradesPerDay:3,maxPositions:3,positions,journal,opened:null},newsEvent:contract.summary,risk:preliminaryRisk};
    await put(env,STATE,blocked,3600);
    return blocked;
  }
