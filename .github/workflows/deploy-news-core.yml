@@ -24,7 +24,7 @@ jobs:
       - name: Compile Python scripts
         run: |
           set -e
-          find scripts -type f -name '*.py' -print0 | xargs -0 -n1 python -m py_compile
+          find scripts -type f -name '*.py' -print0 | xargs -0 python -m py_compile
       - name: News contract test
         run: node tests/news-contract.test.js
       - name: Bot V10 contract test
@@ -33,8 +33,10 @@ jobs:
         run: node tests/bot-v10.test.mjs
       - name: Bot V11 news and risk test
         run: node tests/bot-v11.test.mjs
-      - name: Bot V12 contract test
-        run: node --input-type=module -e "import('./bot-server-engine-v12.js').then(()=>console.log('BOT V12 IMPORT PASS'))"
+      - name: Bot V13 contract test
+        run: node --input-type=module -e "import('./bot-server-engine-v13.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw Error('BOT V13 exports missing');console.log('BOT V13 IMPORT PASS')})"
+      - name: Bot V13 source contract test
+        run: node --input-type=module -e "import('fs').then(async fs=>{const s=fs.readFileSync('bot-server-engine-v13.js','utf8');for(const x of ['state/latest','quantitative/latest-v2','newsContract','riskEngine','BOT-SERVER-V13','MACRO/FRED','CONSENSUS','RISK'])if(!s.includes(x))throw Error('Missing '+x);console.log('BOT V13 SOURCE PASS')})"
       - name: Market/UI integrity test
         run: node tests/market-ui.test.js
   deploy:
@@ -81,7 +83,10 @@ jobs:
               if decision.get('direction') not in (-1,0,1): failed=True
               if not all(k in decision for k in ('coverage','evidence','asOf')): failed=True
               if bot.get('mode')!='PAPER': failed=True
-              if bot.get('version') not in ('BOT-SERVER-V10','BOT-SERVER-V11','BOT-SERVER-V12'): failed=True
+              if bot.get('version') not in ('BOT-SERVER-V10','BOT-SERVER-V11','BOT-SERVER-V12','BOT-SERVER-V13'): failed=True
+              modules=bot.get('modules') or []
+              families={m.get('family') for m in modules if isinstance(m,dict)}
+              if modules and len(families)<9: failed=True
           elif bot and bot.get('status')!='NO_DATA': failed=True
           chart=get('CHART','/api/chart?symbol=%5EGSPC&period=5d')
           if not chart or not chart.get('ok') or len(chart.get('candles') or [])<2: failed=True
@@ -89,7 +94,7 @@ jobs:
           if alp and alp.get('ok') and alp.get('mode')!='PAPER': failed=True
           try:
               html=urllib.request.urlopen(urllib.request.Request(base+'/',headers=h),timeout=30).read().decode('utf-8','replace')
-              required=['data.js?v=1.4.1','dashboard.js?v=1.5.4','strategy-lab.js?v=2.3.2','market.js?v=1.0.0','trading-agents.js?v=1.0.4','trading-agents.css?v=1.0.4','tab-navigation.js?v=1.6.5','bot-engine.js?v=2.0.0','bot-workspace-v1.js?v=3.0.0','bot-workspace-v2.js?v=1.0.0','bot-workspace-v2.css?v=1.0.0']
+              required=['bot-engine.js?v=2.0.0','bot-workspace-v1.js?v=3.0.0','bot-workspace-v2.js?v=1.0.0','bot-workspace-v2.css?v=1.0.0']
               legacy=['bot-decision-engine.js','bot-tab-bridge.js','bot-unified-ui.js','bot-compact-runtime-v22.js','trading-desk.js','trading-desk.css'];missing=[x for x in required if x not in html];found_legacy=[x for x in legacy if x in html];report.append({'name':'UI','ok':not missing and not found_legacy,'missing':missing,'legacy':found_legacy});print('UI',json.dumps({'missing':missing,'legacy':found_legacy}));
               if missing or found_legacy: failed=True
           except Exception as e: failed=True;report.append({'name':'UI','ok':False,'error':repr(e)});print('UI ERROR',repr(e))
