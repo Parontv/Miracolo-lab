@@ -1,6 +1,6 @@
-/* Miracolo Lab — Bot client controller v3
- * The Worker is the only decision maker. This file only starts a PAPER scan,
- * normalizes server module evidence for the existing consultable UI, and emits one event.
+/* Miracolo Lab — Bot client controller v4
+ * The Worker is the only decision maker. This file starts a PAPER scan,
+ * preserves the server decision contract, and exposes module evidence to the UI.
  */
 (()=>{
 'use strict';
@@ -11,7 +11,9 @@ function emit(detail){window.ML_BOT_DECISION=detail;window.dispatchEvent(new Cus
 function normalize(result){
  if(!result||!result.decision)return result;
  const modules=Array.isArray(result.modules)?result.modules:[];
- return {...result,decision:{...result.decision,evidence:modules,explanationEvidence:result.decision.evidence||[]}};
+ const originalEvidence=Array.isArray(result.decision.evidence)?result.decision.evidence:[];
+ const evidence=modules.length?modules:originalEvidence;
+ return {...result,decision:{...result.decision,evidence,explanationEvidence:originalEvidence}};
 }
 async function request(path,options={}){const response=await fetch(path+(path.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store',...options,headers:{Accept:'application/json',...(options.headers||{})}});let data=null;try{data=await response.json()}catch{data={}}if(!response.ok)throw Error(data?.message||data?.error||`HTTP ${response.status}`);return data}
 async function run(){
