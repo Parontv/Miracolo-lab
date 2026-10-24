@@ -6,24 +6,30 @@ on:
     paths:
       - 'bot-server-engine-v10.js'
       - 'bot-server-engine-v11.js'
+      - 'bot-server-engine-v14.js'
+      - 'bot-server-engine-v15.js'
       - 'bot-risk-engine-v1.js'
+      - 'bot-macro-engine-v1.js'
       - 'news-event-engine-v1.js'
       - 'live-worker.js'
       - 'tests/bot-v10.test.mjs'
       - 'tests/bot-v11.test.mjs'
       - 'public/v1/bot-engine.js'
-      - 'public/v1/bot-workspace-v1.js'
+      - 'public/v1/bot-workspace-v2.js'
   pull_request:
     paths:
       - 'bot-server-engine-v10.js'
       - 'bot-server-engine-v11.js'
+      - 'bot-server-engine-v14.js'
+      - 'bot-server-engine-v15.js'
       - 'bot-risk-engine-v1.js'
+      - 'bot-macro-engine-v1.js'
       - 'news-event-engine-v1.js'
       - 'live-worker.js'
       - 'tests/bot-v10.test.mjs'
       - 'tests/bot-v11.test.mjs'
       - 'public/v1/bot-engine.js'
-      - 'public/v1/bot-workspace-v1.js'
+      - 'public/v1/bot-workspace-v2.js'
 
 jobs:
   validate-bot:
@@ -37,12 +43,18 @@ jobs:
         run: |
           node --check bot-server-engine-v10.js
           node --check bot-server-engine-v11.js
+          node --check bot-server-engine-v14.js
+          node --check bot-server-engine-v15.js
           node --check bot-risk-engine-v1.js
+          node --check bot-macro-engine-v1.js
           node --check news-event-engine-v1.js
           node --check live-worker.js
           node --check public/v1/bot-engine.js
-          node --check public/v1/bot-workspace-v1.js
+          node --check public/v1/bot-workspace-v2.js
       - name: V10 behavioral and quantitative tests
         run: node tests/bot-v10.test.mjs
       - name: V11 news and risk contract tests
         run: node tests/bot-v11.test.mjs
+      - name: V15 contract checks
+        run: |
+          node -e "import('./bot-server-engine-v15.js').then(async m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('V15 exports missing'); console.log('V15 exports OK')})"
