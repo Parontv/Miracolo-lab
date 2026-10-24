@@ -5,7 +5,6 @@ const DEFAULT_BASE='https://paper-api.alpaca.markets/v2';
 const KEY='ALPACA_API_KEY';
 const SECRET='ALPACA_API_SECRET';
 const COUNT_PREFIX='alpaca/orders/';
-
 function headers(env){
   const key=env?.[KEY], secret=env?.[SECRET];
   if(!key||!secret) throw new Error('Credenziali Alpaca mancanti: configura ALPACA_API_KEY e ALPACA_API_SECRET');
@@ -31,12 +30,10 @@ async function incrementToday(env){
   return n;
 }
 function symbolFromPath(path){return decodeURIComponent(path.split('/').pop()||'').trim().toUpperCase()}
-
 export async function alpacaStatus(env){
   const [account,clock]=await Promise.all([call(env,'/account'),call(env,'/clock')]);
   return {ok:true,mode:'PAPER',provider:'Alpaca',base:base(env),account,clock,ordersToday:await countToday(env)};
 }
-
 export async function alpacaRequest(request,env){
   const url=new URL(request.url),path=url.pathname;
   try{
@@ -49,8 +46,7 @@ export async function alpacaRequest(request,env){
       return out({ok:true,mode:'PAPER',orders:await call(env,'/orders'+(qs?'?'+qs:''))});
     }
     if(path==='/api/alpaca/orders' && request.method==='POST'){
-      const max=Number(env.AL PACA_MAX_ORDERS_PER_DAY||env.ALPACA_MAX_ORDERS_PER_DAY||3);
-      const used=await countToday(env);
+      const max=Number(env.ALPACA_MAX_ORDERS_PER_DAY||3),used=await countToday(env);
       if(used>=max)return out({ok:false,error:`Limite paper giornaliero raggiunto (${max} ordini).`,ordersToday:used,maxOrdersPerDay:max},429);
       const body=await request.json();
       const allowed=['symbol','qty','notional','side','type','time_in_force','limit_price','stop_price','trail_price','trail_percent','extended_hours','client_order_id'];
