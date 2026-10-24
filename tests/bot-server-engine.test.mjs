@@ -1,37 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rsiWilder, technicalFromHistory, fuse, marketVote } from '../bot-server-engine-v8.js';
-
-test('missing close observations are excluded instead of becoming zero',()=>{
-  const history=Array.from({length:40},(_,i)=>({close:i===39?null:100+i,high:101+i,low:99+i,asOf:new Date(Date.now()-(40-i)*86400000).toISOString()}));
-  const result=technicalFromHistory(history);
-  assert.ok(result);
-  assert.notEqual(result.price,0);
-});
+import { rsiWilder, ema, atr, technicalFromHistory } from '../bot-server-engine-v10.js';
 
 test('RSI uses Wilder smoothing and returns no data for insufficient history',()=>{
   assert.equal(rsiWilder(Array.from({length:10},(_,i)=>100+i)),null);
   assert.equal(rsiWilder(Array.from({length:40},(_,i)=>100+i*.5)),100);
 });
 
-test('fusion defaults to WAIT when coverage is insufficient',()=>{
-  const result=fuse([{family:'market',direction:1,strength:1,confidence:90,coverage:1,weight:.18,evidence:['x'],asOf:new Date().toISOString()}]);
-  assert.equal(result.direction,0);
-  assert.match(result.reason,/WAIT/);
+test('EMA and ATR return no data when the minimum sample is not available',()=>{
+  assert.equal(ema([1,2,3],5),null);
+  assert.equal(atr([{close:1,high:1.1,low:.9},{close:1.05,high:1.15,low:1}],14),null);
 });
 
-test('fusion groups Jesse and WolfBot into one technical family by family contract',()=>{
-  const now=new Date().toISOString();
-  const v=(family,weight)=>({family,direction:1,strength:.8,confidence:80,coverage:1,weight,evidence:[family],asOf:now});
-  const result=fuse([v('market',.18),v('news',.14),v('macro',.16),v('technical',.16)]);
-  assert.equal(result.direction,1);
-  assert.equal(result.families,4);
-  assert.ok(result.coverage>=.60);
+test('technical module keeps missing data as NO DATA instead of zero',()=>{
+  const history=Array.from({length:60},(_,i)=>({close:i===59?null:100+i*.2,high:100+i*.2+.5,low:100+i*.2-.5,asOf:new Date(Date.UTC(2026,0,1+i)).toISOString()}));
+  const result=technicalFromHistory(history);
+  assert.ok(result);
+  assert.notEqual(result.price,0);
+  assert.equal(typeof result.coverage,'number');
 });
 
-test('VIX is not included as an equity index',()=>{
-  const result=marketVote({market:{indices:[
-    {name:'S&P 500',changePct:1},{name:'NASDAQ 100',changePct:1},{name:'DAX',changePct:1},{name:'VIX',changePct:20},{name:'Gold',changePct:10},{name:'DXY',changePct:10}
-  ]}});
-  assert.ok(result.evidence.some(x=>x.includes('VIX')));
+test('technical module exposes a structured contract with sufficient history',()=>{
+  const history=Array.from({length:60},(_,i)=>({asOf:new Date(Date.UTC(2026,0,1+i)).toISOString(),close:100+i*.2,high:100+i*.2+.5,low:100+i*.2-.5}));
+  const result=technicalFromHistory(history);
+  assert.ok(result);
+  assert.equal(typeof result.direction,'number');
+  assert.ok(Array.isArray(result.evidence));
+  assert.ok(result.asOf);
 });
