@@ -27,8 +27,12 @@ jobs:
           find scripts -type f -name '*.py' -print0 | xargs -0 -n1 python -m py_compile
       - name: News contract test
         run: node tests/news-contract.test.js
-      - name: Bot engine test
-        run: node --experimental-default-type=module --test tests/bot-server-engine.test.mjs
+      - name: Bot V10 contract test
+        run: node tests/bot-server-engine.test.mjs
+      - name: Bot V10 behavioral test
+        run: node tests/bot-v10.test.mjs
+      - name: Bot V11 news and risk test
+        run: node tests/bot-v11.test.mjs
       - name: Market/UI integrity test
         run: node tests/market-ui.test.js
   deploy:
@@ -81,6 +85,7 @@ jobs:
               if decision.get('direction') not in (-1,0,1): failed=True; print('BOT_CONTRACT_DIRECTION: INVALID')
               if 'coverage' not in decision or 'evidence' not in decision or 'asOf' not in decision: failed=True; print('BOT_CONTRACT: MISSING_FIELDS')
               if bot.get('mode')!='PAPER': failed=True; print('BOT_MODE: NOT_PAPER')
+              if bot.get('version') not in ('BOT-SERVER-V10','BOT-SERVER-V11'): failed=True; print('BOT_VERSION: INVALID')
           elif bot and bot.get('status')!='NO_DATA': failed=True; print('BOT_ENDPOINT: INVALID')
           chart=get('CHART','/api/chart?symbol=%5EGSPC&period=5d')
           if not chart or not chart.get('ok') or len(chart.get('candles') or [])<2: failed=True
