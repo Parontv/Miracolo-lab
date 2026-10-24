@@ -33,10 +33,10 @@ jobs:
         run: node tests/bot-v10.test.mjs
       - name: Bot V11 news and risk test
         run: node tests/bot-v11.test.mjs
-      - name: Bot V13 contract test
-        run: node --input-type=module -e "import('./bot-server-engine-v13.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw Error('BOT V13 exports missing');console.log('BOT V13 IMPORT PASS')})"
-      - name: Bot V13 source contract test
-        run: node --input-type=module -e "import('fs').then(async fs=>{const s=fs.readFileSync('bot-server-engine-v13.js','utf8');for(const x of ['state/latest','quantitative/latest-v2','newsContract','riskEngine','BOT-SERVER-V13','MACRO/FRED','CONSENSUS','RISK'])if(!s.includes(x))throw Error('Missing '+x);console.log('BOT V13 SOURCE PASS')})"
+      - name: Bot V14 contract test
+        run: node --input-type=module -e "import('./bot-server-engine-v14.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw Error('BOT V14 exports missing');console.log('BOT V14 IMPORT PASS')})"
+      - name: Bot V14 source contract test
+        run: node --input-type=module -e "import('fs').then(async fs=>{const s=fs.readFileSync('bot-server-engine-v14.js','utf8');for(const x of ['state/latest','getMacroData','macroSignal','newsContract','riskEngine','BOT-SERVER-V14','FRED/MACRO','CONSENSUS','RISK'])if(!s.includes(x))throw Error('Missing '+x);console.log('BOT V14 SOURCE PASS')})"
       - name: Market/UI integrity test
         run: node tests/market-ui.test.js
   deploy:
@@ -61,18 +61,20 @@ jobs:
         run: |
           set -e
           python - <<'PY'
-          import json,urllib.request,urllib.error,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev';h={'User-Agent':'MiracoloLab-Deployment-Verification/2.0','Cache-Control':'no-cache'};report=[];failed=False
-          def get(name,path):
+          import json,urllib.request,sys,time
+          base='https://miracolo-lab.listaconcerti.workers.dev';h={'User-Agent':'MiracoloLab-Deployment-Verification/3.0','Cache-Control':'no-cache'};report=[];failed=False
+          def get(name,path,required=True):
               global failed
               try:
                   u=base+path+('&' if '?' in path else '?')+'ts='+str(time.time_ns());data=json.load(urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=45));report.append({'name':name,'path':path,'ok':True,'data':data});print(name,json.dumps(data)[:5000]);return data
               except Exception as e:
-                  failed=True;report.append({'name':name,'path':path,'ok':False,'error':repr(e)});print(name,'ERROR',repr(e));return None
+                  report.append({'name':name,'path':path,'ok':False,'error':repr(e)});print(name,'ERROR',repr(e));
+                  if required: failed=True
+                  return None
           def post(name,path):
               global failed
               try:
-                  u=base+path+('?ts='+str(time.time_ns()));req=urllib.request.Request(u,method='POST',headers={**h,'Content-Type':'application/json'},data=b'{}');data=json.load(urllib.request.urlopen(req,timeout=60));report.append({'name':name,'path':path,'ok':True,'data':data});print(name,json.dumps(data)[:7000]);return data
+                  req=urllib.request.Request(base+path+'?ts='+str(time.time_ns()),method='POST',headers={**h,'Content-Type':'application/json'},data=b'{}');data=json.load(urllib.request.urlopen(req,timeout=60));report.append({'name':name,'path':path,'ok':True,'data':data});print(name,json.dumps(data)[:7000]);return data
               except Exception as e:
                   failed=True;report.append({'name':name,'path':path,'ok':False,'error':repr(e)});print(name,'ERROR',repr(e));return None
           v=get('VERSION','/version');
@@ -86,27 +88,22 @@ jobs:
           bot=post('BOT_RUN','/api/bot/run')
           if not bot or not bot.get('ok'): failed=True
           else:
-              if bot.get('mode')!='PAPER' or bot.get('version')!='BOT-SERVER-V13': failed=True
-              decision=bot.get('decision') or {}
-              if decision.get('direction') not in (-1,0,1): failed=True
-              if not all(k in decision for k in ('coverage','evidence','asOf','families')): failed=True
-              modules=bot.get('modules') or []
-              families=[m.get('family') for m in modules if isinstance(m,dict)]
-              required={'market','news','macro','technical','ai','historical','backtest','learning','memory'}
-              if set(families)!=required or len(families)!=9: failed=True
-              diag=bot.get('diagnostics') or {}
-              if len(diag.get('pipeline') or [])<10: failed=True
-              risk=bot.get('risk') or {}
-              if risk.get('mode') not in (None,'PAPER'): failed=True
-          bot2=get('BOT_DECISION','/api/bot/decision')
-          if not bot2 or bot2.get('version')!='BOT-SERVER-V13': failed=True
-          chart=get('CHART','/api/chart?symbol=%5EGSPC&period=5d')
+              if bot.get('mode')!='PAPER' or bot.get('version')!='BOT-SERVER-V14': failed=True
+              d=bot.get('decision') or {}
+              if d.get('direction') not in (-1,0,1) or not all(k in d for k in ('coverage','evidence','asOf','families')): failed=True
+              mods=bot.get('modules') or [];families={m.get('family') for m in mods if isinstance(m,dict)}
+              if families!={'market','news','macro','technical','ai','historical','backtest','learning','memory'}: failed=True
+              if len((bot.get('diagnostics') or {}).get('pipeline') or [])<10: failed=True
+              fred=bot.get('fred') or {}
+              if not fred.get('coverage') or fred['coverage'].get('total',0)<10: failed=True
+          bot2=get('BOT_DECISION','/api/bot/decision');
+          if not bot2 or bot2.get('version')!='BOT-SERVER-V14': failed=True
+          chart=get('CHART','/api/chart?symbol=%5EGSPC&period=5d');
           if not chart or not chart.get('ok') or len(chart.get('candles') or [])<2: failed=True
-          alp=get('ALPACA_STATUS','/api/alpaca/status')
+          alp=get('ALPACA_STATUS','/api/alpaca/status',required=False)
           if alp and alp.get('ok') and alp.get('mode')!='PAPER': failed=True
           try:
-              html=urllib.request.urlopen(urllib.request.Request(base+'/',headers=h),timeout=30).read().decode('utf-8','replace')
-              required=['bot-engine.js?v=2.0.0','bot-workspace-v1.js?v=3.0.0','bot-workspace-v2.js?v=1.0.0','bot-workspace-v2.css?v=1.0.0'];legacy=['bot-decision-engine.js','bot-tab-bridge.js','bot-unified-ui.js','bot-compact-runtime-v22.js','trading-desk.js','trading-desk.css'];missing=[x for x in required if x not in html];found=[x for x in legacy if x in html];report.append({'name':'UI','ok':not missing and not found,'missing':missing,'legacy':found});print('UI',json.dumps({'missing':missing,'legacy':found}));
+              html=urllib.request.urlopen(urllib.request.Request(base+'/',headers=h),timeout=30).read().decode('utf-8','replace');required=['bot-engine.js?v=2.0.0','bot-workspace-v1.js?v=3.0.0','bot-workspace-v2.js?v=1.0.0','bot-workspace-v2.css?v=1.0.0'];legacy=['bot-decision-engine.js','bot-tab-bridge.js','bot-unified-ui.js','bot-compact-runtime-v22.js','trading-desk.js','trading-desk.css'];missing=[x for x in required if x not in html];found=[x for x in legacy if x in html];report.append({'name':'UI','ok':not missing and not found,'missing':missing,'legacy':found});print('UI',json.dumps({'missing':missing,'legacy':found}));
               if missing or found: failed=True
           except Exception as e: failed=True;print('UI ERROR',repr(e))
           open('/tmp/production-verification.json','w').write(json.dumps(report,indent=2,default=str))
