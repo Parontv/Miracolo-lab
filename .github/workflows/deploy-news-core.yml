@@ -57,16 +57,22 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler@4 deploy
-      - name: Verify production endpoints and UI
+      - name: Verify production endpoints and Bot
         run: |
           set -e
           python - <<'PY'
-          import json,urllib.request,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev';h={'User-Agent':'MiracoloLab-Deployment-Verification/1.0','Cache-Control':'no-cache'};report=[];failed=False
+          import json,urllib.request,urllib.error,sys,time
+          base='https://miracolo-lab.listaconcerti.workers.dev';h={'User-Agent':'MiracoloLab-Deployment-Verification/2.0','Cache-Control':'no-cache'};report=[];failed=False
           def get(name,path):
               global failed
               try:
-                  u=base+path+('&' if '?' in path else '?')+'ts='+str(time.time_ns());data=json.load(urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=45));report.append({'name':name,'path':path,'ok':True,'data':data});print(name,json.dumps(data)[:6000]);return data
+                  u=base+path+('&' if '?' in path else '?')+'ts='+str(time.time_ns());data=json.load(urllib.request.urlopen(urllib.request.Request(u,headers=h),timeout=45));report.append({'name':name,'path':path,'ok':True,'data':data});print(name,json.dumps(data)[:5000]);return data
+              except Exception as e:
+                  failed=True;report.append({'name':name,'path':path,'ok':False,'error':repr(e)});print(name,'ERROR',repr(e));return None
+          def post(name,path):
+              global failed
+              try:
+                  u=base+path+('?ts='+str(time.time_ns()));req=urllib.request.Request(u,method='POST',headers={**h,'Content-Type':'application/json'},data=b'{}');data=json.load(urllib.request.urlopen(req,timeout=60));report.append({'name':name,'path':path,'ok':True,'data':data});print(name,json.dumps(data)[:7000]);return data
               except Exception as e:
                   failed=True;report.append({'name':name,'path':path,'ok':False,'error':repr(e)});print(name,'ERROR',repr(e));return None
           v=get('VERSION','/version');
@@ -74,30 +80,35 @@ jobs:
           health=get('HEALTH','/api/health');
           if not health or not health.get('ok'): failed=True
           live=get('LIVE','/api/live');
-          if live and isinstance(live.get('universe'),dict) and 'tickers' in live['universe']: failed=True
+          if not live or not isinstance(live,dict): failed=True
           mm=get('MARKET_MONITOR','/api/market-monitor');
           if not mm or 'quantitative' not in mm: failed=True
-          bot=get('BOT_DECISION','/api/bot/decision')
-          if bot and bot.get('ok'):
+          bot=post('BOT_RUN','/api/bot/run')
+          if not bot or not bot.get('ok'): failed=True
+          else:
+              if bot.get('mode')!='PAPER' or bot.get('version')!='BOT-SERVER-V13': failed=True
               decision=bot.get('decision') or {}
               if decision.get('direction') not in (-1,0,1): failed=True
-              if not all(k in decision for k in ('coverage','evidence','asOf')): failed=True
-              if bot.get('mode')!='PAPER': failed=True
-              if bot.get('version') not in ('BOT-SERVER-V10','BOT-SERVER-V11','BOT-SERVER-V12','BOT-SERVER-V13'): failed=True
+              if not all(k in decision for k in ('coverage','evidence','asOf','families')): failed=True
               modules=bot.get('modules') or []
-              families={m.get('family') for m in modules if isinstance(m,dict)}
-              if modules and len(families)<9: failed=True
-          elif bot and bot.get('status')!='NO_DATA': failed=True
+              families=[m.get('family') for m in modules if isinstance(m,dict)]
+              required={'market','news','macro','technical','ai','historical','backtest','learning','memory'}
+              if set(families)!=required or len(families)!=9: failed=True
+              diag=bot.get('diagnostics') or {}
+              if len(diag.get('pipeline') or [])<10: failed=True
+              risk=bot.get('risk') or {}
+              if risk.get('mode') not in (None,'PAPER'): failed=True
+          bot2=get('BOT_DECISION','/api/bot/decision')
+          if not bot2 or bot2.get('version')!='BOT-SERVER-V13': failed=True
           chart=get('CHART','/api/chart?symbol=%5EGSPC&period=5d')
           if not chart or not chart.get('ok') or len(chart.get('candles') or [])<2: failed=True
           alp=get('ALPACA_STATUS','/api/alpaca/status')
           if alp and alp.get('ok') and alp.get('mode')!='PAPER': failed=True
           try:
               html=urllib.request.urlopen(urllib.request.Request(base+'/',headers=h),timeout=30).read().decode('utf-8','replace')
-              required=['bot-engine.js?v=2.0.0','bot-workspace-v1.js?v=3.0.0','bot-workspace-v2.js?v=1.0.0','bot-workspace-v2.css?v=1.0.0']
-              legacy=['bot-decision-engine.js','bot-tab-bridge.js','bot-unified-ui.js','bot-compact-runtime-v22.js','trading-desk.js','trading-desk.css'];missing=[x for x in required if x not in html];found_legacy=[x for x in legacy if x in html];report.append({'name':'UI','ok':not missing and not found_legacy,'missing':missing,'legacy':found_legacy});print('UI',json.dumps({'missing':missing,'legacy':found_legacy}));
-              if missing or found_legacy: failed=True
-          except Exception as e: failed=True;report.append({'name':'UI','ok':False,'error':repr(e)});print('UI ERROR',repr(e))
+              required=['bot-engine.js?v=2.0.0','bot-workspace-v1.js?v=3.0.0','bot-workspace-v2.js?v=1.0.0','bot-workspace-v2.css?v=1.0.0'];legacy=['bot-decision-engine.js','bot-tab-bridge.js','bot-unified-ui.js','bot-compact-runtime-v22.js','trading-desk.js','trading-desk.css'];missing=[x for x in required if x not in html];found=[x for x in legacy if x in html];report.append({'name':'UI','ok':not missing and not found,'missing':missing,'legacy':found});print('UI',json.dumps({'missing':missing,'legacy':found}));
+              if missing or found: failed=True
+          except Exception as e: failed=True;print('UI ERROR',repr(e))
           open('/tmp/production-verification.json','w').write(json.dumps(report,indent=2,default=str))
           if failed: sys.exit('production verification failed; see artifact production-verification')
           print('PRODUCTION VERIFICATION: PASS')
