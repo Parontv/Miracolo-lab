@@ -1,6 +1,7 @@
-/* Production entrypoint wrapper: live data + one server-side Bot brain. */
+/* Production entrypoint wrapper: live data + one server-side Bot brain + Alpaca Paper Trading. */
 import aiWorker from './ai-worker.js';
 import { runBot, getBotDecision } from './bot-server-engine-v11.js';
+import { alpacaRequest } from './alpaca-paper.js';
 
 function slimLive(data){
   const out={...data};
@@ -25,6 +26,10 @@ export default {
   },
   async fetch(request,env,ctx){
     const url=new URL(request.url);
+    if(url.pathname.startsWith('/api/alpaca/')){
+      const response=await alpacaRequest(request,env);
+      if(response)return response;
+    }
     if(url.pathname==='/api/bot/decision'){
       const decision=await getBotDecision(env);
       if(!decision)return Response.json({ok:false,mode:'PAPER',status:'NO_DATA',message:'Nessuna decisione server disponibile. Attendi la prima scansione.'},{status:503,headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*'}});
