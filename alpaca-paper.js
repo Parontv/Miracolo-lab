@@ -8,7 +8,7 @@ function out(data,status=200){return Response.json(data,{status,headers:{'Cache-
 async function call(env,path,options={}){const r=await fetch(base(env)+path,{...options,headers:{...headers(env),...(options.headers||{})}});const text=await r.text();let data=null;try{data=text?JSON.parse(text):null}catch{data={raw:text}}if(!r.ok){const message=data?.message||data?.error||`Alpaca HTTP ${r.status}`;throw Object.assign(new Error(message),{status:r.status,data})}return data;}
 function symbolFromPath(path){return decodeURIComponent(path.split('/').pop()||'').trim().toUpperCase()}
 function sameOriginOrder(request){const origin=request.headers.get('Origin');return !origin||origin===new URL(request.url).origin}
-export async function alpacaStatus(env){const[account,clock]=await Promise.all([call(env,'/account'),call(env,'/clock')]);return{ok:true,mode:'PAPER',provider:'Alpaca',base:base(env),account,clock};}
+export async function alpacaStatus(env){const[account,clock]=await Promise.all([call(env,'/account'),call(env,'/clock')]);return{ok:true,mode:'PAPER',provider:'Alpaca',base:base(env),account,clock,autoExecution:String(env?.PAPER_AUTO_EXECUTION??'true').toLowerCase()==='true'};}
 export async function alpacaPositions(env){return call(env,'/positions');}
 export async function alpacaOrders(env,query=''){return call(env,'/orders'+(query?`?${query}`:''));}
 export async function alpacaRequest(request,env){const url=new URL(request.url),path=url.pathname;try{
