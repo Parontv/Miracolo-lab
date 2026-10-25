@@ -1,7 +1,7 @@
-/* Miracolo Lab Risk Engine V1 — deterministic guardrails, PAPER only. */
+/* Miracolo Lab Risk Engine V2 — deterministic guardrails, PAPER only, no arbitrary daily trade cap. */
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const n=v=>v==null||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
-export function riskEngine({decision,positions=[],journal=[],eventRisk={level:'NORMAL',count:0},capital=2000,riskPerTrade=10,maxTradesPerDay=3,maxPositions=3,now=new Date()}){
+export function riskEngine({decision,positions=[],journal=[],eventRisk={level:'NORMAL',count:0},capital=2000,riskPerTrade=10,maxTradesPerDay=null,maxPositions=3,now=new Date()}){
  const day=now.toISOString().slice(0,10);
  const tradesToday=(journal||[]).filter(x=>String(x.time||'').slice(0,10)===day).length;
  const exposure=(positions||[]).reduce((s,p)=>s+Math.abs(n(p.notional)||0),0);
@@ -9,8 +9,7 @@ export function riskEngine({decision,positions=[],journal=[],eventRisk={level:'N
  const eventLevel=String(eventRisk?.level||'NORMAL').toUpperCase();
  const flags=[];
  if(eventLevel==='CRITICAL')flags.push('EVENT_CRITICAL');
- if(tradesToday>=maxTradesPerDay)flags.push('DAILY_TRADE_LIMIT');
- if((positions||[]).length>=maxPositions)flags.push('POSITION_LIMIT');
+ if(maxPositions!=null&&(positions||[]).length>=maxPositions)flags.push('POSITION_LIMIT');
  if(riskBudget>=capital*.02)flags.push('RISK_BUDGET_LIMIT');
  if(exposure>=capital*.9)flags.push('EXPOSURE_LIMIT');
  const aiRisk=decision?.contributors?.some(x=>x.family==='ai'&&x.riskFlag);
