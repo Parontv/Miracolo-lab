@@ -1,0 +1,71 @@
+name: Miracolo Lab — Validate and Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.js'
+      - 'public/**'
+      - 'wrangler.toml'
+      - 'tests/**'
+      - '.github/workflows/deploy-miracolo.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: miracolo-lab-production
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax validation
+        run: |
+          set -e
+          for f in *.js; do node --check "$f"; done
+          find public -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Bot contract tests
+        run: |
+          node tests/bot-v10.test.mjs
+          node tests/bot-v11.test.mjs
+          node -e "import('./bot-server-engine-v15.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('V15 exports missing'); console.log('V15 import OK')})"
+          node -e "import('./bot-paper-executor-v1.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor missing'); console.log('Paper executor OK')})"
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 5637f51ea89c44719b4a680b6122bf05
+          command: deploy
+
+      - name: Verify production
+        run: |
+          python - <<'PY'
+          import json, urllib.request, time, sys
+          base='https://miracolo-lab.listaconcerti.workers.dev'
+          h={'Cache-Control':'no-cache','Pragma':'no-cache','User-Agent':'MiracoloLab-Deploy-Verification/1.0'}
+          def get(path):
+              req=urllib.request.Request(base+path+('&' if '?' in path else '?')+'ts='+str(time.time_ns()),headers=h)
+              with urllib.request.urlopen(req,timeout=45) as r:
+                  return json.load(r)
+          status=get('/api/alpaca/status')
+          print('ALPACA:',json.dumps({'ok':status.get('ok'),'mode':status.get('mode'),'base':status.get('base'),'autoExecution':status.get('autoExecution')}))
+          if not status.get('ok') or status.get('mode')!='PAPER': sys.exit('Alpaca Paper verification failed')
+          bot=get('/api/bot/decision')
+          print('BOT:',json.dumps({'ok':bot.get('ok'),'version':bot.get('version'),'status':bot.get('status')}))
+          if not bot.get('ok'): sys.exit('Bot endpoint failed')
+          print('PRODUCTION VERIFICATION: PASS')
+          PY
