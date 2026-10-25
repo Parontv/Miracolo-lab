@@ -13,7 +13,7 @@ jobs:
           node-version: 22
       - name: Import V15 and capture error
         run: |
-          node --input-type=module -e "import('./bot-server-engine-v15.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw Error('BOT V15 exports missing');require('fs').writeFileSync('/tmp/v15-report.txt','IMPORT PASS')}).catch(e=>{require('fs').writeFileSync('/tmp/v15-report.txt',String(e?.stack||e));console.error(e);process.exit(1)})"
+          node --input-type=module -e "import fs from 'node:fs'; import('./bot-server-engine-v15.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw Error('BOT V15 exports missing');fs.writeFileSync('/tmp/v15-report.txt','IMPORT PASS')}).catch(e=>{fs.writeFileSync('/tmp/v15-report.txt',String(e?.stack||e));console.error(e);process.exit(1)})"
       - name: Upload V15 diagnostic
         if: always()
         uses: actions/upload-artifact@v4
