@@ -34,13 +34,13 @@ jobs:
       - name: Bot V11 news and risk test
         run: node tests/bot-v11.test.mjs
       - name: Bot V14 contract test
-        run: node --input-type=module -e "import('./bot-server-engine-v14.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw Error('BOT V14 exports missing');console.log('BOT V14 IMPORT PASS')})"
+        run: node --input-type=module -e "import('./bot-server-engine-v14.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw Error('BOT V14 exports missing');console.log('BOT V14 IMPORT PASS')}).catch(e=>{console.error('BOT V14 IMPORT ERROR',e);process.exit(1)})"
       - name: Bot V14 source contract test
         run: node --input-type=module -e "import('fs').then(async fs=>{const s=fs.readFileSync('bot-server-engine-v14.js','utf8');for(const x of ['state/latest','getMacroData','macroSignal','newsContract','riskEngine','BOT-SERVER-V14','FRED/MACRO','CONSENSUS','RISK'])if(!s.includes(x))throw Error('Missing '+x);console.log('BOT V14 SOURCE PASS')})"
       - name: Bot V15 contract test
-        run: node --input-type=module -e "import('./bot-server-engine-v15.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw Error('BOT V15 exports missing');console.log('BOT V15 IMPORT PASS')})"
+        run: node --input-type=module -e "import('./bot-server-engine-v15.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw Error('BOT V15 exports missing');console.log('BOT V15 IMPORT PASS')}).catch(e=>{console.error('BOT V15 IMPORT ERROR',e);process.exit(1)})"
       - name: Paper executor contract test
-        run: node --input-type=module -e "import('./bot-paper-executor-v1.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw Error('PAPER executor export missing');console.log('PAPER EXECUTOR IMPORT PASS')})"
+        run: node --input-type=module -e "import('./bot-paper-executor-v1.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw Error('PAPER executor export missing');console.log('PAPER EXECUTOR IMPORT PASS')}).catch(e=>{console.error('PAPER EXECUTOR IMPORT ERROR',e);process.exit(1)})"
       - name: Market/UI integrity test
         run: node tests/market-ui.test.js
   deploy:
@@ -66,7 +66,7 @@ jobs:
           set -e
           python - <<'PY'
           import json,urllib.request,sys,time
-          base='https://miracolo-lab.listaconcerti.workers.dev';h={'User-Agent':'MiracoloLab-Deployment-Verification/4.0','Cache-Control':'no-cache'};report=[];failed=False
+          base='https://miracolo-lab.listaconcerti.workers.dev';h={'User-Agent':'MiracoloLab-Deployment-Verification/4.1','Cache-Control':'no-cache'};report=[];failed=False
           def get(name,path,required=True):
               global failed
               try:
