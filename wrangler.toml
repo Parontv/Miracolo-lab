@@ -7,9 +7,10 @@ crons = ["*/5 * * * *"]
 
 [vars]
 BOT_MODE = "PAPER"
+PAPER_AUTO_EXECUTION = "true"
+PAPER_NOTIONAL = "100"
 HEARTBEAT_INTERVAL = "5m"
 ALPACA_BASE_URL = "https://paper-api.alpaca.markets/v2"
-ALPACA_MAX_ORDERS_PER_DAY = "3"
 
 # V1 durable state: cursor, autonomous snapshot and API rate-limit counters.
 # ML_KV must be bound to the existing Cloudflare KV namespace in the deployment environment.
