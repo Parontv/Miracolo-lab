@@ -14,13 +14,6 @@ PAPER_CRYPTO_ENABLED = "true"
 HEARTBEAT_INTERVAL = "5m"
 ALPACA_BASE_URL = "https://paper-api.alpaca.markets/v2"
 
-# V1 durable state: cursor, autonomous snapshot and API rate-limit counters.
-# ML_KV must be bound to the existing Cloudflare KV namespace in the deployment environment.
-[[kv_namespaces]]
-binding = "ML_KV"
-
-# Permanent historical memory: market photographs, AI analysis and daily news archives.
-
 [assets]
 directory = "./public"
 binding = "ASSETS"
