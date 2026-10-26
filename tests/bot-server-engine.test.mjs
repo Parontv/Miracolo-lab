@@ -1,30 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rsiWilder, ema, atr, technicalFromHistory } from '../bot-server-engine-v10.js';
+import { runBot, getBotDecision } from '../bot-server-engine.js';
 
-test('RSI uses Wilder smoothing and returns no data for insufficient history',()=>{
-  assert.equal(rsiWilder(Array.from({length:10},(_,i)=>100+i)),null);
-  assert.equal(rsiWilder(Array.from({length:40},(_,i)=>100+i*.5)),100);
+function envWith(state={},quant={}){
+  const store=new Map([['state/latest',JSON.stringify(state)],['quantitative/latest-v2',JSON.stringify(quant)],['bot/journal/v1','[]'],['bot/positions/v1','[]']]);
+  return {ML_KV:{async get(k){return store.get(k)||null},async put(k,v){store.set(k,v)}}};
+}
+
+test('unified engine exports the operational contract',()=>{
+  assert.equal(typeof runBot,'function');
+  assert.equal(typeof getBotDecision,'function');
 });
 
-test('EMA and ATR return no data when the minimum sample is not available',()=>{
-  assert.equal(ema([1,2,3],5),null);
-  assert.equal(atr([{close:1,high:1.1,low:.9},{close:1.05,high:1.15,low:1}],14),null);
+test('engine fails safely when market state is absent',async()=>{
+  const result=await runBot(envWith());
+  assert.equal(result.ok,false);
+  assert.equal(result.status,'NO_DATA');
+  assert.equal(result.mode,'PAPER');
 });
 
-test('technical module keeps missing data as NO DATA instead of zero',()=>{
-  const history=Array.from({length:60},(_,i)=>({close:i===59?null:100+i*.2,high:100+i*.2+.5,low:100+i*.2-.5,asOf:new Date(Date.UTC(2026,0,1+i)).toISOString()}));
-  const result=technicalFromHistory(history);
-  assert.ok(result);
-  assert.notEqual(result.price,0);
-  assert.equal(typeof result.coverage,'number');
-});
-
-test('technical module exposes a structured contract with sufficient history',()=>{
-  const history=Array.from({length:60},(_,i)=>({asOf:new Date(Date.UTC(2026,0,1+i)).toISOString(),close:100+i*.2,high:100+i*.2+.5,low:100+i*.2-.5}));
-  const result=technicalFromHistory(history);
-  assert.ok(result);
-  assert.equal(typeof result.direction,'number');
-  assert.ok(Array.isArray(result.evidence));
-  assert.ok(result.asOf);
+test('engine produces explainable modules and a portfolio decision',async()=>{
+  const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map((ticker,i)=>({ticker,changePct:.8+i*.05}));
+  const news=Array.from({length:12},(_,i)=>({title:`Market update ${i}`,date:new Date().toISOString(),score:.2}));
+  const state={market:{timestamp:new Date().toISOString(),indices},news:{timestamp:new Date().toISOString(),items:news},ai:{status:'ok',direction:'LONG',confidence:75,regime:'risk-on',thesis:'Trend positivo'}};
+  const quant={timestamp:new Date().toISOString(),coverage:{available:3},groups:{macro:[{status:'ok',label:'Inflazione USA',trendPct:-.4}],rates:[{status:'ok',label:'Fed Funds effettivo',trendPct:-.2}]}};
+  const result=await runBot(envWith(state,quant));
+  assert.equal(result.ok,true);
+  assert.equal(result.mode,'PAPER');
+  assert.equal(result.engine,'bot-server-engine');
+  assert.equal(result.modules.length,9);
+  assert.ok(result.modules.every(m=>typeof m.family==='string'));
+  assert.ok(result.decision && result.decision.portfolio);
 });
