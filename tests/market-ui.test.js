@@ -17,7 +17,7 @@ has(/data-panel="market"/,html);has(/data-panel="bot"/,html);assert.doesNotMatch
 has(/bot-controller\.js/,html);has(/bot-workspace\.js/,html);assert.doesNotMatch(html,/bot-workspace-v\d+\.js|bot-engine\.js|bot-router\.js|bot-strategy\.js|trading-agents\.js/);
 has(/\/api\/chart/,market);has(/\/api\/market-monitor/,market);
 has(/ML_NEWS_CONTRACT/,data);has(/\/api\/live/,data);has(/window\.ML\.on\('data'/,bridge);
-has(/Avvia tutto/,fs.readFileSync('public/bot-workspace.js','utf8'));has(/\/api\/bot\/run/,fs.readFileSync('public/bot-controller.js','utf8'));has(/BTC\/USD/,crypto);has(/latest\/orderbooks/,crypto);has(/getCryptoDecision/,server);has(/inputAudit/,server);has(/riskEngine/,server);has(/getCryptoDecision/,auto);has(/paper-api\.alpaca\.markets\/v2/,executor);has(/time_in_force:crypto\?'gtc':'day'/,executor);has(/mode:'PAPER'/,live);
+has(/Avvia tutto/,fs.readFileSync('public/bot-workspace.js','utf8'));has(/\/api\/bot\/run/,fs.readFileSync('public/bot-controller.js','utf8'));has(/BTC\/USD/,crypto);has(/latest\/orderbooks/,crypto);has(/getCryptoDecision/,server);has(/inputAudit/,server);has(/riskEngine/,server);has(/runBot/,auto);has(/result\.crypto/,auto);has(/cryptoAction\(/,auto);assert.doesNotMatch(auto,/getCryptoDecision\s*\(/);has(/paper-api\.alpaca\.markets\/v2/,executor);has(/time_in_force:crypto\?'gtc':'day'/,executor);has(/mode:'PAPER'/,live);
 console.log('Market/UI static integrity: PASS');
 console.log('News pipeline linkage: PASS');
 console.log('Canonical Bot surface: PASS');
