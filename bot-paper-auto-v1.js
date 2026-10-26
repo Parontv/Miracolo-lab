@@ -3,18 +3,29 @@ import { runBot as analyzeBot } from './bot-server-engine-v15.js';
 import { getCryptoDecision } from './bot-crypto-engine-v1.js';
 import { executePaperDecision } from './bot-paper-executor-v1.js';
 const STATE='state/latest';
+const PAPER_BASE='https://paper-api.alpaca.markets/v2';
 async function read(env,key,f=null){try{const x=await env.ML_KV?.get(key);return x?JSON.parse(x):f}catch{return f}}
+async function btcPosition(env){
+ try{
+  if(!env?.ALPACA_API_KEY||!env?.ALPACA_API_SECRET)return null;
+  const r=await fetch(`${PAPER_BASE}/positions`,{headers:{'APCA-API-KEY-ID':env.ALPACA_API_KEY,'APCA-API-SECRET-KEY':env.ALPACA_API_SECRET,'Accept':'application/json'}});
+  if(!r.ok)return null;
+  const rows=await r.json();
+  return Array.isArray(rows)?rows.find(p=>String(p?.symbol||'').toUpperCase()==='BTC/USD'):null;
+ }catch{return null}
+}
 function pickSymbol(state){const rows=Array.isArray(state?.market?.indices)?state.market.indices:[];for(const s of ['SPY','QQQ','IWM']){const x=rows.find(r=>String(r?.ticker||'').toUpperCase()===s);if(x)return{symbol:s,price:Number(x.price||x.close||x.last)||null}}return null}
-function cryptoAction(signal){if(!signal?.ok||signal.direction===0)return null;if(signal.direction>0&&signal.confidence>=68)return'BUY';return null}
+function cryptoAction(signal,position){if(!signal?.ok)return null;const hasPosition=Boolean(position&&Number(position.qty)>0);if(!hasPosition&&signal.direction>0&&signal.confidence>=68)return'BUY';if(hasPosition&&signal.direction<0&&signal.confidence>=65)return'SELL';return null}
 export async function runAutoPaperBot(env){
  const result=await analyzeBot(env); if(!result?.ok)return result;
  const crypto=await getCryptoDecision(env);result.crypto=crypto;
+ const btcPos=await btcPosition(env);result.crypto.position=btcPos?{qty:btcPos.qty,marketValue:btcPos.market_value,unrealizedPl:btcPos.unrealized_pl}:null;
  const state=await read(env,STATE,{}),equityInstrument=pickSymbol(state);
- const cryptoBuy=cryptoAction(crypto);
+ const cryptoActionValue=cryptoAction(crypto,btcPos);
  const equityPortfolio=result.decision?.portfolio;
- const cryptoEligible=Boolean(cryptoBuy)&&String(env?.PAPER_CRYPTO_ENABLED??'true').toLowerCase()==='true';
+ const cryptoEligible=Boolean(cryptoActionValue)&&String(env?.PAPER_CRYPTO_ENABLED??'true').toLowerCase()==='true';
  let action='HOLD',symbol=null,notional=Number(env.PAPER_NOTIONAL||100),reason='Nessun trade approvato.';
- if(cryptoEligible){action=cryptoBuy;symbol='BTC/USD';reason='BTC 24/7: segnale crypto sopra soglia.'}
+ if(cryptoEligible){action=cryptoActionValue;symbol='BTC/USD';reason=action==='BUY'?'BTC 24/7: segnale crypto rialzista sopra soglia.':'BTC 24/7: segnale crypto ribassista con posizione aperta.'}
  else if(equityPortfolio?.approved&&['BUY','SELL'].includes(String(equityPortfolio.action).toUpperCase())&&equityInstrument){action=String(equityPortfolio.action).toUpperCase();symbol=equityInstrument.symbol;reason=equityPortfolio.reason||'Portfolio Manager approva.'}
  else if(equityPortfolio?.approved&&['BUY','SELL'].includes(String(equityPortfolio.action).toUpperCase())&&!equityInstrument){reason='Segnale equity presente ma nessuno strumento equity disponibile.'}
  else{reason=crypto?.reason||equityPortfolio?.reason||'Nessuna condizione operativa sufficiente.'}
