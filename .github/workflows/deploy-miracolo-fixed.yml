@@ -59,7 +59,19 @@ jobs:
           set -euo pipefail
           test -n "$ML_KV_NAMESPACE_ID" || { echo 'ERROR: repository variable ML_KV_NAMESPACE_ID is missing.' >&2; exit 1; }
           cp wrangler.toml wrangler.deploy.toml
-          printf '\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "%s"\n' "$ML_KV_NAMESPACE_ID" >> wrangler.deploy.toml
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          p=Path('wrangler.deploy.toml')
+          s=p.read_text()
+          marker='binding = "ML_KV"'
+          if marker not in s:
+              raise SystemExit('ERROR: ML_KV binding is missing from wrangler.toml')
+          if 'id =' in s:
+              raise SystemExit('ERROR: wrangler.toml must not contain a committed KV id')
+          s=s.replace(marker, marker+'\nid = "'+os.environ['ML_KV_NAMESPACE_ID']+'"', 1)
+          p.write_text(s)
+          PY
           grep -q 'binding = "ML_KV"' wrangler.deploy.toml
           grep -q 'id = "' wrangler.deploy.toml
       - name: Cloudflare authentication check
