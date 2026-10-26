@@ -38,6 +38,7 @@ jobs:
         run: |
           node tests/bot-v10.test.mjs
           node tests/bot-v11.test.mjs
+          node tests/crypto-paper.test.mjs
           node -e "import('./bot-server-engine-v15.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('V15 exports missing'); console.log('V15 import OK')})"
           node -e "import('./bot-paper-executor-v1.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor missing'); console.log('Paper executor OK')})"
 
@@ -77,6 +78,9 @@ jobs:
           status=get('/api/alpaca/status')
           print('ALPACA:',json.dumps({'ok':status.get('ok'),'mode':status.get('mode'),'base':status.get('base'),'autoExecution':status.get('autoExecution')}))
           if not status.get('ok') or status.get('mode')!='PAPER': sys.exit('Alpaca Paper verification failed')
+          crypto=get('/api/bot/crypto')
+          print('CRYPTO:',json.dumps({'ok':crypto.get('ok'),'symbol':crypto.get('symbol'),'status':crypto.get('status'),'confidence':crypto.get('confidence')}))
+          if not crypto.get('ok') or crypto.get('symbol')!='BTC/USD': sys.exit('BTC crypto verification failed')
           bot=get('/api/bot/decision')
           print('BOT:',json.dumps({'ok':bot.get('ok'),'version':bot.get('version'),'status':bot.get('status')}))
           if not bot.get('ok'): sys.exit('Bot endpoint failed')
