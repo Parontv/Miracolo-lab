@@ -32,7 +32,7 @@ jobs:
           for f in *.js; do node --check "$f"; done
           find public -type f -name '*.js' -print0 | xargs -0 -n1 node --check
           node tests/bot-engine.behavior.test.js
-          node tests/bot-pipeline-v1.test.mjs
+          node tests/bot-pipeline.test.mjs
           node tests/crypto-paper.test.mjs
           node tests/market-ui.test.js
           node tests/news-contract.test.js
