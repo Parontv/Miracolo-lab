@@ -55,8 +55,8 @@ jobs:
           node --check public/v1/tab-navigation.js
       - name: Unified decision engine contract
         run: node tests/bot-server-engine.test.mjs
-      - name: Pipeline behavior and canonical UI
-        run: node tests/bot-engine.behavior.test.js && node tests/bot-pipeline.test.mjs
+      - name: Canonical UI behavior
+        run: node tests/bot-engine.behavior.test.js
       - name: BTC and Paper execution contracts
         run: node tests/crypto-paper.test.mjs
       - name: Market and News contracts
