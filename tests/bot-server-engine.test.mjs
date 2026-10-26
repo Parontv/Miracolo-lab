@@ -20,7 +20,7 @@ test('engine fails safely when market state is absent',async()=>{
 });
 
 test('engine produces explainable modules and a portfolio decision',async()=>{
-  const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map((ticker,i)=>({ticker,changePct:.8+i*.05}));
+  const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map((ticker,i)=>({ticker,changePct:.8+i*.05,rsi:55+i,volumeChangePct:20+i*2,smaSignal:.1,emaSignal:.1,atrPct:1.2}));
   const news=Array.from({length:12},(_,i)=>({title:`Market update ${i}`,date:new Date().toISOString(),score:.2}));
   const state={market:{timestamp:new Date().toISOString(),indices},news:{timestamp:new Date().toISOString(),items:news},ai:{status:'ok',direction:'LONG',confidence:75,regime:'risk-on',thesis:'Trend positivo'}};
   const quant={timestamp:new Date().toISOString(),coverage:{available:3},groups:{macro:[{status:'ok',label:'Inflazione USA',trendPct:-.4}],rates:[{status:'ok',label:'Fed Funds effettivo',trendPct:-.2}]}};
@@ -28,7 +28,13 @@ test('engine produces explainable modules and a portfolio decision',async()=>{
   assert.equal(result.ok,true);
   assert.equal(result.mode,'PAPER');
   assert.equal(result.engine,'bot-server-engine');
-  assert.equal(result.modules.length,10);
+  assert.equal(result.modules.length,11);
   assert.ok(result.modules.every(m=>typeof m.family==='string'));
+  const technical=result.modules.find(m=>m.family==='technical');
+  assert.ok(technical.indicators.includes('RSI'));
+  assert.ok(technical.indicators.includes('SMA'));
+  assert.ok(technical.indicators.includes('EMA'));
+  assert.ok(technical.indicators.includes('ATR'));
+  assert.ok(result.diagnostics.inputAudit.technicalFields.includes('rsi'));
   assert.ok(result.decision && result.decision.portfolio);
 });
