@@ -15,13 +15,26 @@ function normalize(result){
  const evidence=modules.length?modules:originalEvidence;
  return {...result,decision:{...result.decision,evidence,explanationEvidence:originalEvidence}};
 }
-async function request(path,options={}){const response=await fetch(path+(path.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store',...options,headers:{Accept:'application/json',...(options.headers||{})}});let data=null;try{data=await response.json()}catch{data={}}if(!response.ok)throw Error(data?.message||data?.error||`HTTP ${response.status}`);return data}
+async function request(path,options={}){
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),90000);
+ try{
+  const response=await fetch(path+(path.includes('?')?'&':'?')+'ts='+Date.now(),{cache:'no-store',signal:controller.signal,...options,headers:{Accept:'application/json',...(options.headers||{})}});
+  let data=null;try{data=await response.json()}catch{data={}};
+  if(!response.ok)throw Error(data?.message||data?.error||`HTTP ${response.status}`);
+  if(data&&data.ok===false)throw Error(data?.message||data?.error||data?.reason||`Servizio non disponibile (${path})`);
+  return data;
+ }catch(error){
+  if(error?.name==='AbortError')throw Error('Timeout: il Worker non ha risposto entro 90 secondi.');
+  throw error;
+ }finally{clearTimeout(timeout)}
+}
 async function run(){
  if(window.__mlBotBusy)return window.ML_BOT_DECISION||null;
  window.__mlBotBusy=true;
- emit({mode:'PAPER',status:'RUNNING',action:'WAIT',confidence:0,reason:'Scansione completa in corso…',asOf:new Date().toISOString()});
+ emit({mode:'PAPER',status:'RUNNING',action:'WAIT',confidence:0,reason:'Scansione completa in corso…',asOf:new Date().toISOString(),paper:{capital:params.capital,riskPerTrade:params.risk,maxTradesPerDay:params.maxTradesPerDay,positions:[],journal:localJournal()}});
  try{
-  const result=normalize(await request('/api/bot/run',{method:'POST'}));
+  const result=normalize(await request('/api/bot/run',{method:'POST',headers:{'Content-Type':'application/json'}}));
   return emit(result);
  }catch(error){
   return emit({mode:'PAPER',status:'ERROR',action:'WAIT',confidence:0,reason:`Scansione non completata: ${error.message||error}`,asOf:new Date().toISOString(),paper:{capital:params.capital,riskPerTrade:params.risk,maxTradesPerDay:params.maxTradesPerDay,positions:[],journal:localJournal()}});
