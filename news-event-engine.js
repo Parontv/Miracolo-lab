@@ -1,0 +1,18 @@
+/* Miracolo Lab — deterministic news event extraction and systemic-event gating. */
+const CATEGORIES={central:1.3,macro:1.2,rates:1.2,geopolitics:1.15,company:1,finance:1,commodities:.95,crypto:.7,social:.55,news:.8};
+const POS=/\b(rally|surge|beat|upgrade|inflow|record|growth|easing|rate cut|strong|bullish|breakout|recovery|disinflation|dovish)\b/gi;
+const NEG=/\b(crash|plunge|selloff|outflow|downgrade|recession|default|hawkish|rate hike|panic|weak|decline|bearish|miss|sanction|tariff|contagion|inflation shock|bank failure)\b/gi;
+const NEGATION=/\b(no|not|without|unlikely|failed to|fails to|non|nessun|senza|improbabile)\b/i;
+const CRITICAL=/\b(invasion|bank failure|systemic|market halt|cyberattack|contagion|sovereign crisis|sovereign default|banking crisis|capital controls|exchange closure)\b/i;
+const HARD_CRITICAL=/\b(bank failure|market halt|cyberattack|sovereign default|banking crisis|capital controls|exchange closure)\b/i;
+const CRITICAL_CATEGORIES=new Set(['central','macro','rates','geopolitics','finance']);
+const clean=(v,n=300)=>String(v??'').replace(/\s+/g,' ').trim().slice(0,n);
+const titleKey=v=>clean(v,220).toLowerCase().replace(/[^a-z0-9à-ÿ]+/gi,' ').trim();
+function sentiment(item){const text=clean(`${item?.title||''} ${item?.description||item?.summary||''}`,1400);const p=(text.match(POS)||[]).length,q=(text.match(NEG)||[]).length;let score=(p-q)/6;if(NEGATION.test(text))score*=-1;return Math.max(-1,Math.min(1,score))}
+function ageHours(date,now){const t=Date.parse(date||'');return Number.isFinite(t)?Math.max(0,(now-t)/3600000):999}
+export function buildNewsEvents(items=[],now=Date.now()){
+ const seen=new Set();
+ return items.map(item=>{const title=clean(item?.title),key=titleKey(title);if(!key||seen.has(key))return null;seen.add(key);const age=ageHours(item?.date,now),category=String(item?.cat||item?.type||'news').toLowerCase(),sourceWeight=CATEGORIES[category]??.8,freshness=Math.pow(.5,age/12),score=Math.max(-1,Math.min(1,Number.isFinite(Number(item?.score))?Number(item.score):sentiment(item))),text=`${item?.title||''} ${item?.description||item?.summary||''}`,impact=Math.max(-1,Math.min(1,score*sourceWeight*freshness)),systemic=CRITICAL.test(text),critical=CRITICAL_CATEGORIES.has(category)&&age<=12&&systemic&&(Math.abs(impact)>=.25||HARD_CRITICAL.test(text));return{id:`evt-${key.slice(0,80)}`,title,category,date:item?.date||null,source:clean(item?.source||item?.feed||'',100),score,impact,freshness,critical,context:clean(item?.description||item?.summary||'',700)}}).filter(Boolean).sort((a,b)=>Math.abs(b.impact)-Math.abs(a.impact));
+}
+export function summarizeEvents(events=[]){const groups=new Map();for(const e of events){const k=e.category||'news';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(e)}const totalWeight=events.reduce((s,e)=>s+Math.max(.05,e.freshness*(CATEGORIES[e.category]??.8)),0),net=totalWeight?events.reduce((s,e)=>s+e.impact*Math.max(.05,e.freshness),0)/totalWeight:0,critical=events.filter(e=>e.critical);return{count:events.length,net:Math.max(-1,Math.min(1,net)),criticalCount:critical.length,categories:Object.fromEntries([...groups].map(([k,v])=>[k,v.length])),top:events.slice(0,12).map(e=>({title:e.title,category:e.category,score:e.score,impact:e.impact,critical:e.critical,date:e.date,source:e.source})),asOf:new Date().toISOString()}}
+export function newsContract(items=[]){const events=buildNewsEvents(items),summary=summarizeEvents(events);return{version:'NEWS-EVENT-V2',status:events.length>=10?'ok':'NO_DATA',events,summary,contract:{required:['title','date','source','category','score'],dedup:true,halfLifeHours:12,criticalEventVeto:true,criticalRequiresSystemicLanguage:true,aiDoesNotVoteDirectly:true}}}
