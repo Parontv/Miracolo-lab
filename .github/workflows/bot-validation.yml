@@ -55,6 +55,8 @@ jobs:
           node --check public/v1/tab-navigation.js
       - name: Unified decision engine contract
         run: node tests/bot-server-engine.test.mjs
+      - name: Risk guardrail regression
+        run: node tests/bot-risk-engine.test.mjs
       - name: Canonical UI behavior
         run: node tests/bot-engine.behavior.test.js
       - name: BTC and Paper execution contracts
