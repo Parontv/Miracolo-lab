@@ -1,0 +1,55 @@
+name: Miracolo Lab — Live Paper Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/paper-live-audit.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: miracolo-live-paper-audit
+  cancel-in-progress: true
+
+jobs:
+  paper-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check live Worker and build paper plan
+        env:
+          BASE: https://miracolo-lab.listaconcerti.workers.dev
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, sys, time, urllib.request, urllib.error
+          base=os.environ['BASE'].rstrip('/')
+          def call(path):
+              req=urllib.request.Request(base+path+('?ts=' if '?' not in path else '&ts=')+str(time.time_ns()),headers={'Accept':'application/json','Cache-Control':'no-cache'})
+              try:
+                  with urllib.request.urlopen(req,timeout=60) as r:
+                      return r.status,json.load(r)
+              except urllib.error.HTTPError as e:
+                  body=e.read().decode('utf-8','replace')
+                  try: data=json.loads(body)
+                  except: data={'raw':body}
+                  return e.code,data
+          status_code,status=call('/api/alpaca/status')
+          print('=== ALPACA ===')
+          print(json.dumps(status,ensure_ascii=False,indent=2))
+          if status_code!=200 or status.get('mode')!='PAPER': sys.exit('STOP: Alpaca Paper non verificato')
+          crypto_code,crypto=call('/api/bot/crypto')
+          print('=== BTC ===')
+          print(json.dumps(crypto,ensure_ascii=False,indent=2))
+          if crypto_code!=200 or not crypto.get('ok') or crypto.get('symbol')!='BTC/USD': sys.exit('STOP: BTC/USD non disponibile')
+          plan_code,plan=call('/api/bot/plan')
+          print('=== BOT PLAN ===')
+          print(json.dumps(plan,ensure_ascii=False,indent=2))
+          if plan_code!=200 or plan.get('mode')!='PAPER': sys.exit('STOP: piano Bot non disponibile')
+          execution=plan.get('execution') or {}
+          if execution.get('dryRun') is not True: sys.exit('STOP: il piano non è dry-run')
+          action=(plan.get('botAction') or {}).get('action','HOLD')
+          symbol=(plan.get('botAction') or {}).get('symbol')
+          print(f'PLAN ACTION: {action} {symbol or ""}'.strip())
+          print('RESULT: LIVE WORKER + PAPER PLAN VERIFIED; no order submitted by CI.')
+          PY
