@@ -10,12 +10,14 @@ on:
       - 'bot-server-engine-v15.js'
       - 'bot-risk-engine-v1.js'
       - 'bot-macro-engine-v1.js'
+      - 'bot-crypto-engine-v1.js'
       - 'news-event-engine-v1.js'
       - 'bot-paper-executor-v1.js'
       - 'bot-paper-auto-v1.js'
       - 'live-worker.js'
       - 'tests/bot-v10.test.mjs'
       - 'tests/bot-v11.test.mjs'
+      - 'tests/crypto-paper.test.mjs'
       - 'public/v1/bot-engine.js'
       - 'public/v1/bot-workspace-v2.js'
   pull_request:
@@ -26,12 +28,14 @@ on:
       - 'bot-server-engine-v15.js'
       - 'bot-risk-engine-v1.js'
       - 'bot-macro-engine-v1.js'
+      - 'bot-crypto-engine-v1.js'
       - 'news-event-engine-v1.js'
       - 'bot-paper-executor-v1.js'
       - 'bot-paper-auto-v1.js'
       - 'live-worker.js'
       - 'tests/bot-v10.test.mjs'
       - 'tests/bot-v11.test.mjs'
+      - 'tests/crypto-paper.test.mjs'
       - 'public/v1/bot-engine.js'
       - 'public/v1/bot-workspace-v2.js'
 
@@ -51,6 +55,7 @@ jobs:
           node --check bot-server-engine-v15.js
           node --check bot-risk-engine-v1.js
           node --check bot-macro-engine-v1.js
+          node --check bot-crypto-engine-v1.js
           node --check news-event-engine-v1.js
           node --check bot-paper-executor-v1.js
           node --check bot-paper-auto-v1.js
@@ -64,6 +69,5 @@ jobs:
       - name: V15 contract checks
         run: |
           node -e "import('./bot-server-engine-v15.js').then(async m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('V15 exports missing'); console.log('V15 exports OK')})"
-      - name: Paper execution contract
-        run: |
-          node -e "import('./bot-paper-executor-v1.js').then(async m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor export missing'); console.log('Paper executor OK')})"
+      - name: BTC crypto and Paper execution contracts
+        run: node tests/crypto-paper.test.mjs
