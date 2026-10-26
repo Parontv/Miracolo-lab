@@ -15,6 +15,9 @@ PAPER_CRYPTO_ENABLED = "true"
 HEARTBEAT_INTERVAL = "5m"
 ALPACA_BASE_URL = "https://paper-api.alpaca.markets/v2"
 
+[[kv_namespaces]]
+binding = "ML_KV"
+
 [assets]
 directory = "./public"
 binding = "ASSETS"
