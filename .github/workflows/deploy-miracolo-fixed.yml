@@ -48,10 +48,9 @@ jobs:
         run: npx wrangler@4 whoami
 
       - name: Deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --config wrangler.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler@4 deploy --config wrangler.toml
 
       - name: Verify production without placing orders
         env:
