@@ -28,7 +28,7 @@ test('engine produces explainable modules and a portfolio decision',async()=>{
   assert.equal(result.ok,true);
   assert.equal(result.mode,'PAPER');
   assert.equal(result.engine,'bot-server-engine');
-  assert.equal(result.modules.length,9);
+  assert.equal(result.modules.length,10);
   assert.ok(result.modules.every(m=>typeof m.family==='string'));
   assert.ok(result.decision && result.decision.portfolio);
 });
