@@ -16,18 +16,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate-and-deploy:
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Validate canonical runtime
         run: |
           set -euo pipefail
@@ -42,16 +40,25 @@ jobs:
           node -e "import('./bot-server-engine.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('Unified bot exports missing')})"
           node -e "import('./bot-paper-executor.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor missing')})"
 
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Cloudflare authentication check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler@4 whoami
-
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler@4 deploy --config wrangler.toml
-
       - name: Verify production without placing orders
         env:
           WORKER_URL: https://miracolo-lab.listaconcerti.workers.dev
