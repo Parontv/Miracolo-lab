@@ -38,7 +38,7 @@ jobs:
           node tests/news-contract.test.js
           node tests/bot-server-engine.test.mjs
           node -e "import('./bot-server-engine.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('Unified bot exports missing')})"
-          node -e "import('./bot-paper-executor-v1.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor missing')})"
+          node -e "import('./bot-paper-executor.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor missing')})"
       - name: Resolve ML_KV
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
