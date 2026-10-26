@@ -51,7 +51,7 @@ jobs:
       - name: Resolve existing ML_KV binding
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ACCOUNT_ID: 5637f51ea89c44719b4a680b6122bf05
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           SETTINGS="$(curl -fsS -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/miracolo-lab/settings")"
@@ -86,13 +86,43 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: 5637f51ea89c44719b4a680b6122bf05
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --config wrangler.toml
 
       - name: Verify production without placing orders
         env:
-          WORKER_URL: ${{ secrets.MIRACOLO_WORKER_URL }}
+          WORKER_URL: https://miracolo-lab.listaconcerti.workers.dev
         run: |
           set -euo pipefail
-          test -n "$WORKER_URL"
-          curl --fail --silent --show-error --max-time 30 "$WORKER_URL/api/alpaca/status"
+          python - <<'PY'
+          import json, os, sys, time, urllib.request, urllib.error
+          base=os.environ['WORKER_URL'].rstrip('/')
+          def call(path):
+              req=urllib.request.Request(base+path+('?ts=' if '?' not in path else '&ts=')+str(time.time_ns()),headers={'Accept':'application/json','Cache-Control':'no-cache','Pragma':'no-cache'})
+              try:
+                  with urllib.request.urlopen(req,timeout=60) as r:
+                      return r.status,json.load(r)
+              except urllib.error.HTTPError as e:
+                  body=e.read().decode('utf-8','replace')
+                  try: data=json.loads(body)
+                  except: data={'raw':body}
+                  return e.code,data
+          status_code,status=call('/api/alpaca/status')
+          print('=== ALPACA STATUS ===')
+          print(json.dumps(status,ensure_ascii=False,indent=2))
+          if status_code!=200 or status.get('mode')!='PAPER': sys.exit('FAIL: Alpaca Paper non verificato')
+          crypto_code,crypto=call('/api/bot/crypto')
+          print('=== BTC ===')
+          print(json.dumps(crypto,ensure_ascii=False,indent=2))
+          if crypto_code!=200 or not crypto.get('ok') or crypto.get('symbol')!='BTC/USD': sys.exit('FAIL: BTC/USD non disponibile')
+          plan_code,plan=call('/api/bot/plan')
+          print('=== BOT PLAN ===')
+          print(json.dumps(plan,ensure_ascii=False,indent=2))
+          if plan_code!=200 or plan.get('mode')!='PAPER': sys.exit('FAIL: piano Bot non disponibile')
+          execution=plan.get('execution') or {}
+          if execution.get('dryRun') is not True: sys.exit('FAIL: il piano non è dry-run')
+          action=(plan.get('botAction') or {}).get('action','HOLD')
+          symbol=(plan.get('botAction') or {}).get('symbol')
+          print(f'PLAN ACTION: {action} {symbol or ""}'.strip())
+          print('RESULT: LIVE WORKER + PAPER PLAN VERIFIED; no order submitted by CI.')
+          PY
