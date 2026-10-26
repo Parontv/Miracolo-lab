@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { getCryptoDecision } from '../bot-crypto-engine-v1.js';
-import { executePaperDecision } from '../bot-paper-executor-v1.js';
+import { getCryptoDecision } from '../bot-crypto-engine.js';
+import { executePaperDecision } from '../bot-paper-executor.js';
 
 const originalFetch=global.fetch;
 try{
@@ -20,13 +20,11 @@ try{
   assert.ok(signal.orderBook.imbalance>0);
   assert.ok(signal.direction>=0);
 
-  const store=new Map();
-  const env={BOT_MODE:'PAPER',PAPER_AUTO_EXECUTION:'true',ALPACA_BASE_URL:'https://paper-api.alpaca.markets/v2',ALPACA_API_KEY:'test-key',ALPACA_API_SECRET:'test-secret',PAPER_MAX_BUYS_PER_DAY:'3',ML_KV:{get:async k=>store.get(k)||null,put:async(k,v)=>store.set(k,v)}};
+  const env={BOT_MODE:'PAPER',PAPER_AUTO_EXECUTION:'true',ALPACA_BASE_URL:'https://paper-api.alpaca.markets/v2',ALPACA_API_KEY:'test-key',ALPACA_API_SECRET:'test-secret'};
   global.fetch=async(url,options={})=>{
     const u=String(url);
     assert.match(u,/paper-api\.alpaca\.markets\/v2/,'paper execution must use Alpaca Paper endpoint');
-    if(u.endsWith('/positions'))return new Response('[]',{status:200});
-    if(u.includes('/orders?status=open'))return new Response('[]',{status:200});
+    assert.equal(options.headers['APCA-API-KEY-ID'],'test-key');
     if(u.endsWith('/orders'))return new Response(JSON.stringify({id:'paper-test-order',status:'accepted',symbol:'BTC/USD'}),{status:200});
     throw new Error('unexpected paper URL');
   };
