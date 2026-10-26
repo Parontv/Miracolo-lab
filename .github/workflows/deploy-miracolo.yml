@@ -39,6 +39,7 @@ jobs:
           node tests/bot-v10.test.mjs
           node tests/bot-v11.test.mjs
           node tests/crypto-paper.test.mjs
+          node tests/market-ui.test.js
           node -e "import('./bot-server-engine-v15.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('V15 exports missing'); console.log('V15 import OK')})"
           node -e "import('./bot-paper-executor-v1.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor missing'); console.log('Paper executor OK')})"
 
