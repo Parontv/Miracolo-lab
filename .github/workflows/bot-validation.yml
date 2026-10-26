@@ -5,35 +5,33 @@ on:
     branches: [main]
     paths:
       - 'bot-server-engine.js'
-      - 'bot-risk-engine-v1.js'
-      - 'bot-macro-engine-v1.js'
-      - 'bot-crypto-engine-v1.js'
-      - 'news-event-engine-v1.js'
-      - 'bot-paper-executor-v1.js'
-      - 'bot-paper-auto-v1.js'
+      - 'bot-risk-engine.js'
+      - 'bot-macro-engine.js'
+      - 'bot-crypto-engine.js'
+      - 'news-event-engine.js'
+      - 'bot-paper-executor.js'
+      - 'bot-paper-auto.js'
       - 'live-worker.js'
-      - 'tests/bot-engine.behavior.test.js'
-      - 'tests/bot-pipeline-v1.test.mjs'
-      - 'tests/crypto-paper.test.mjs'
-      - 'tests/bot-server-engine.test.mjs'
-      - 'public/v1/bot-engine.js'
-      - 'public/v1/bot-workspace-v2.js'
+      - 'public/bot-controller.js'
+      - 'public/bot-workspace.js'
+      - 'public/v1/tab-navigation.js'
+      - 'public/index.html'
+      - 'tests/**'
   pull_request:
     paths:
       - 'bot-server-engine.js'
-      - 'bot-risk-engine-v1.js'
-      - 'bot-macro-engine-v1.js'
-      - 'bot-crypto-engine-v1.js'
-      - 'news-event-engine-v1.js'
-      - 'bot-paper-executor-v1.js'
-      - 'bot-paper-auto-v1.js'
+      - 'bot-risk-engine.js'
+      - 'bot-macro-engine.js'
+      - 'bot-crypto-engine.js'
+      - 'news-event-engine.js'
+      - 'bot-paper-executor.js'
+      - 'bot-paper-auto.js'
       - 'live-worker.js'
-      - 'tests/bot-engine.behavior.test.js'
-      - 'tests/bot-pipeline-v1.test.mjs'
-      - 'tests/crypto-paper.test.mjs'
-      - 'tests/bot-server-engine.test.mjs'
-      - 'public/v1/bot-engine.js'
-      - 'public/v1/bot-workspace-v2.js'
+      - 'public/bot-controller.js'
+      - 'public/bot-workspace.js'
+      - 'public/v1/tab-navigation.js'
+      - 'public/index.html'
+      - 'tests/**'
 
 jobs:
   validate-bot:
@@ -43,21 +41,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Syntax check
+      - name: Syntax check — canonical runtime
         run: |
           node --check bot-server-engine.js
-          node --check bot-risk-engine-v1.js
-          node --check bot-macro-engine-v1.js
-          node --check bot-crypto-engine-v1.js
-          node --check news-event-engine-v1.js
-          node --check bot-paper-executor-v1.js
-          node --check bot-paper-auto-v1.js
+          node --check bot-risk-engine.js
+          node --check bot-macro-engine.js
+          node --check bot-crypto-engine.js
+          node --check news-event-engine.js
+          node --check bot-paper-executor.js
+          node --check bot-paper-auto.js
           node --check live-worker.js
-          node --check public/v1/bot-engine.js
-          node --check public/v1/bot-workspace-v2.js
-      - name: Unified engine contract
+          node --check public/bot-controller.js
+          node --check public/bot-workspace.js
+          node --check public/v1/tab-navigation.js
+      - name: Unified decision engine contract
         run: node tests/bot-server-engine.test.mjs
-      - name: Pipeline behavior
-        run: node tests/bot-engine.behavior.test.js && node tests/bot-pipeline-v1.test.mjs
-      - name: BTC crypto and Paper execution contracts
+      - name: Pipeline behavior and canonical UI
+        run: node tests/bot-engine.behavior.test.js && node tests/bot-pipeline.test.mjs
+      - name: BTC and Paper execution contracts
         run: node tests/crypto-paper.test.mjs
+      - name: Market and News contracts
+        run: node tests/market-ui.test.js && node tests/news-contract.test.js
