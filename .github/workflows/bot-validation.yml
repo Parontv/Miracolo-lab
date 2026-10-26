@@ -16,6 +16,7 @@ on:
       - 'public/v1/tab-navigation.js'
       - 'public/index.html'
       - 'tests/**'
+      - '.github/workflows/bot-validation.yml'
   pull_request:
     paths:
       - 'bot-server-engine.js'
@@ -30,6 +31,7 @@ on:
       - 'public/v1/tab-navigation.js'
       - 'public/index.html'
       - 'tests/**'
+      - '.github/workflows/bot-validation.yml'
 
 jobs:
   validate-bot:
