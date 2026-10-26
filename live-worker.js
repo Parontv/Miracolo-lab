@@ -1,6 +1,6 @@
 /* Production entrypoint: live data + unified Bot brain + autonomous Alpaca Paper execution. */
 import aiWorker from './ai-worker.js';
-import { runAutoPaperBot } from './bot-paper-auto-v1.js';
+import { runAutoPaperBot } from './bot-paper-auto.js';
 import { getBotDecision } from './bot-server-engine.js';
 import { getCryptoDecision } from './bot-crypto-engine.js';
 import { alpacaRequest } from './alpaca-paper.js';
