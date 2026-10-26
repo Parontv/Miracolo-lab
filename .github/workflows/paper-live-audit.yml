@@ -1,10 +1,9 @@
 name: Miracolo Lab — Live Paper Audit
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/paper-live-audit.yml'
+  workflow_run:
+    workflows: ["Miracolo Lab — Fixed Deploy"]
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
@@ -13,6 +12,7 @@ concurrency:
 
 jobs:
   paper-audit:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -25,7 +25,7 @@ jobs:
           import json, os, sys, time, urllib.request, urllib.error
           base=os.environ['BASE'].rstrip('/')
           def call(path):
-              req=urllib.request.Request(base+path+('?ts=' if '?' not in path else '&ts=')+str(time.time_ns()),headers={'Accept':'application/json','Cache-Control':'no-cache'})
+              req=urllib.request.Request(base+path+('?ts=' if '?' not in path else '&ts=')+str(time.time_ns()),headers={'Accept':'application/json','Cache-Control':'no-cache','Pragma':'no-cache'})
               try:
                   with urllib.request.urlopen(req,timeout=60) as r:
                       return r.status,json.load(r)
