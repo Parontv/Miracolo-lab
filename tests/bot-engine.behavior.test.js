@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const engineSource = fs.readFileSync('public/v1/bot-engine.js', 'utf8');
 const workspaceSource = fs.readFileSync('public/v1/bot-workspace-v1.js', 'utf8');
 
-assert.match(engineSource, /fetch\(['"]\/api\/bot\/run/);
+assert.match(engineSource, /request\(['"]\/api\/bot\/run/);
 assert.match(engineSource, /method:\s*['"]POST['"]/);
 assert.match(engineSource, /window\.MiracoloBot\s*=\s*\{run,load/);
 assert.match(workspaceSource, /id=\\?['"]botUnifiedRun/);
