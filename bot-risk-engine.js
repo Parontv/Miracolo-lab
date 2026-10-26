@@ -6,6 +6,7 @@ export function riskEngine({decision,positions=[],journal=[],eventRisk={level:'N
  const exposure=(positions||[]).reduce((s,p)=>s+Math.abs(n(p.notional)||0),0),riskBudget=(positions||[]).reduce((s,p)=>s+(n(p.risk)||0),0),eventLevel=String(eventRisk?.level||'NORMAL').toUpperCase(),flags=[];
  if(eventLevel==='CRITICAL')flags.push('EVENT_CRITICAL');
  if(maxPositions!=null&&(positions||[]).length>=maxPositions)flags.push('POSITION_LIMIT');
+ if(maxTradesPerDay!=null&&tradesToday>=Number(maxTradesPerDay))flags.push('DAILY_TRADE_LIMIT');
  if(riskBudget>=capital*.02)flags.push('RISK_BUDGET_LIMIT');
  if(exposure>=capital*.9)flags.push('EXPOSURE_LIMIT');
  const aiRisk=decision?.contributors?.some(x=>x.family==='ai'&&x.riskFlag);if(aiRisk)flags.push('AI_RISK_VETO');
