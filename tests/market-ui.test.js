@@ -9,7 +9,6 @@ const botEngine=fs.readFileSync('public/v1/bot-engine.js','utf8');
 const live=fs.readFileSync('live-worker.js','utf8');
 const server=fs.readFileSync('bot-server-engine-v10.js','utf8');
 const serverV11=fs.readFileSync('bot-server-engine-v11.js','utf8');
-const serverV14=fs.readFileSync('bot-server-engine-v14.js','utf8');
 const serverV15=fs.readFileSync('bot-server-engine-v15.js','utf8');
 const crypto=fs.readFileSync('bot-crypto-engine-v1.js','utf8');
 const auto=fs.readFileSync('bot-paper-auto-v1.js','utf8');
@@ -19,7 +18,7 @@ for(const path of ['public/v1/market.js','public/v1/market.css','public/v1/inves
 has(/data-panel="market"/,html);has(/data-panel="bot"/,html);assert.doesNotMatch(html,/data-panel="strategy"/);assert.doesNotMatch(nav,/['"]strategy['"]/);
 has(/\/api\/chart/,market);has(/\/api\/market-monitor/,market);
 has(/ML_NEWS_CONTRACT/,fs.readFileSync('public/v1/data.js','utf8'));has(/\/api\/live/,fs.readFileSync('public/v1/data.js','utf8'));has(/window\.ML\.on\('data'/,fs.readFileSync('public/v1/news-feed-bridge.js','utf8'));
-has(/bot-workspace-v1\.js/,html);has(/bot-workspace-v2\.js/,html);has(/Avvia tutto/,botV2);has(/PAPER ONLY/,botV2);has(/\/api\/bot\/run/,botEngine);has(/miracolo:botdecision/,botEngine);has(/BOT-SERVER-V10/,server);has(/BOT-SERVER-V11/,serverV11);has(/bot-server-engine-v14/,serverV14);has(/BOT-SERVER-V15/,serverV15);has(/bot-server-engine-v15/,live);has(/\/api\/bot\/crypto/,live);has(/BTC\/USD/,crypto);has(/latest\/orderbooks/,crypto);has(/mode:'PAPER'/,serverV15);has(/getMacroData/,serverV15);has(/newsContract/,serverV15);has(/riskEngine/,serverV15);has(/getCryptoDecision/,auto);has(/BTC\/USD/,auto);has(/paper-api\.alpaca\.markets\/v2/,executor);has(/time_in_force:isCrypto\?'gtc':'day'/,executor);
+has(/bot-workspace-v1\.js/,html);has(/bot-workspace-v2\.js/,html);has(/Avvia tutto/,botV2);has(/PAPER ONLY/,botV2);has(/\/api\/bot\/run/,botEngine);has(/miracolo:botdecision/,botEngine);has(/BOT-SERVER-V10/,server);has(/BOT-SERVER-V11/,serverV11);has(/BOT-SERVER-V15/,serverV15);has(/bot-server-engine-v15/,live);has(/\/api\/bot\/crypto/,live);has(/BTC\/USD/,crypto);has(/latest\/orderbooks/,crypto);has(/mode:'PAPER'/,serverV15);has(/getMacroData/,serverV15);has(/newsContract/,serverV15);has(/riskEngine/,serverV15);has(/getCryptoDecision/,auto);has(/BTC\/USD/,auto);has(/paper-api\.alpaca\.markets\/v2/,executor);has(/time_in_force:isCrypto\?'gtc':'day'/,executor);
 console.log('Market/UI static integrity: PASS');
 console.log('News pipeline linkage: PASS');
 console.log('Single Bot surface: PASS');
