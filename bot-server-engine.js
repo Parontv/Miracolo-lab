@@ -1,6 +1,6 @@
 /* Miracolo Lab — unified Bot Decision Engine. PAPER only. */
-import { newsContract } from './news-event-engine-v1.js';
-import { riskEngine } from './bot-risk-engine-v1.js';
+import { newsContract } from './news-event-engine.js';
+import { riskEngine } from './bot-risk-engine.js';
 
 const STATE='state/latest',QUANT='quantitative/latest-v2',JOURNAL='bot/journal/v1',POSITIONS='bot/positions/v1',CACHE='bot/decision/latest';
 const WEIGHTS={market:.18,news:.14,macro:.16,technical:.16,ai:.08,historical:.10,backtest:.08,learning:.05,memory:.05};
