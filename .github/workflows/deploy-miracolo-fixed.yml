@@ -37,6 +37,7 @@ jobs:
           node tests/news-contract.test.js
           node tests/bot-server-engine.test.mjs
           node tests/bot-risk-engine.test.mjs
+          node tests/paper-execution.test.mjs
           node -e "import('./bot-server-engine.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('Unified bot exports missing')})"
           node -e "import('./bot-paper-executor.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor missing')})"
 
@@ -51,6 +52,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Prepare deployment config
+        env:
+          ML_KV_NAMESPACE_ID: ${{ vars.ML_KV_NAMESPACE_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$ML_KV_NAMESPACE_ID" || { echo 'ERROR: repository variable ML_KV_NAMESPACE_ID is missing.' >&2; exit 1; }
+          cp wrangler.toml wrangler.deploy.toml
+          printf '\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "%s"\n' "$ML_KV_NAMESPACE_ID" >> wrangler.deploy.toml
+          grep -q 'binding = "ML_KV"' wrangler.deploy.toml
+          grep -q 'id = "' wrangler.deploy.toml
       - name: Cloudflare authentication check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -58,7 +69,7 @@ jobs:
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: npx wrangler@4 deploy --config wrangler.toml
+        run: npx wrangler@4 deploy --config wrangler.deploy.toml
       - name: Verify production without placing orders
         env:
           WORKER_URL: https://miracolo-lab.listaconcerti.workers.dev
