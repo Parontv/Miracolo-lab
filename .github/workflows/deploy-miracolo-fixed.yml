@@ -48,14 +48,21 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler@4 whoami
 
-      - name: Resolve existing ML_KV binding
+      - name: Ensure stable ML_KV binding
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          EXISTING_KV_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
         run: |
           set -euo pipefail
-          SETTINGS="$(curl -fsS -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/miracolo-lab/settings")"
-          KV_ID="$(printf '%s' "$SETTINGS" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const x=JSON.parse(s);if(!x.success)throw Error(JSON.stringify(x.errors));const n=(x.result?.bindings||[]).find(v=>v.name==='ML_KV'&&v.type==='kv_namespace');if(!n?.namespace_id)throw Error('Existing Worker has no ML_KV KV binding');process.stdout.write(n.namespace_id)})")"
+          KV_ID="${EXISTING_KV_ID:-}"
+          if [ -z "$KV_ID" ]; then
+            KV_ID="$(npx wrangler@4 kv namespace list --json | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const x=JSON.parse(s);const a=Array.isArray(x)?x:(x.result||[]);const n=a.find(v=>v.title==='miracolo-lab-ml-kv');if(n?.id)process.stdout.write(n.id)})")"
+          fi
+          if [ -z "$KV_ID" ]; then
+            echo 'ML_KV namespace not found; creating stable namespace miracolo-lab-ml-kv'
+            KV_ID="$(npx wrangler@4 kv namespace create miracolo-lab-ml-kv --json | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const x=JSON.parse(s);const id=x.id||x.result?.id;if(!id)throw Error('KV namespace creation returned no id');process.stdout.write(id)})")"
+          fi
           test -n "$KV_ID"
           export KV_ID
           python - <<'PY'
