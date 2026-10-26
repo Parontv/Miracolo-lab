@@ -6,7 +6,6 @@ on:
     paths:
       - 'bot-server-engine.js'
       - 'bot-risk-engine.js'
-      - 'bot-macro-engine.js'
       - 'bot-crypto-engine.js'
       - 'news-event-engine.js'
       - 'bot-paper-executor.js'
@@ -21,7 +20,6 @@ on:
     paths:
       - 'bot-server-engine.js'
       - 'bot-risk-engine.js'
-      - 'bot-macro-engine.js'
       - 'bot-crypto-engine.js'
       - 'news-event-engine.js'
       - 'bot-paper-executor.js'
@@ -45,7 +43,6 @@ jobs:
         run: |
           node --check bot-server-engine.js
           node --check bot-risk-engine.js
-          node --check bot-macro-engine.js
           node --check bot-crypto-engine.js
           node --check news-event-engine.js
           node --check bot-paper-executor.js
