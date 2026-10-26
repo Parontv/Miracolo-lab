@@ -47,48 +47,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler@4 whoami
 
-      - name: Ensure stable ML_KV binding
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          EXISTING_KV_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
-        run: |
-          set -euo pipefail
-          KV_ID="${EXISTING_KV_ID:-}"
-          if [ -z "$KV_ID" ]; then
-            KV_LIST="$(npx wrangler@4 kv namespace list)"
-            KV_ID="$(printf '%s\n' "$KV_LIST" | awk -F '│' '$3 ~ /miracolo-lab-ml-kv/ {gsub(/[[:space:]]/,"",$2); print $2; exit}')"
-          fi
-          if [ -z "$KV_ID" ]; then
-            echo 'ML_KV namespace not found; creating stable namespace miracolo-lab-ml-kv'
-            KV_CREATE="$(npx wrangler@4 kv namespace create miracolo-lab-ml-kv)"
-            KV_ID="$(printf '%s\n' "$KV_CREATE" | sed -nE 's/.*id[[:space:]]*=[[:space:]]*([a-f0-9-]{20,}).*/\1/p' | head -n1)"
-          fi
-          test -n "$KV_ID"
-          export KV_ID
-          python - <<'PY'
-          from pathlib import Path
-          import os,re
-          p=Path('wrangler.toml')
-          s=p.read_text()
-          kid=os.environ['KV_ID']
-          blocks=list(re.finditer(r'(?ms)^\[\[kv_namespaces\]\]\s*\n.*?(?=^\[\[|^\[assets\]|\Z)',s))
-          ml=[m for m in blocks if re.search(r'(?m)^binding\s*=\s*["\']ML_KV["\']',m.group(0))]
-          if len(ml)>1: raise SystemExit('Duplicate ML_KV bindings in wrangler.toml')
-          if len(ml)==1:
-              block=ml[0].group(0)
-              if re.search(r'(?m)^id\s*=',block):
-                  block=re.sub(r'(?m)^id\s*=\s*["\'][^"\']+["\']',f'id = "{kid}"',block)
-              else:
-                  block=block.rstrip()+f'\nid = "{kid}"\n'
-              s=s[:ml[0].start()]+block+s[ml[0].end():]
-          else:
-              marker='\n[assets]'
-              insert=f'\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "{kid}"\n'
-              s=s.replace(marker,insert+marker,1) if marker in s else s.rstrip()+insert+'\n'
-          p.write_text(s)
-          print('ML_KV BINDING: PASS')
-          PY
-
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
