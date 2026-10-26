@@ -1,7 +1,7 @@
-/* Production entrypoint: live data + one Bot brain + autonomous Alpaca Paper execution. */
+/* Production entrypoint: live data + unified Bot brain + autonomous Alpaca Paper execution. */
 import aiWorker from './ai-worker.js';
 import { runAutoPaperBot } from './bot-paper-auto-v1.js';
-import { getBotDecision } from './bot-server-engine-v15.js';
+import { getBotDecision } from './bot-server-engine.js';
 import { getCryptoDecision } from './bot-crypto-engine-v1.js';
 import { alpacaRequest } from './alpaca-paper.js';
 function slimLive(data){const out={...data};if(out.universe&&typeof out.universe==='object'){const{tickers,...universe}=out.universe;out.universe={...universe}}if(out.news&&typeof out.news==='object'){const news={...out.news};if(Array.isArray(news.items))news.items=news.items.slice(0,120).map(x=>({title:x.title,date:x.date,url:x.url||x.link,source:x.source,type:x.type,cat:x.cat,score:x.score,description:String(x.description||x.summary||'').slice(0,500)}));delete news.categories;out.news=news}if(out.ai&&typeof out.ai==='object')out.ai={...out.ai,commentary:String(out.ai.commentary||'').slice(0,3500),thesis:String(out.ai.thesis||'').slice(0,1800)};return out}
