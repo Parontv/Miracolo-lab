@@ -10,7 +10,8 @@ async function quote(symbol){
  return{ticker:symbol,name:NAMES[symbol]||symbol,price,previous,changePct:(price-previous)/previous*100,ok:true,source:'Yahoo Finance'};
 }
 export async function seedBotMarket(){
- const results=await Promise.all(SYMBOLS.map(async s=>{try{return await quote(s)}catch{return null}}));
+ const failures=[];
+ const results=await Promise.all(SYMBOLS.map(async s=>{try{return await quote(s)}catch(error){failures.push({symbol:s,error:String(error?.message||error)});return null}}));
  const indices=results.filter(Boolean);
- return{indices,crypto:[],timestamp:new Date().toISOString(),source:'Yahoo Finance fallback',coverage:indices.length+'/'+SYMBOLS.length};
+ return{indices,crypto:[],timestamp:new Date().toISOString(),source:'Yahoo Finance fallback',coverage:indices.length+'/'+SYMBOLS.length,failures};
 }
