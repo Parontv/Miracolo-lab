@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const source=fs.readFileSync('bot-context-enrichment.js','utf8');
-assert.match(source,/fetchFred\(series\)/,'FRED series loop missing');
-assert.match(source,/news\.google\.com\/rss\/search/,'news fallback missing');
-assert.match(source,/fetches:1\+FRED\.length/,'fetch budget accounting missing');
-assert.equal((source.match(/await fetch\(/g)||[]).length,3,'only primary news, RSS fallback and FRED fetches may exist');
-console.log('PASS context enrichment contract: max 9 fetches');
+assert.match(source,/const FRED=\[/,'FRED series list missing');
+assert.match(source,/for\(const series of FRED\)/,'FRED batch series loop missing');
+assert.match(source,/news\.google\.com\/rss\/search/,'Google News source missing');
+assert.match(source,/api\.gdeltproject\.org\/api\/v2\/doc\/doc/,'GDELT fallback missing');
+assert.match(source,/fetches:news\.items\.length\?2:3/,'context fetch budget accounting missing');
+assert.equal((source.match(/await fetch\(/g)||[]).length,3,'only primary news, GDELT fallback and FRED fetches may exist');
+console.log('PASS context enrichment contract: max 3 fetches');
