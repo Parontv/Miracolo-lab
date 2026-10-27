@@ -9,7 +9,7 @@ assert.ok(plan,'/api/bot/plan must route directly to KV-first Bot');
 assert.ok(run,'/api/bot/run must route directly to KV-first Bot');
 const beforeLive=router.split("if(u.pathname==='/api/live')")[0];
 assert.equal((beforeLive.match(/aiWorker\.fetch/g)||[]).length,0,'Bot routes before /api/live must not call aiWorker.fetch');
-assert.equal((router.match(/refreshAlpacaEquities/g)||[]).length,2,'Alpaca market refresh is allowed only in cron and market-test');
+assert.equal((router.match(/await refreshAlpacaEquities/g)||[]).length,2,'Alpaca market refresh is called only in cron and market-test');
 assert.match(router,/name:'market',fetches:0/);
 assert.match(router,/name:'crypto',fetches:3/);
 assert.match(router,/name:'position',fetches:1/);
