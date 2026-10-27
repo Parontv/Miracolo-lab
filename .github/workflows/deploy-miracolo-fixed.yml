@@ -60,20 +60,25 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
-          npx wrangler@4 kv namespace list --json > /tmp/kv-list.json
-          KV_ID=$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/kv-list.json','utf8'));const a=Array.isArray(x)?x:[];const n=a.find(v=>v.title==='ML_KV');if(!n)process.exit(2);process.stdout.write(n.id)") || true
-          if [ -z "${KV_ID:-}" ]; then
-            npx wrangler@4 kv namespace create ML_KV --json > /tmp/kv-create.json
-            KV_ID=$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/kv-create.json','utf8'));process.stdout.write(x.id||x.namespace_id||x.result?.id||'')")
+          KV_ID=""
+          if npx wrangler@4 kv namespace list > /tmp/kv-list.txt 2>&1; then
+            KV_ID=$(grep -Eo '[0-9a-f]{32}' /tmp/kv-list.txt | head -n1 || true)
+          fi
+          if [ -z "$KV_ID" ]; then
+            npx wrangler@4 kv namespace create ML_KV > /tmp/kv-create.txt
+            KV_ID=$(grep -Eo '[0-9a-f]{32}' /tmp/kv-create.txt | head -n1 || true)
           fi
           test -n "$KV_ID"
           python - "$KV_ID" <<'PY'
-          import pathlib,sys
+          import pathlib,sys,re
           p=pathlib.Path('wrangler.toml')
           s=p.read_text()
-          if 'binding = "ML_KV"' not in s:
-              s += f'\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "{sys.argv[1]}"\n'
-          p.write_text(s)
+          binding='[[kv_namespaces]]\nbinding = "ML_KV"\nid = "'+sys.argv[1]+'"\n'
+          if 'binding = "ML_KV"' in s:
+              s=re.sub(r'\[\[kv_namespaces\]\]\nbinding = "ML_KV"\nid = "[^"]+"',binding.strip(),s)
+          else:
+              s=s.rstrip()+'\n\n'+binding
+          p.write_text(s+'\n')
           PY
           echo "ML_KV_ID=$KV_ID"
       - name: Deploy
