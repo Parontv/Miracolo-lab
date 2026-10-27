@@ -2,7 +2,7 @@ name: Miracolo Lab — Fixed Deploy
 
 on:
   push:
-    branches: [main, fix/bot-decision-live, feature/bot-evaluation-v1]
+    branches: [main, fix/bot-decision-live, feature/bot-evaluation-v1, feature/bot-evaluation-final]
     paths:
       - '*.js'
       - 'public/**'
