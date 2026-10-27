@@ -2,7 +2,7 @@ name: Miracolo Lab — Fixed Deploy
 
 on:
   push:
-    branches: [main, fix/bot-decision-live, feature/bot-evaluation-v1, feature/bot-evaluation-final]
+    branches: [main, fix/bot-decision-live, feature/bot-evaluation-v1, feature/bot-evaluation-final, feature/bot-eval-live-verify]
     paths:
       - '*.js'
       - 'public/**'
@@ -105,5 +105,8 @@ jobs:
           symbol=(plan.get('botAction') or {}).get('symbol')
           print(f'PLAN ACTION: {action} {symbol or ""}'.strip())
           print('MODULES:', ', '.join(f"{m.get('family')}={m.get('status')}" for m in modules))
-          print('RESULT: LIVE WORKER + PAPER PLAN VERIFIED; no order submitted by CI.')
+          eval_code,report=call('/api/bot/eval')
+          print('=== BOT EVAL ===');print(json.dumps(report,ensure_ascii=False,indent=2))
+          if eval_code!=200 or not report.get('ok'):sys.exit('FAIL: /api/bot/eval non disponibile')
+          print('RESULT: LIVE WORKER + PAPER PLAN + BOT EVAL VERIFIED; no order submitted by CI.')
           PY
