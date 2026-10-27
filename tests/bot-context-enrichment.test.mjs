@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const src=fs.readFileSync('bot-context-enrichment.js','utf8');
+assert.equal((src.match(/fetch\(/g)||[]).length,2,'Context enrichment must use exactly two external fetches');
+assert.match(src,/api\.gdeltproject\.org/);
+assert.match(src,/fred\.stlouisfed\.org\/graph\/fredgraph\.csv/);
+assert.match(src,/CPIAUCSL/);
+assert.match(src,/UNRATE/);
+assert.match(src,/PAYEMS/);
+assert.match(src,/GDPC1/);
+console.log('PASS bot context enrichment contract');
