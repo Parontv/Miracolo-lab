@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const seed=fs.readFileSync('bot-market-seed.js','utf8');
+const router=fs.readFileSync('bot-live-router.js','utf8');
+assert.equal((seed.match(/fetch\(/g)||[]).length,1,'Yahoo fallback must use one fetch');
+const planRun=router.slice(router.indexOf("u.pathname==='/api/bot/plan'"));
+assert.equal((planRun.match(/aiWorker\.fetch/g)||[]).length,1,'Only /api/live route may call aiWorker.fetch');
+assert.equal((planRun.match(/refreshAlpacaEquities/g)||[]).length,1,'Only market-test/cron helpers may call Alpaca market refresh');
+assert.match(router,/name:'market',fetches:0/);
+assert.match(router,/name:'crypto',fetches:3/);
+assert.match(router,/name:'position',fetches:1/);
+assert.match(router,/name:'decision',fetches:0/);
+console.log('PASS bot subrequest contract');
