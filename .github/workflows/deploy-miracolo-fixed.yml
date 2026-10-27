@@ -99,6 +99,6 @@ jobs:
           action=(plan.get('botAction') or {}).get('action','HOLD')
           symbol=(plan.get('botAction') or {}).get('symbol')
           print(f'PLAN ACTION: {action} {symbol or ""}'.strip())
-          print('MODULES:',', '.join(f"{m.get("family")}={m.get("status")}" for m in modules))
+          print('MODULES:', ', '.join(f"{m.get('family')}={m.get('status')}" for m in modules))
           print('RESULT: LIVE WORKER + PAPER PLAN VERIFIED; no order submitted by CI.')
           PY
