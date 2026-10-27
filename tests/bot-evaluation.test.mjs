@@ -9,7 +9,7 @@ const env=()=>({ML_KV:new FakeKV()});
 const state=(spy=101,btc=110)=>({market:{indices:[{ticker:'SPY',price:spy},{ticker:'QQQ',price:spy},{ticker:'IWM',price:spy}],crypto:[{symbol:'BTC/USD',price:btc}]}});
 const result=(mods=[{family:'market',direction:1,confidence:70,strength:.6},{family:'news',direction:0,confidence:50,strength:0},{family:'crypto',direction:-1,confidence:65,strength:.5}])=>({modules:mods,consensus:{direction:1,score:.4,dataCoverage:.8,families:['market','news','crypto']},botAction:'BUY'});
 const oldRecord=(time,price,modules)=>({id:`r-${time}`,time:new Date(time).toISOString(),bucket:Math.floor(time/(15*60*1000))*15*60*1000,prices:{SPY:price,QQQ:price,IWM:price,'BTC/USD':price},consensus:{direction:1,score:.4,dataCoverage:.8,families:['market']},modules,action:'BUY'});
-const openWeekdayTimes=(base,count)=>{const out=[];let t=base;while(out.length<count){const d=new Date(t);const wd=d.getUTCDay();if(wd>=1&&wd<=5)out.push(t);t-=24*60*60*1000}return out};
+const openWeekdayTimes=(base,count)=>{const out=[];let t=base;while(out.length<count){const wd=new Date(t).getUTCDay();if(wd>=1&&wd<=5)out.push(t);t-=24*60*60*1000}return out};
 
 // 1) Dedupe at 15 minutes and cap at 600 records.
 {
@@ -23,12 +23,9 @@ const openWeekdayTimes=(base,count)=>{const out=[];let t=base;while(out.length<c
 {
   const savedNow=Date.now; Date.now=()=>Date.parse('2026-10-28T15:00:00Z');
   try {
-    const now=Date.now(),e=env(); const records=[
-      oldRecord(now-61*60*1000,100,[{family:'market',direction:1,confidence:70,strength:.5},{family:'news',direction:0,confidence:50,strength:0}]),
-      oldRecord(now-25*60*60*1000,100,[{family:'market',direction:-1,confidence:70,strength:.5}]),
-      oldRecord(now-6*24*60*60*1000,100,[{family:'crypto',direction:1,confidence:70,strength:.5}])
-    ]; e.ML_KV.data.set('bot/signals/v1',JSON.stringify(records));
-    const report=await evaluateSignals(e,state(102,98)); assert.equal(report.horizons.h1.market.n,1); assert.equal(report.horizons.h1.news,undefined,'neutral modules must not count'); assert.equal(report.horizons.h1.market.label,'Campione insufficiente');
+    const now=Date.now(),e=env(),records=[oldRecord(now-61*60*1000,100,[{family:'market',direction:1,confidence:70,strength:.5},{family:'news',direction:0,confidence:50,strength:0}]),oldRecord(now-25*60*60*1000,100,[{family:'market',direction:-1,confidence:70,strength:.5}]),oldRecord(now-6*24*60*60*1000,100,[{family:'crypto',direction:1,confidence:70,strength:.5}])];
+    e.ML_KV.data.set('bot/signals/v1',JSON.stringify(records)); const report=await evaluateSignals(e,state(102,98));
+    assert.equal(report.horizons.h1.market.n,2); assert.equal(report.horizons.h1.news,undefined,'neutral modules must not count'); assert.equal(report.horizons.h1.market.label,'Campione insufficiente');
     assert.equal(report.horizons.h24.market.n,1); assert.equal(report.horizons.h24.market.hits,1,'SHORT must hit when return is negative'); assert.equal(report.horizons.h5d.crypto.n,1); assert.equal(report.horizons.h5d.crypto.hits,0,'LONG must miss when return is negative'); assert.equal(report.horizons.h24.market.baseline,0); assert.equal(report.horizons.h24.market.edge,null,'insufficient samples never present edge');
   } finally { Date.now=savedNow; }
 }
