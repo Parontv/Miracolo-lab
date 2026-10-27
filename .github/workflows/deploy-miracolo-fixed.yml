@@ -55,6 +55,27 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler@4 whoami
+      - name: Ensure Bot KV namespace
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          npx wrangler@4 kv namespace list --json > /tmp/kv-list.json
+          KV_ID=$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/kv-list.json','utf8'));const a=Array.isArray(x)?x:[];const n=a.find(v=>v.title==='ML_KV');if(!n)process.exit(2);process.stdout.write(n.id)") || true
+          if [ -z "${KV_ID:-}" ]; then
+            npx wrangler@4 kv namespace create ML_KV --json > /tmp/kv-create.json
+            KV_ID=$(node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/kv-create.json','utf8'));process.stdout.write(x.id||x.namespace_id||x.result?.id||'')")
+          fi
+          test -n "$KV_ID"
+          python - "$KV_ID" <<'PY'
+          import pathlib,sys
+          p=pathlib.Path('wrangler.toml')
+          s=p.read_text()
+          if 'binding = "ML_KV"' not in s:
+              s += f'\n[[kv_namespaces]]\nbinding = "ML_KV"\nid = "{sys.argv[1]}"\n'
+          p.write_text(s)
+          PY
+          echo "ML_KV_ID=$KV_ID"
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -90,10 +111,14 @@ jobs:
           print('=== BOT PLAN ===')
           print(json.dumps(plan,ensure_ascii=False,indent=2))
           if plan_code!=200 or plan.get('mode')!='PAPER': sys.exit('FAIL: piano Bot non disponibile')
+          if not plan.get('ok'): sys.exit('FAIL: Bot engine returned NO_DATA/ERROR')
+          modules=plan.get('modules') or []
+          if len(modules)!=11: sys.exit(f'FAIL: expected 11 Bot modules, got {len(modules)}')
           execution=plan.get('execution') or {}
           if execution.get('dryRun') is not True: sys.exit('FAIL: il piano non è dry-run')
           action=(plan.get('botAction') or {}).get('action','HOLD')
           symbol=(plan.get('botAction') or {}).get('symbol')
           print(f'PLAN ACTION: {action} {symbol or ""}'.strip())
+          print('MODULES:', ', '.join(f"{m.get('family')}={m.get('status')}" for m in modules))
           print('RESULT: LIVE WORKER + PAPER PLAN VERIFIED; no order submitted by CI.')
           PY
