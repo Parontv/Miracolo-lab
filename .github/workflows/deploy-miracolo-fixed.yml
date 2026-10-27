@@ -2,7 +2,7 @@ name: Miracolo Lab — Fixed Deploy
 
 on:
   push:
-    branches: [main, fix/bot-decision-live]
+    branches: [main, fix/bot-decision-live, feature/bot-evaluation-v1]
     paths:
       - '*.js'
       - 'public/**'
@@ -40,10 +40,12 @@ jobs:
           node tests/bot-subrequest-contract.test.mjs
           node tests/bot-context-enrichment.test.mjs
           node tests/bot-macro-context.test.mjs
+          node tests/bot-evaluation.test.mjs
           node -e "import('./bot-server-engine.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('Unified bot exports missing')})"
           node -e "import('./bot-paper-executor.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor missing')})"
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 15
