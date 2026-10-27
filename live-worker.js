@@ -102,12 +102,16 @@ export default {
       } catch (e) { return Response.json({ ok: false, error: String(e.message || e) }, { status: 500, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
     }
     if (url.pathname === '/api/bot/plan') {
-      try { await ensureBotState(env); return Response.json(await runAutoPaperBot(env, { execute: false }), { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
-      catch (e) { return Response.json({ ok: false, mode:'PAPER', status: 'ERROR', error: String(e.message || e) }, { status: 500, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
+      try {
+        await refreshBotState(env, ctx, request);
+        await ensureBotState(env);
+        return Response.json(await runAutoPaperBot(env, { execute: false }), { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
+      } catch (e) { return Response.json({ ok: false, mode:'PAPER', status: 'ERROR', error: String(e.message || e) }, { status: 500, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
     }
     if (url.pathname === '/api/bot/run') {
       if (request.method !== 'POST') return Response.json({ ok: false, error: 'POST richiesto' }, { status: 405 });
       try {
+        await refreshBotState(env, ctx, request);
         await ensureBotState(env);
         const result = await runAutoPaperBot(env);
         ctx.waitUntil(refreshBotState(env, ctx, request).catch(() => false));
