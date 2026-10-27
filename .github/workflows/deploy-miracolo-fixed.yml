@@ -39,6 +39,7 @@ jobs:
           node tests/bot-risk-engine.test.mjs
           node tests/bot-subrequest-contract.test.mjs
           node tests/bot-context-enrichment.test.mjs
+          node tests/bot-macro-context.test.mjs
           node -e "import('./bot-server-engine.js').then(m=>{if(typeof m.runBot!=='function'||typeof m.getBotDecision!=='function')throw new Error('Unified bot exports missing')})"
           node -e "import('./bot-paper-executor.js').then(m=>{if(typeof m.executePaperDecision!=='function')throw new Error('Paper executor missing')})"
 
