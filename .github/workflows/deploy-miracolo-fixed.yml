@@ -55,32 +55,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler@4 whoami
-      - name: Ensure Bot KV namespace
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Validate fixed ML_KV binding
         run: |
           set -euo pipefail
-          KV_ID=""
-          if npx wrangler@4 kv namespace list > /tmp/kv-list.txt 2>&1; then
-            KV_ID=$(grep -Eo '[0-9a-f]{32}' /tmp/kv-list.txt | head -n1 || true)
-          fi
-          if [ -z "$KV_ID" ]; then
-            npx wrangler@4 kv namespace create ML_KV > /tmp/kv-create.txt
-            KV_ID=$(grep -Eo '[0-9a-f]{32}' /tmp/kv-create.txt | head -n1 || true)
-          fi
-          test -n "$KV_ID"
-          python - "$KV_ID" <<'PY'
-          import pathlib,sys,re
-          p=pathlib.Path('wrangler.toml')
-          s=p.read_text()
-          binding='[[kv_namespaces]]\nbinding = "ML_KV"\nid = "'+sys.argv[1]+'"\n'
-          if 'binding = "ML_KV"' in s:
-              s=re.sub(r'\[\[kv_namespaces\]\]\nbinding = "ML_KV"\nid = "[^"]+"',binding.strip(),s)
-          else:
-              s=s.rstrip()+'\n\n'+binding
-          p.write_text(s+'\n')
-          PY
-          echo "ML_KV_ID=$KV_ID"
+          grep -A2 '^\[\[kv_namespaces\]\]' wrangler.toml | grep -q 'binding = "ML_KV"'
+          grep -A2 '^\[\[kv_namespaces\]\]' wrangler.toml | grep -Eq 'id = "[0-9a-f]{32}"'
       - name: Deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -95,35 +74,31 @@ jobs:
           base=os.environ['WORKER_URL'].rstrip('/')
           def call(path):
               url=base+path+('?ts=' if '?' not in path else '&ts=')+str(time.time_ns())
-              req=urllib.request.Request(url,headers={'Accept':'application/json','Cache-Control':'no-cache','Pragma':'no-cache','User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36'})
+              req=urllib.request.Request(url,headers={'Accept':'application/json','Cache-Control':'no-cache','Pragma':'no-cache','User-Agent':'Mozilla/5.0'})
               try:
-                  with urllib.request.urlopen(req,timeout=60) as r:
-                      return r.status,json.load(r)
+                  with urllib.request.urlopen(req,timeout=60) as r:return r.status,json.load(r)
               except urllib.error.HTTPError as e:
                   body=e.read().decode('utf-8','replace')
-                  try: data=json.loads(body)
-                  except: data={'raw':body}
+                  try:data=json.loads(body)
+                  except:data={'raw':body}
                   return e.code,data
           status_code,status=call('/api/alpaca/status')
-          print('=== ALPACA STATUS ===')
-          print(json.dumps(status,ensure_ascii=False,indent=2))
-          if status_code!=200 or status.get('mode')!='PAPER': sys.exit('FAIL: Alpaca Paper non verificato')
+          print('=== ALPACA STATUS ===');print(json.dumps(status,ensure_ascii=False,indent=2))
+          if status_code!=200 or status.get('mode')!='PAPER':sys.exit('FAIL: Alpaca Paper non verificato')
           crypto_code,crypto=call('/api/bot/crypto')
-          print('=== BTC ===')
-          print(json.dumps(crypto,ensure_ascii=False,indent=2))
-          if crypto_code!=200 or not crypto.get('ok') or crypto.get('symbol')!='BTC/USD': sys.exit('FAIL: BTC/USD non disponibile')
+          print('=== BTC ===');print(json.dumps(crypto,ensure_ascii=False,indent=2))
+          if crypto_code!=200 or not crypto.get('ok') or crypto.get('symbol')!='BTC/USD':sys.exit('FAIL: BTC/USD non disponibile')
           plan_code,plan=call('/api/bot/plan')
-          print('=== BOT PLAN ===')
-          print(json.dumps(plan,ensure_ascii=False,indent=2))
-          if plan_code!=200 or plan.get('mode')!='PAPER': sys.exit('FAIL: piano Bot non disponibile')
-          if not plan.get('ok'): sys.exit('FAIL: Bot engine returned NO_DATA/ERROR')
+          print('=== BOT PLAN ===');print(json.dumps(plan,ensure_ascii=False,indent=2))
+          if plan_code!=200 or plan.get('mode')!='PAPER':sys.exit('FAIL: piano Bot non disponibile')
+          if not plan.get('ok'):sys.exit('FAIL: Bot engine returned NO_DATA/ERROR')
           modules=plan.get('modules') or []
-          if len(modules)!=11: sys.exit(f'FAIL: expected 11 Bot modules, got {len(modules)}')
+          if len(modules)!=11:sys.exit(f'FAIL: expected 11 Bot modules, got {len(modules)}')
           execution=plan.get('execution') or {}
-          if execution.get('dryRun') is not True: sys.exit('FAIL: il piano non è dry-run')
+          if execution.get('dryRun') is not True:sys.exit('FAIL: il piano non è dry-run')
           action=(plan.get('botAction') or {}).get('action','HOLD')
           symbol=(plan.get('botAction') or {}).get('symbol')
           print(f'PLAN ACTION: {action} {symbol or ""}'.strip())
-          print('MODULES:', ', '.join(f"{m.get('family')}={m.get('status')}" for m in modules))
+          print('MODULES:',', '.join(f"{m.get("family")}={m.get("status")}" for m in modules))
           print('RESULT: LIVE WORKER + PAPER PLAN VERIFIED; no order submitted by CI.')
           PY
