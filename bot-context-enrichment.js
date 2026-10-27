@@ -1,23 +1,19 @@
-/* Bot context enrichment: exactly two external fetches per phase: GDELT news + FRED CSV macro. */
+/* Bot context enrichment. Bounded phase: 1 news fetch + up to 8 FRED fetches = 9 max. */
 const FRED=['CPIAUCSL','CPILFESL','UNRATE','PAYEMS','GDPC1','INDPRO','M2SL','EFFR'];
-const QUERIES=['markets OR stocks OR equities OR Federal Reserve OR inflation OR earnings','S&P 500 OR Nasdaq OR bonds OR treasury OR oil OR gold'];
+const NEWS_QUERIES=['markets stocks equities Federal Reserve inflation earnings','S&P 500 Nasdaq bonds treasury oil gold'];
 function n(v){const x=Number(v);return Number.isFinite(x)?x:null}
-function csv(text){const lines=text.trim().split(/\r?\n/);if(lines.length<2)return[];const h=lines[0].split(',').map(x=>x.replaceAll('"',''));return lines.slice(1).map(line=>{const p=line.match(/(?:"[^"]*"|[^,])+/g)||[];const o={};h.forEach((k,i)=>o[k]=(p[i]||'').replaceAll('"',''));return o})}
-function parseGdelt(j){const rows=Array.isArray(j?.articles)?j.articles:[];return rows.slice(0,80).map(x=>({title:String(x?.title||'').trim(),url:x?.url||null,date:x?.seendate?new Date(x.seendate).toISOString():new Date().toISOString(),source:x?.domain||'GDELT',type:'news',cat:'finance',score:n(x?.tone)||0,description:String(x?.socialimage||'').slice(0,300)})).filter(x=>x.title)}
+function csv(text){const lines=String(text||'').trim().split(/\r?\n/);if(lines.length<2)return[];const h=lines[0].split(',').map(x=>x.replaceAll('"',''));return lines.slice(1).map(line=>{const p=line.match(/(?:"[^"]*"|[^,])+/g)||[];const o={};h.forEach((k,i)=>o[k]=(p[i]||'').replaceAll('"',''));return o})}
+function parseNews(j){const rows=Array.isArray(j?.articles)?j.articles:[];return rows.slice(0,80).map(x=>({title:String(x?.title||'').trim(),url:x?.url||null,date:x?.seendate?new Date(x.seendate).toISOString():new Date().toISOString(),source:x?.domain||'GDELT',type:'news',cat:'finance',score:n(x?.tone)||0,description:String(x?.snippet||'').slice(0,500)})).filter(x=>x.title)}
+function parseRss(text){return [...String(text||'').matchAll(/<item>([\s\S]*?)<\/item>/gi)].slice(0,60).map(m=>{const x=m[1],tag=t=>{const q=x.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)<\\/${t}>`,'i'));return q?q[1].replace(/<!\[CDATA\[|\]\]>/g,'').replace(/<[^>]+>/g,'').trim():''};return{title:tag('title'),url:tag('link'),date:new Date().toISOString(),source:tag('source')||'Google News',type:'news',cat:'finance',score:0,description:tag('description').slice(0,500)}}).filter(x=>x.title)}
+async function fetchNews(){
+ const errors=[];let items=[];
+ try{const q=encodeURIComponent(NEWS_QUERIES.join(' OR '));const r=await fetch(`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=ArtList&format=json&maxrecords=80&timespan=24h&sort=HybridRel`,{headers:{Accept:'application/json','User-Agent':'MiracoloLab/1.0'}});if(!r.ok)throw Error('GDELT HTTP '+r.status);items=parseNews(await r.json())}catch(e){errors.push('GDELT: '+String(e.message||e))}
+ if(!items.length){try{const q=encodeURIComponent('stock market OR Federal Reserve OR inflation OR Nasdaq');const r=await fetch(`https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`,{headers:{Accept:'application/rss+xml','User-Agent':'MiracoloLab/1.0'}});if(!r.ok)throw Error('Google News RSS HTTP '+r.status);items=parseRss(await r.text());if(items.length)errors.push('GDELT returned no articles; RSS fallback used')}catch(e){errors.push('RSS fallback: '+String(e.message||e))}}
+ return{items,errors}
+}
+async function fetchFred(series){const url=`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(series)}&cosd=2025-01-01&coed=${new Date().toISOString().slice(0,10)}`;const r=await fetch(url,{headers:{Accept:'text/csv','User-Agent':'MiracoloLab/1.0'}});if(!r.ok)throw Error(`FRED ${series} HTTP ${r.status}`);const rows=csv(await r.text()),valid=rows.filter(x=>x[series]!==undefined&&n(x[series])!==null);const latest=valid.at(-1),previous=valid.at(-2);if(!latest)throw Error(`FRED ${series}: no observations`);const value=n(latest[series]),prev=n(previous?.[series]);return{series,label:series,value,previous:prev,change:prev===null?null:value-prev,changePct:prev!=null&&prev!==0?(value-prev)/Math.abs(prev)*100:null,status:'ok',asOf:latest.observation_date||new Date().toISOString()}}
 export async function refreshNewsAndMacro(){
- const errors=[];
- let items=[];
- try{
-  const q=encodeURIComponent(QUERIES.join(' OR '));
-  const url=`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=ArtList&format=json&maxrecords=80&timespan=24h&sort=HybridRel`;
-  const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'MiracoloLab/1.0'}});if(!r.ok)throw Error('GDELT HTTP '+r.status);items=parseGdelt(await r.json());
- }catch(e){errors.push('GDELT: '+String(e.message||e))}
- let observations=[];
- try{
-  const url='https://fred.stlouisfed.org/graph/fredgraph.csv?id='+FRED.join(',')+'&cosd=2025-01-01&coed='+new Date().toISOString().slice(0,10);
-  const r=await fetch(url,{headers:{Accept:'text/csv','User-Agent':'MiracoloLab/1.0'}});if(!r.ok)throw Error('FRED HTTP '+r.status);const rows=csv(await r.text());const latest=rows.at(-1)||{};const previous=rows.at(-2)||{};
-  for(const series of FRED){const value=n(latest[series]),prev=n(previous[series]);if(value===null)continue;observations.push({series,label:series,value,previous:prev,change:prev===null?null:value-prev,changePct:prev&&prev!==0?(value-prev)/Math.abs(prev)*100:null,status:'ok',asOf:latest.observation_date||new Date().toISOString()})}
- }catch(e){errors.push('FRED: '+String(e.message||e))}
- const groups={macro:observations};
- return {news:{items,timestamp:new Date().toISOString(),source:'GDELT',count:items.length},quantitative:{groups,timestamp:new Date().toISOString(),source:'FRED'},errors,fetches:2};
+ const errors=[];const news=await fetchNews();errors.push(...news.errors);const observations=[];
+ for(const series of FRED){try{observations.push(await fetchFred(series))}catch(e){errors.push(String(e.message||e))}}
+ return{news:{items:news.items,timestamp:new Date().toISOString(),source:news.items.length?(news.items[0].source||'GDELT/RSS'):'GDELT/RSS',count:news.items.length},quantitative:{groups:{macro:observations},timestamp:new Date().toISOString(),source:'FRED'},errors,fetches:1+FRED.length};
 }
