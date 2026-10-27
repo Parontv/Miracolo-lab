@@ -15,23 +15,11 @@ function slimLive(data) {
   }
   if (out.news && typeof out.news === 'object') {
     const news = { ...out.news };
-    if (Array.isArray(news.items)) {
-      news.items = news.items.slice(0, 120).map(x => ({
-        title: x.title, date: x.date, url: x.url || x.link, source: x.source,
-        type: x.type, cat: x.cat, score: x.score,
-        description: String(x.description || x.summary || '').slice(0, 500)
-      }));
-    }
+    if (Array.isArray(news.items)) news.items = news.items.slice(0, 120).map(x => ({ title: x.title, date: x.date, url: x.url || x.link, source: x.source, type: x.type, cat: x.cat, score: x.score, description: String(x.description || x.summary || '').slice(0, 500) }));
     delete news.categories;
     out.news = news;
   }
-  if (out.ai && typeof out.ai === 'object') {
-    out.ai = {
-      ...out.ai,
-      commentary: String(out.ai.commentary || '').slice(0, 3500),
-      thesis: String(out.ai.thesis || '').slice(0, 1800)
-    };
-  }
+  if (out.ai && typeof out.ai === 'object') out.ai = { ...out.ai, commentary: String(out.ai.commentary || '').slice(0, 3500), thesis: String(out.ai.thesis || '').slice(0, 1800) };
   return out;
 }
 
@@ -40,9 +28,7 @@ async function refreshBotState(env, ctx, request) {
     const u = new URL(request.url);
     u.pathname = '/api/live';
     u.search = '?bot_refresh=' + Date.now();
-    const r = await aiWorker.fetch(new Request(u.toString(), {
-      method: 'GET', headers: { Accept: 'application/json', 'Cache-Control': 'no-cache', Pragma: 'no-cache' }
-    }), env, ctx);
+    const r = await aiWorker.fetch(new Request(u.toString(), { method: 'GET', headers: { Accept: 'application/json', 'Cache-Control': 'no-cache', Pragma: 'no-cache' } }), env, ctx);
     if (!r.ok) return false;
     let live = await r.json();
     if (!live || typeof live !== 'object' || !live.market) return false;
@@ -54,25 +40,9 @@ async function refreshBotState(env, ctx, request) {
       if (publicSeed.indices.length >= 4) {
         const existing = Array.isArray(live.market.indices) ? live.market.indices : [];
         const additions = publicSeed.indices.filter(p => !existing.some(x => String(x?.ticker || '').toUpperCase() === String(p?.ticker || '').toUpperCase()));
-        live = {
-          ...live,
-          market: {
-            ...(live.market || {}),
-            indices: [...existing, ...additions],
-            timestamp: publicSeed.timestamp,
-            source: 'Yahoo Finance fallback'
-          }
-        };
+        live = { ...live, market: { ...(live.market || {}), indices: [...existing, ...additions], timestamp: publicSeed.timestamp, source: 'Yahoo Finance fallback' } };
       } else if (!fallback.ok) {
-        live.market = {
-          ...(live.market || {}),
-          botMarketFallback: {
-            ok: false,
-            error: fallback.error || 'unavailable',
-            publicSeedCoverage: publicSeed.coverage,
-            publicSeedFailures: publicSeed.failures
-          }
-        };
+        live.market = { ...(live.market || {}), botMarketFallback: { ok: false, error: fallback.error || 'unavailable', publicSeedCoverage: publicSeed.coverage, publicSeedFailures: publicSeed.failures } };
       }
     }
     if (env.ML_KV) await env.ML_KV.put('state/latest', JSON.stringify(live), { expirationTtl: 3600 });
@@ -87,25 +57,15 @@ async function ensureBotState(env) {
     let state = null;
     if (env.ML_KV) {
       const raw = await env.ML_KV.get('state/latest');
-      if (raw) {
-        try { state = JSON.parse(raw); } catch { state = null; }
-      }
+      if (raw) { try { state = JSON.parse(raw); } catch { state = null; } }
     }
     const current = Array.isArray(state?.market?.indices) ? state.market.indices : [];
     if (current.length >= 4) return state;
     const fallback = await seedBotMarket();
     if (fallback.indices.length < 4) return state;
     const merged = [...current];
-    for (const item of fallback.indices) {
-      if (!merged.some(x => String(x?.ticker || '').toUpperCase() === String(item?.ticker || '').toUpperCase())) merged.push(item);
-    }
-    const next = {
-      ...(state || {}),
-      market: {
-        ...(state?.market || {}), indices: merged,
-        timestamp: fallback.timestamp, source: state?.market?.source || fallback.source
-      }
-    };
+    for (const item of fallback.indices) if (!merged.some(x => String(x?.ticker || '').toUpperCase() === String(item?.ticker || '').toUpperCase())) merged.push(item);
+    const next = { ...(state || {}), market: { ...(state?.market || {}), indices: merged, timestamp: fallback.timestamp, source: state?.market?.source || fallback.source } };
     if (env.ML_KV) await env.ML_KV.put('state/latest', JSON.stringify(next), { expirationTtl: 3600 });
     return next;
   } catch {
@@ -125,37 +85,25 @@ export default {
       if (response) return response;
     }
     if (url.pathname === '/api/bot/crypto') {
-      try {
-        return Response.json({ ok: true, mode: 'PAPER', ...await getCryptoDecision(env) }, { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
-      } catch (e) {
-        return Response.json({ ok: false, mode: 'PAPER', error: String(e.message || e) }, { status: 502, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
-      }
+      try { return Response.json({ ok: true, mode:'PAPER', ...await getCryptoDecision(env) }, { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
+      catch (e) { return Response.json({ ok: false, mode:'PAPER', error: String(e.message || e) }, { status: 502, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
     }
     if (url.pathname === '/api/bot/decision') {
       const decision = await getBotDecision(env);
-      if (!decision) return Response.json({ ok: false, mode: 'PAPER', status: 'NO_DATA', message: 'Nessuna decisione server disponibile. Attendi la prima scansione.' }, { status: 503, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
+      if (!decision) return Response.json({ ok: false, mode:'PAPER', status: 'NO_DATA', message: 'Nessuna decisione server disponibile. Attendi la prima scansione.' }, { status: 503, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
       return Response.json({ ok: true, ...decision }, { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
     }
     if (url.pathname === '/api/bot/market-test') {
       try {
-        const u = new URL(request.url);
-        u.pathname = '/api/live'; u.search = '?bot_market_test=' + Date.now();
+        const u = new URL(request.url); u.pathname = '/api/live'; u.search = '?bot_market_test=' + Date.now();
         const r = await aiWorker.fetch(new Request(u.toString(), { method: 'GET', headers: { Accept: 'application/json', 'Cache-Control': 'no-cache', Pragma: 'no-cache' } }), env, ctx);
-        const live = await r.json();
-        const alpaca = await refreshAlpacaEquities(env, live);
-        const yahoo = await seedBotMarket();
+        const live = await r.json(); const alpaca = await refreshAlpacaEquities(env, live); const yahoo = await seedBotMarket();
         return Response.json({ ok: true, alpaca: { ok: alpaca.ok, added: alpaca.added, error: alpaca.error || null }, yahoo: { count: yahoo.indices.length, coverage: yahoo.coverage, failures: yahoo.failures }, liveMarketCount: Array.isArray(live?.market?.indices) ? live.market.indices.length : 0 }, { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
-      } catch (e) {
-        return Response.json({ ok: false, error: String(e.message || e) }, { status: 500, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
-      }
+      } catch (e) { return Response.json({ ok: false, error: String(e.message || e) }, { status: 500, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
     }
     if (url.pathname === '/api/bot/plan') {
-      try {
-        await ensureBotState(env);
-        return Response.json(await runAutoPaperBot(env, { execute: false }), { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
-      } catch (e) {
-        return Response.json({ ok: false, mode: 'PAPER', status: 'ERROR', error: String(e.message || e) }, { status: 500, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
-      }
+      try { await ensureBotState(env); return Response.json(await runAutoPaperBot(env, { execute: false }), { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
+      catch (e) { return Response.json({ ok: false, mode:'PAPER', status: 'ERROR', error: String(e.message || e) }, { status: 500, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
     }
     if (url.pathname === '/api/bot/run') {
       if (request.method !== 'POST') return Response.json({ ok: false, error: 'POST richiesto' }, { status: 405 });
@@ -164,13 +112,10 @@ export default {
         const result = await runAutoPaperBot(env);
         ctx.waitUntil(refreshBotState(env, ctx, request).catch(() => false));
         return Response.json(result, { headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
-      } catch (e) {
-        return Response.json({ ok: false, mode: 'PAPER', status: 'ERROR', error: String(e.message || e) }, { status: 500, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
-      }
+      } catch (e) { return Response.json({ ok: false, mode:'PAPER', status: 'ERROR', error: String(e.message || e) }, { status: 500, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } }); }
     }
     if (url.pathname === '/api/live') {
-      const response = await aiWorker.fetch(request, env, ctx);
-      const data = await response.json();
+      const response = await aiWorker.fetch(request, env, ctx); const data = await response.json();
       return Response.json(slimLive(data), { status: response.status, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' } });
     }
     return aiWorker.fetch(request, env, ctx);
