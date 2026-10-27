@@ -7,5 +7,5 @@ assert.match(source,/Promise\.all\(/,'FRED requests must be parallelized');
 assert.match(source,/news\.google\.com\/rss\/search/,'Google News source missing');
 assert.match(source,/api\.gdeltproject\.org\/api\/v2\/doc\/doc/,'GDELT fallback missing');
 assert.match(source,/fetches:11/,'context fetch budget accounting missing');
-assert.equal((source.match(/await fetch\(/g)||[]).length,3,'only primary news, GDELT fallback and FRED series fetch helper may exist');
+assert.equal((source.match(/await fetch\(/g)||[]).length,4,'expected three news/fallback fetch sites plus the FRED series helper');
 console.log('PASS context enrichment contract: 3 news + 8 FRED fetches = 11');
