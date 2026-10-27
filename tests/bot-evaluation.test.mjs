@@ -23,7 +23,7 @@ const openWeekdayTimes=(base,count)=>{const out=[];let t=base;while(out.length<c
 {
   const savedNow=Date.now; Date.now=()=>Date.parse('2026-10-28T15:00:00Z');
   try {
-    const now=Date.now(),e=env(),records=[oldRecord(now-61*60*1000,100,[{family:'market',direction:1,confidence:70,strength:.5},{family:'news',direction:0,confidence:50,strength:0}]),oldRecord(now-25*60*60*1000,100,[{family:'market',direction:-1,confidence:70,strength:.5}]),oldRecord(now-6*24*60*60*1000,100,[{family:'crypto',direction:1,confidence:70,strength:.5}])];
+    const now=Date.now(),e=env(),records=[oldRecord(now-61*60*1000,100,[{family:'market',direction:1,confidence:70,strength:.5},{family:'news',direction:0,confidence:50,strength:0}]),oldRecord(now-25*60*60*1000,104,[{family:'market',direction:-1,confidence:70,strength:.5}]),oldRecord(now-6*24*60*60*1000,100,[{family:'crypto',direction:1,confidence:70,strength:.5}])];
     e.ML_KV.data.set('bot/signals/v1',JSON.stringify(records)); const report=await evaluateSignals(e,state(102,98));
     assert.equal(report.horizons.h1.market.n,2); assert.equal(report.horizons.h1.news,undefined,'neutral modules must not count'); assert.equal(report.horizons.h1.market.label,'Campione insufficiente');
     assert.equal(report.horizons.h24.market.n,1); assert.equal(report.horizons.h24.market.hits,1,'SHORT must hit when return is negative'); assert.equal(report.horizons.h5d.crypto.n,1); assert.equal(report.horizons.h5d.crypto.hits,0,'LONG must miss when return is negative'); assert.equal(report.horizons.h24.market.baseline,0); assert.equal(report.horizons.h24.market.edge,null,'insufficient samples never present edge');
