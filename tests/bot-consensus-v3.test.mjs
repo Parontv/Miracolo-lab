@@ -23,9 +23,9 @@ const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>
 
 // Numeric WAIT -> LONG example: same 100% dataCoverage, adding an independent third vote crosses the rule.
 {
-  const base=[m('market',1,.14,80,.8),m('technical',1,.17,80,.8),m('historical',1,.07,80,.8),m('news',1,.13,75,.6),m('macro',0,.13,50,0),m('flow',0,.07,50,0),m('crypto',0,.08,50,0),m('backtest',0,.06,50,0),m('learning',0,.04,50,0),m('memory',0,.03,50,0)];
+  const base=[m('market',1,.14,80,.8),m('technical',1,.17,80,.8),m('historical',1,.07,80,.8),m('news',1,.13,75,.6),m('macro',0,.13,50,0),m('flow',0,.07,50,0),m('crypto',0,.08,50,0),m('backtest',0,.06,50,0),m('learning',0,.04,50,0),m('memory',0,.03,50,0),m('ai',0,.08,50,0)];
   const wait=consensus(base);
-  assert.equal(wait.dataCoverage,.92);
+  assert.equal(wait.dataCoverage,1);
   assert.equal(wait.families,2);
   assert.equal(wait.direction,0);
   const long=consensus(base.map(x=>x.family==='macro'?m('macro',1,.13,75,.6):x));
