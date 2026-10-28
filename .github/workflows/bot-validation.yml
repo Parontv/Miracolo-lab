@@ -5,6 +5,7 @@ on:
     branches: [main, fix/bot-consensus-v3]
     paths:
       - 'bot-server-engine.js'
+      - 'bot-context-enrichment.js'
       - 'bot-risk-engine.js'
       - 'bot-crypto-engine.js'
       - 'news-event-engine.js'
