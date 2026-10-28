@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { consensus, flowModule, aiModule } from '../bot-server-engine.js';
+import { parseFredCsv } from '../bot-context-enrichment.js';
 
 const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>({family,direction,weight,confidence,strength,dataAvailable,status:dataAvailable?(direction?'CONTRIBUISCE':'READY'):'NO_DATA',evidence:[family],coverage:dataAvailable?1:0});
+
+// FRED's current CSV export may use observation_date rather than DATE; blanks/dots must not become fake zeros.
+{
+  const rows=parseFredCsv('observation_date,CPIAUCSL\\n2026-01-01,321.1\\n2026-02-01,.\\n2026-03-01,322.4\\n','CPIAUCSL');
+  assert.deepEqual(rows,[{date:'2026-01-01',value:321.1},{date:'2026-03-01',value:322.4}]);
+}
 
 // dataCoverage includes dataAvailable modules even when their direction is neutral.
 {
