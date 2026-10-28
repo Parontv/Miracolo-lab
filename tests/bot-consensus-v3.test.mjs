@@ -6,7 +6,7 @@ const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>
 
 // FRED's current CSV export may use observation_date rather than DATE; blanks/dots must not become fake zeros.
 {
-  const rows=parseFredCsv('observation_date,CPIAUCSL\\n2026-01-01,321.1\\n2026-02-01,.\\n2026-03-01,322.4\\n','CPIAUCSL');
+  const rows=parseFredCsv('observation_date,CPIAUCSL\n2026-01-01,321.1\n2026-02-01,.\n2026-03-01,322.4\n','CPIAUCSL');
   assert.deepEqual(rows,[{date:'2026-01-01',value:321.1},{date:'2026-03-01',value:322.4}]);
 }
 
