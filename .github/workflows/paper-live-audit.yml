@@ -25,7 +25,7 @@ jobs:
           import json, os, sys, time, urllib.request, urllib.error
           base=os.environ['BASE'].rstrip('/')
           def call(path):
-              req=urllib.request.Request(base+path+('?ts=' if '?' not in path else '&ts=')+str(time.time_ns()),headers={'Accept':'application/json','Cache-Control':'no-cache','Pragma':'no-cache'})
+              req=urllib.request.Request(base+path+('?ts=' if '?' not in path else '&ts=')+str(time.time_ns()),headers={'Accept':'application/json','Cache-Control':'no-cache','Pragma':'no-cache','User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'})
               try:
                   with urllib.request.urlopen(req,timeout=60) as r:
                       return r.status,json.load(r)
