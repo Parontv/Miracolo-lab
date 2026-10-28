@@ -6,6 +6,7 @@ import { getCryptoDecision } from './bot-crypto-engine.js';
 import { alpacaRequest } from './alpaca-paper.js';
 import { refreshAlpacaEquities } from './alpaca-market-fallback.js';
 import { seedBotMarket } from './bot-market-seed.js';
+import { refreshNewsAndMacro } from './bot-context-enrichment.js';
 import { recordSignals, evaluateSignals } from './bot-evaluation.js';
 const LAST_RUN='bot/last-run';
 async function writeRun(env,value){if(!env.ML_KV)throw Error('KV ML_KV binding missing');await env.ML_KV.put(LAST_RUN,JSON.stringify(value),{expirationTtl:86400})}
@@ -15,6 +16,18 @@ function slimLive(data) {
   if (out.news && typeof out.news === 'object') { const news = { ...out.news }; if (Array.isArray(news.items)) news.items = news.items.slice(0, 120).map(x => ({ title: x.title, date: x.date, url: x.url || x.link, source: x.source, type: x.type, cat: x.cat, score: x.score, description: String(x.description || x.summary || '').slice(0, 500) })); delete news.categories; out.news = news; }
   if (out.ai && typeof out.ai === 'object') out.ai = { ...out.ai, commentary: String(out.ai.commentary || '').slice(0, 3500), thesis: String(out.ai.thesis || '').slice(0, 1800) };
   return out;
+}
+async function refreshBotContext(env) {
+  const cacheKey='bot/context-enrichment/latest';
+  try {
+    const cachedRaw=await env.ML_KV?.get(cacheKey);
+    if(cachedRaw){const cached=JSON.parse(cachedRaw);if(Date.now()-Date.parse(cached.timestamp||'')<10*60*1000)return {...cached,cached:true};}
+  } catch(e) { console.error('Bot context cache read failed',e); }
+  const fresh=await refreshNewsAndMacro();
+  const enriched={...fresh,timestamp:fresh.timestamp||new Date().toISOString()};
+  try { if(env.ML_KV) await env.ML_KV.put(cacheKey,JSON.stringify(enriched),{expirationTtl:3600}); }
+  catch(e) { console.error('Bot context cache write failed',e); }
+  return enriched;
 }
 async function refreshBotState(env, ctx, request) {
   const started=Date.now();
@@ -26,8 +39,18 @@ async function refreshBotState(env, ctx, request) {
     const fallback = await refreshAlpacaEquities(env, live);
     if (fallback.ok && fallback.added >= 4) live = fallback.state;
     else { const publicSeed = await seedBotMarket(); if (publicSeed.indices.length >= 4) { const existing = Array.isArray(live.market.indices) ? live.market.indices : []; const additions = publicSeed.indices.filter(p => !existing.some(x => String(x?.ticker || '').toUpperCase() === String(p?.ticker || '').toUpperCase())); live = { ...live, market: { ...(live.market || {}), indices: [...existing, ...additions], timestamp: publicSeed.timestamp, source: 'Yahoo Finance fallback' } }; } else if (!fallback.ok) live.market = { ...(live.market || {}), botMarketFallback: { ok: false, error: fallback.error || 'unavailable', publicSeedCoverage: publicSeed.coverage, publicSeedFailures: publicSeed.failures } }; }
+    let contextRefresh=null;
+    try {
+      contextRefresh=await refreshBotContext(env);
+      const currentNews=Array.isArray(live.news?.items)?live.news.items:[];
+      const freshNews=Array.isArray(contextRefresh.news?.items)?contextRefresh.news.items:[];
+      const seen=new Set();
+      const mergedNews=[...freshNews,...currentNews].filter(item=>{const key=String(item?.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(!key||seen.has(key))return false;seen.add(key);return true}).slice(0,180);
+      live={...live,news:{...(live.news||{}),items:mergedNews,timestamp:contextRefresh.news?.timestamp||contextRefresh.timestamp,contextSource:contextRefresh.news?.source||'RSS'},market:{...(live.market||{}),quantitative:{groups:contextRefresh.quantitative?.groups||{},timestamp:contextRefresh.quantitative?.timestamp||contextRefresh.timestamp,source:contextRefresh.quantitative?.source||'FRED',coverage:contextRefresh.quantitative?.coverage||{available:0,total:8},errors:contextRefresh.quantitative?.errors||[]}}};
+      if(env.ML_KV&&contextRefresh.quantitative)await env.ML_KV.put('quantitative/latest-v2',JSON.stringify(contextRefresh.quantitative),{expirationTtl:3600});
+    } catch(e) { console.error('Bot context enrichment failed',e); }
     if (env.ML_KV) await env.ML_KV.put('state/latest', JSON.stringify(live), { expirationTtl: 3600 });
-    return {ok:true,state:live,durationMs:Date.now()-started};
+    return {ok:true,state:live,durationMs:Date.now()-started,context:{ok:Boolean(contextRefresh),cached:Boolean(contextRefresh?.cached),news:contextRefresh?.news?.items?.length||0,fred:contextRefresh?.quantitative?.coverage?.available||0,errors:contextRefresh?.errors||[]}};
   } catch(e) { console.error('refreshBotState failed',e); return {ok:false,state:null,error:String(e.message||e),durationMs:Date.now()-started}; }
 }
 async function ensureBotState(env) {
