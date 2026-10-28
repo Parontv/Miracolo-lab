@@ -35,12 +35,24 @@ const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>
   assert.ok(long.score>=.2);
 }
 
-// Flow uses only real quote sizes for imbalance and never treats prices/sizes themselves as directional signals.
+// Flow requires at least three valid two-sided books and never treats one-sided liquidity as a signal.
 {
-  const ready=flowModule({market:{indices:[{ticker:'SPY',bidPrice:769.47,askPrice:769.56,bidSize:1800,askSize:1200}]}});
+  const ready=flowModule({market:{indices:[
+    {ticker:'SPY',bidPrice:769.47,askPrice:769.56,bidSize:1800,askSize:1200},
+    {ticker:'QQQ',bidPrice:600,askPrice:600.1,bidSize:900,askSize:600},
+    {ticker:'IWM',bidPrice:220,askPrice:220.1,bidSize:800,askSize:400},
+    {ticker:'XLY',bidPrice:100,askPrice:100.1,bidSize:100,askSize:0}
+  ]}});
   assert.equal(ready.dataAvailable,true);
-  assert.equal(ready.imbalance,(1800-1200)/(1800+1200));
+  assert.ok(ready.imbalance>0.15);
   assert.equal(ready.direction,1);
+  assert.equal(ready.evidence.length,3);
+  const oneSided=flowModule({market:{indices:[
+    {ticker:'SPY',bidPrice:769.47,askPrice:769.56,bidSize:1800,askSize:0},
+    {ticker:'QQQ',bidPrice:600,askPrice:600.1,bidSize:900,askSize:0}
+  ]}});
+  assert.equal(oneSided.status,'NO_DATA');
+  assert.equal(oneSided.dataAvailable,false);
   const empty=flowModule({market:{indices:[{ticker:'SPY',bidPrice:769.47,askPrice:769.56}]}});
   assert.equal(empty.status,'NO_DATA');
 }
