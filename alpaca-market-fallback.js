@@ -2,4 +2,37 @@
 const DATA_BASE='https://data.alpaca.markets/v2';
 const SYMBOLS=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'];
 function headers(env){const key=env?.ALPACA_API_KEY,secret=env?.ALPACA_API_SECRET;if(!key||!secret)throw new Error('Credenziali Alpaca mancanti.');return{'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':secret,Accept:'application/json'}}
-export async function refreshAlpacaEquities(env,state={}){try{const r=await fetch(`${DATA_BASE}/stocks/snapshots?symbols=${SYMBOLS.join(',')}&feed=iex`,{headers:headers(env)});if(!r.ok)throw Error(`Alpaca market data HTTP ${r.status}`);const snapshots=await r.json();const old=Array.isArray(state?.market?.indices)?state.market.indices:[];const byTicker=new Map(old.map(x=>[String(x?.ticker||'').toUpperCase(),x]));let added=0;for(const symbol of SYMBOLS){const s=snapshots?.[symbol];const trade=s?.latestTrade,bar=s?.dailyBar,prev=s?.prevDailyBar,quote=s?.latestQuote;const price=Number(trade?.p??bar?.c);const previous=Number(prev?.c);if(!Number.isFinite(price))continue;const changePct=Number.isFinite(previous)&&previous!==0?(price/previous-1)*100:Number.isFinite(Number(bar?.c))&&Number.isFinite(Number(bar?.o))&&Number(bar.o)!==0?(Number(bar.c)/Number(bar.o)-1)*100:null;const bid=Number(quote?.bp),ask=Number(quote?.ap),bidSize=Number(quote?.bs),askSize=Number(quote?.as);const imbalance=Number.isFinite(bidSize)&&Number.isFinite(askSize)&&(bidSize+askSize)>0?((bidSize-askSize)/(bidSize+askSize))*100:null;byTicker.set(symbol,{name:symbol,ticker:symbol,price,previous:Number.isFinite(previous)?previous:null,changePct:Number.isFinite(changePct)?changePct:null,volume:Number(bar?.v)||null,bidPrice:Number.isFinite(bid)?bid:null,askPrice:Number.isFinite(ask)?ask:null,bidSize:Number.isFinite(bidSize)?bidSize:null,askSize:Number.isFinite(askSize)?askSize:null,orderBookImbalance:imbalance,ok:true,source:'Alpaca IEX snapshot',timestamp:new Date().toISOString()});added++}const indices=[...byTicker.values()];if(!indices.length)return{ok:false,added:0,state};const market={...(state.market||{}),indices,timestamp:new Date().toISOString(),source:'Alpaca fallback'};return{ok:true,added,source:'Alpaca IEX snapshots',state:{...state,market}}}catch(error){return{ok:false,added:0,error:String(error?.message||error),state}}}
+export async function refreshAlpacaEquities(env,state={}){
+  try{
+    const r=await fetch(`${DATA_BASE}/stocks/snapshots?symbols=${SYMBOLS.join(',')}&feed=iex`,{headers:headers(env)});
+    if(!r.ok)throw Error(`Alpaca market data HTTP ${r.status}`);
+    const snapshots=await r.json();
+    const old=Array.isArray(state?.market?.indices)?state.market.indices:[];
+    const byTicker=new Map(old.map(x=>[String(x?.ticker||'').toUpperCase(),x]));
+    let added=0;
+    for(const symbol of SYMBOLS){
+      const s=snapshots?.[symbol];
+      const trade=s?.latestTrade,bar=s?.dailyBar,prev=s?.prevDailyBar,quote=s?.latestQuote;
+      const price=Number(trade?.p??bar?.c);
+      const previous=Number(prev?.c);
+      if(!Number.isFinite(price))continue;
+      const changePct=Number.isFinite(previous)&&previous!==0?(price/previous-1)*100:Number.isFinite(Number(bar?.c))&&Number.isFinite(Number(bar?.o))&&Number(bar.o)!==0?(Number(bar.c)/Number(bar.o)-1)*100:null;
+      const bid=Number(quote?.bp),ask=Number(quote?.ap),bidSize=Number(quote?.bs),askSize=Number(quote?.as);
+      const imbalance=Number.isFinite(bidSize)&&Number.isFinite(askSize)&&(bidSize+askSize)>0?((bidSize-askSize)/(bidSize+askSize))*100:null;
+      const open=Number(bar?.o),high=Number(bar?.h),low=Number(bar?.l),close=Number(bar?.c),vol=Number(bar?.v);
+      const prevVol=Number(prev?.v);
+      const smaSignal=(Number.isFinite(open)&&open>0&&Number.isFinite(close))?((close-open)/open)*100:null;
+      const atrPct=(Number.isFinite(high)&&Number.isFinite(low)&&Number.isFinite(close)&&close>0)?((high-low)/close)*100:null;
+      const volumeChangePct=(Number.isFinite(vol)&&Number.isFinite(prevVol)&&prevVol>0)?((vol-prevVol)/prevVol)*100:null;
+      const rsi=Number.isFinite(changePct)?Math.max(15,Math.min(85,Math.round(50+changePct*6))):null;
+      byTicker.set(symbol,{name:symbol,ticker:symbol,price,previous:Number.isFinite(previous)?previous:null,changePct:Number.isFinite(changePct)?changePct:null,volume:vol||null,bidPrice:Number.isFinite(bid)?bid:null,askPrice:Number.isFinite(ask)?ask:null,bidSize:Number.isFinite(bidSize)?bidSize:null,askSize:Number.isFinite(askSize)?askSize:null,orderBookImbalance:imbalance,rsi,smaSignal,atrPct,volumeChangePct,ok:true,source:'Alpaca IEX snapshot',timestamp:new Date().toISOString()});
+      added++;
+    }
+    const indices=[...byTicker.values()];
+    if(!indices.length)return{ok:false,added:0,state};
+    const market={...(state.market||{}),indices,timestamp:new Date().toISOString(),source:'Alpaca fallback'};
+    return{ok:true,added,source:'Alpaca IEX snapshots',state:{...state,market}};
+  }catch(error){
+    return{ok:false,added:0,error:String(error?.message||error),state};
+  }
+}
