@@ -36,7 +36,7 @@ try{
 
   global.fetch=async(url,options={})=>{
     const u=String(url),method=String(options.method||'GET').toUpperCase();
-    assert.match(u,/paper-api\\.alpaca\\.markets\\/v2/,'exit must use Alpaca Paper endpoint');
+    assert.match(u,/paper-api\.alpaca\.markets\/v2/,'exit must use Alpaca Paper endpoint');
     if(u.endsWith('/positions')&&method==='GET')return new Response(JSON.stringify([{symbol:'BTCUSD',qty:'0.0036'}]),{status:200});
     if(u.includes('/orders?status=open')&&method==='GET')return new Response(JSON.stringify([{id:'old-protection',symbol:'BTC/USD',side:'sell',status:'new'}]),{status:200});
     if(u.endsWith('/orders/old-protection')&&method==='DELETE')return new Response('',{status:204});
