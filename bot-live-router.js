@@ -26,7 +26,7 @@ export default {
   const botResult=await runBot(env,botState);
   run.phases.push({name:'decision',fetches:0,status:botResult?.ok?'OK':'NO_DATA',direction:botResult?.decision?.direction??null,confidence:botResult?.decision?.confidence??null});
   if(!botResult?.ok){run.errors.push('Bot decision unavailable: '+( botResult?.decision?.reason||'NO_DATA'));run.status='NO_DATA'}
-  else{const executed=await runAutoPaperBot(env);const ev=await evaluationPhase(env,executed,botState);run.phases.push(ev.phase);run.fetches+=ev.phase.fetches;run.errors.push(...ev.phase.errors);await journalOrder(env,executed,ev.phase.recordId,ev.preloadedJournal);run.status='OK'}
+  else{const executed=await runAutoPaperBot(env,{stateOverride:botState});const ev=await evaluationPhase(env,executed,botState);run.phases.push(ev.phase);run.fetches+=ev.phase.fetches;run.errors.push(...ev.phase.errors);await journalOrder(env,executed,ev.phase.recordId,ev.preloadedJournal);run.status='OK'}
  }catch(e){run.status='ERROR';run.errors.push(String(e.message||e));console.error('Bot cron failed',e)}run.completedAt=new Date().toISOString();run.durationMs=Date.now()-started;await write(env,LAST,run,86400)},
  async fetch(request,env,ctx){const u=new URL(request.url);
   /* === API routes === */
