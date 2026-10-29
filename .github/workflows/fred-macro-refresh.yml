@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: miracolo-fred-macro-mirror
@@ -118,41 +118,37 @@ jobs:
             json.dump(payload, f, ensure_ascii=False, separators=(",",":"))
           print(json.dumps({"timestamp":now,"coverage":payload["coverage"],"series":[{"series":x["series"],"status":x["status"],"asOf":x.get("asOf"),"error":x.get("error")} for x in results]}, ensure_ascii=False, indent=2))
           PY
-      - name: Publish macro data through authenticated Worker
+      - name: Publish updated public macro snapshot
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          WORKER_URL: https://miracolo-lab.listaconcerti.workers.dev
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          token="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
-          printf '%s' "$token" | npx wrangler@4 secret put FRED_INGEST_TOKEN --config=wrangler.toml
-          FRED_INGEST_TOKEN="$token" python - <<'PY'
-          import json, os, time, urllib.request, urllib.error
-          from urllib.error import HTTPError, URLError
-          url=os.environ['WORKER_URL'].rstrip('/')+'/api/bot/fred-ingest'
-          token=os.environ['FRED_INGEST_TOKEN']
-          payload=json.load(open('/tmp/quantitative-latest.json',encoding='utf-8'))
-          body=json.dumps(payload,separators=(',',':')).encode()
-          req=urllib.request.Request(url,data=body,method='POST',headers={
-            'Authorization':'Bearer '+token,'Content-Type':'application/json',
-            'Accept':'application/json','Cache-Control':'no-store','User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
-          })
-          last=None
-          for attempt in range(8):
-            try:
-              with urllib.request.urlopen(req,timeout=25) as response:
-                result=json.load(response)
-              print(json.dumps(result,ensure_ascii=False,indent=2))
-              if not result.get('ok') or not result.get('stored'):
-                raise SystemExit('Worker did not confirm FRED KV storage')
-              break
-            except HTTPError as exc:
-              detail=exc.read().decode('utf-8','replace')
-              last=f'HTTP {exc.code}: {detail[:400]}'
-              if exc.code not in (401,404,502,503) or attempt==7:
-                raise SystemExit('FRED ingest failed: '+last)
-            except (URLError, TimeoutError) as exc:
-              last=str(exc)
-              if attempt==7: raise SystemExit('FRED ingest failed: '+last)
-            time.sleep(5)
+          python - <<'PY'
+          import json, os
+          fresh=json.load(open('/tmp/quantitative-latest.json',encoding='utf-8'))
+          path='public/fred-macro.json'
+          try:
+            old=json.load(open(path,encoding='utf-8'))
+          except Exception:
+            old={}
+          def signature(data):
+            rows=data.get('groups',{}).get('macro',[])
+            return sorted((x.get('series'),x.get('value'),x.get('asOf'),x.get('status')) for x in rows)
+          if signature(old)==signature(fresh):
+            print('FRED values unchanged; existing snapshot retained.')
+          else:
+            os.makedirs('public',exist_ok=True)
+            with open(path,'w',encoding='utf-8') as f:
+              json.dump(fresh,f,ensure_ascii=False,separators=(',',':'))
+            print('New FRED snapshot prepared:',fresh.get('coverage'))
           PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/fred-macro.json
+          if git diff --cached --quiet; then
+            echo "No FRED data changes to publish."
+          else
+            git commit -m "chore: refresh FRED macro snapshot"
+            git push origin HEAD:main
+            echo "Published FRED macro snapshot to public/fred-macro.json."
+          fi
