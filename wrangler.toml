@@ -6,6 +6,9 @@ compatibility_date = "2026-08-27"
 [triggers]
 crons = ["*/5 * * * *"]
 
+[ai]
+binding = "AI"
+
 [[kv_namespaces]]
 binding = "ML_KV"
 id = "aa163fd0c37a44bf8be0fbdc03a36316"
