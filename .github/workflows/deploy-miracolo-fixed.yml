@@ -105,6 +105,24 @@ jobs:
           symbol=(plan.get('botAction') or {}).get('symbol')
           print(f'PLAN ACTION: {action} {symbol or ""}'.strip())
           print('MODULES:', ', '.join(f"{m.get('family')}={m.get('status')}" for m in modules))
+          decision_code,decision=call('/api/bot/decision')
+          print('=== BOT DECISION ENDPOINT ===');print(json.dumps(decision,ensure_ascii=False,indent=2))
+          if decision_code!=200 or not decision.get('ok') or decision.get('mode')!='PAPER':
+              sys.exit('FAIL: /api/bot/decision non disponibile o non PAPER')
+          decision_modules=decision.get('modules') or []
+          if len(decision_modules)!=11:
+              sys.exit(f'FAIL: /api/bot/decision expected 11 modules, got {len(decision_modules)}')
+          decision_core=decision.get('decision') or {}
+          if not all(k in decision_core for k in ('direction','confidence','dataCoverage','agreement')):
+              sys.exit('FAIL: /api/bot/decision contract incompleto')
+          fred_code,fred=call('/api/bot/fred-diagnostic')
+          print('=== FRED DIAGNOSTIC ===');print(json.dumps(fred,ensure_ascii=False,indent=2))
+          if fred_code!=200 or not fred.get('ok'):
+              print('WARNING: FRED diagnostic non riuscita; deploy non bloccato per indisponibilità del provider.')
+          elif not (fred.get('coverage') or {}).get('available',0):
+              print('WARNING: FRED non restituisce osservazioni numeriche; controllare errors/seriesErrors.')
+          ai_code,ai=call('/api/ai')
+          print('=== AI STATUS ===');print(json.dumps(ai,ensure_ascii=False,indent=2))
           eval_code,report=call('/api/bot/eval')
           print('=== BOT EVAL ===');print(json.dumps(report,ensure_ascii=False,indent=2))
           if eval_code!=200 or not report.get('ok'):sys.exit('FAIL: /api/bot/eval non disponibile')
