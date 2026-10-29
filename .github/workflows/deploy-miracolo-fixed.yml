@@ -2,7 +2,7 @@ name: Miracolo Lab — Fixed Deploy
 
 on:
   push:
-    branches: [main, fix/bot-decision-live, fix/bot-ai-fred-live-20261029, feature/bot-evaluation-v1, feature/bot-evaluation-final, feature/bot-eval-live-verify]
+    branches: [main, fix/bot-decision-live, fix/bot-ai-fred-live-20261029, fix/fred-proxy-fallback-20261029, feature/bot-evaluation-v1, feature/bot-evaluation-final, feature/bot-eval-live-verify]
     paths:
       - '*.js'
       - 'public/**'
