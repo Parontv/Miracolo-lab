@@ -56,7 +56,7 @@ try{
   assert.equal(exit.executed,true);assert.equal(exit.qty,0.0036);assert.equal(exit.cancelledOrders,1);
   global.fetch=async(url,options={})=>{
     const u=String(url),method=String(options.method||'GET').toUpperCase();
-    assert.match(u,/paper-api\\.alpaca\\.markets\\/v2/,'equity entry must use Alpaca Paper endpoint');
+    assert.ok(u.startsWith('https://paper-api.alpaca.markets/v2/'),'equity entry must use Alpaca Paper endpoint');
     assert.equal(method,'POST');
     const body=JSON.parse(options.body);assert.equal(body.side,'buy');assert.equal(body.qty,1);assert.equal(body.notional,undefined);assert.equal(body.order_class,'bracket');assert.ok(body.stop_loss?.stop_price);assert.ok(body.take_profit?.limit_price);
     return new Response(JSON.stringify({id:'paper-equity-bracket',status:'accepted',symbol:'SPY'}),{status:200});
