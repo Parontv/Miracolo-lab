@@ -2,7 +2,7 @@ name: Bot Validation
 
 on:
   push:
-    branches: [main, fix/bot-consensus-v3]
+    branches: [main, fix/bot-consensus-v3, fix/bot-ai-fred-live-20261029]
     paths:
       - 'bot-server-engine.js'
       - 'bot-context-enrichment.js'
