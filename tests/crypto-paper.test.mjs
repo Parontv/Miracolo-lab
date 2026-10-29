@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { getCryptoDecision } from '../bot-crypto-engine.js';
 import { executePaperDecision } from '../bot-paper-executor.js';
+import { cryptoAction } from '../bot-paper-auto.js';
 
 const originalFetch=global.fetch;
 try{
@@ -19,6 +20,10 @@ try{
   assert.equal(signal.marketOpen24x7,true);
   assert.ok(signal.orderBook.imbalance>0);
   assert.ok(signal.direction>=0);
+  assert.deepEqual(cryptoAction({ok:true,direction:0,confidence:50},{qty:'0.01',marketValue:98,unrealizedPl:-2}),{action:'SELL',reason:'BTC stop-loss automatico: perdita -2.00% oltre la soglia -1.50%.'});
+  assert.deepEqual(cryptoAction({ok:true,direction:0,confidence:50},{qty:'0.01',marketValue:103,unrealizedPl:3}),{action:'SELL',reason:'BTC take-profit automatico: profitto 3.00% oltre la soglia +3.00%.'});
+  assert.equal(cryptoAction({ok:true,direction:-1,confidence:70},{qty:'0.01',marketValue:100,unrealizedPl:0}).action,'SELL');
+  assert.equal(cryptoAction({ok:true,direction:1,confidence:70},null).action,'BUY');
 
   const env={BOT_MODE:'PAPER',PAPER_AUTO_EXECUTION:'true',ALPACA_BASE_URL:'https://paper-api.alpaca.markets/v2',ALPACA_API_KEY:'test-key',ALPACA_API_SECRET:'test-secret'};
   global.fetch=async(url,options={})=>{
