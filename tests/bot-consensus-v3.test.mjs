@@ -64,6 +64,16 @@ const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>
   assert.equal(empty.status,'NO_DATA');
 }
 
+// AI cannot turn generic prose into a directional vote, and low confidence stays neutral.
+{
+  const weak=aiModule({ai:{status:'ok',model:'@cf/meta/llama-3.1-8b-instruct-fast',direction:'SHORT',confidence:50,headline:'Market Analysis for today',thesis:'The market seems uncertain.'}});
+  assert.equal(weak.direction,0);
+  assert.equal(weak.status,'READY');
+  const strong=aiModule({ai:{status:'ok',model:'@cf/meta/llama-3.1-8b-instruct-fast',direction:'SHORT',confidence:80,headline:'Risk-off',thesis:'Evidence-backed short setup.'}});
+  assert.equal(strong.direction,-1);
+  assert.equal(strong.status,'CONTRIBUISCE');
+}
+
 // Deterministic fallback is not counted as AI evidence.
 {
   const ai=aiModule({ai:{status:'READY',model:'Miracolo deterministic context',direction:'LONG',confidence:90}});
