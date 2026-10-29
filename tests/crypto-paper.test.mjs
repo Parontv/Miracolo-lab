@@ -54,6 +54,17 @@ try{
   };
   const exit=await executePaperDecision(env,{action:'SELL',symbol:'BTC/USD',notional:100,clientOrderId:'crypto-paper-exit-test'});
   assert.equal(exit.executed,true);assert.equal(exit.qty,0.0036);assert.equal(exit.cancelledOrders,1);
+  global.fetch=async(url,options={})=>{
+    const u=String(url),method=String(options.method||'GET').toUpperCase();
+    assert.match(u,/paper-api\\.alpaca\\.markets\\/v2/,'equity entry must use Alpaca Paper endpoint');
+    assert.equal(method,'POST');
+    const body=JSON.parse(options.body);assert.equal(body.side,'buy');assert.equal(body.qty,1);assert.equal(body.notional,undefined);assert.equal(body.order_class,'bracket');assert.ok(body.stop_loss?.stop_price);assert.ok(body.take_profit?.limit_price);
+    return new Response(JSON.stringify({id:'paper-equity-bracket',status:'accepted',symbol:'SPY'}),{status:200});
+  };
+  const equity=await executePaperDecision(env,{action:'BUY',symbol:'SPY',notional:100,referencePrice:100,clientOrderId:'equity-bracket-test'});
+  assert.equal(equity.executed,true);assert.equal(equity.orderClass,'bracket');
+  await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'QQQ',notional:100}),/prezzo di riferimento non disponibile/);
+  console.log('Equity bracket protection contract: PASS');
   console.log('BTC position-aware exit contract: PASS');
   console.log('BTC crypto decision contract: PASS');
   console.log('BTC paper execution contract: PASS');
