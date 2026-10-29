@@ -118,11 +118,41 @@ jobs:
             json.dump(payload, f, ensure_ascii=False, separators=(",",":"))
           print(json.dumps({"timestamp":now,"coverage":payload["coverage"],"series":[{"series":x["series"],"status":x["status"],"asOf":x.get("asOf"),"error":x.get("error")} for x in results]}, ensure_ascii=False, indent=2))
           PY
-      - name: Verify Cloudflare access
+      - name: Publish macro data through authenticated Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: npx wrangler@4 whoami
-      - name: Write verified macro data to ML_KV
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: npx wrangler@4 kv key put quantitative/latest-v2 --path=/tmp/quantitative-latest.json --binding=ML_KV --remote --config=wrangler.toml
+          WORKER_URL: https://miracolo-lab.listaconcerti.workers.dev
+        run: |
+          set -euo pipefail
+          token="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+          printf '%s' "$token" | npx wrangler@4 secret put FRED_INGEST_TOKEN --config=wrangler.toml
+          FRED_INGEST_TOKEN="$token" python - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+          from urllib.error import HTTPError, URLError
+          url=os.environ['WORKER_URL'].rstrip('/')+'/api/bot/fred-ingest'
+          token=os.environ['FRED_INGEST_TOKEN']
+          payload=json.load(open('/tmp/quantitative-latest.json',encoding='utf-8'))
+          body=json.dumps(payload,separators=(',',':')).encode()
+          req=urllib.request.Request(url,data=body,method='POST',headers={
+            'Authorization':'Bearer '+token,'Content-Type':'application/json',
+            'Accept':'application/json','Cache-Control':'no-store'
+          })
+          last=None
+          for attempt in range(8):
+            try:
+              with urllib.request.urlopen(req,timeout=25) as response:
+                result=json.load(response)
+              print(json.dumps(result,ensure_ascii=False,indent=2))
+              if not result.get('ok') or not result.get('stored'):
+                raise SystemExit('Worker did not confirm FRED KV storage')
+              break
+            except HTTPError as exc:
+              detail=exc.read().decode('utf-8','replace')
+              last=f'HTTP {exc.code}: {detail[:400]}'
+              if exc.code not in (401,404,502,503) or attempt==7:
+                raise SystemExit('FRED ingest failed: '+last)
+            except (URLError, TimeoutError) as exc:
+              last=str(exc)
+              if attempt==7: raise SystemExit('FRED ingest failed: '+last)
+            time.sleep(5)
+          PY
