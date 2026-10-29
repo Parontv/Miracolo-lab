@@ -1,0 +1,128 @@
+name: Miracolo Lab — FRED Macro Mirror
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fred-macro-refresh.yml'
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: miracolo-fred-macro-mirror
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch latest public FRED series
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv, io, json, os, time, urllib.request, urllib.error
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          from datetime import datetime, timezone
+          from urllib.parse import quote
+
+          SERIES = {
+            "CPIAUCSL": "CPI inflation",
+            "CPILFESL": "Core CPI inflation",
+            "UNRATE": "Unemployment",
+            "PAYEMS": "Nonfarm payrolls",
+            "GDPC1": "Real GDP",
+            "INDPRO": "Industrial production",
+            "M2SL": "M2 money supply",
+            "EFFR": "Fed Funds effective rate",
+          }
+          def fetch_series(series, label):
+            direct = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=" + series
+            urls = [
+              direct,
+              "https://api.codetabs.com/v1/proxy?quest=" + quote(direct, safe=""),
+              "https://api.allorigins.win/raw?url=" + quote(direct, safe=""),
+              "https://corsproxy.io/?url=" + quote(direct, safe=""),
+            ]
+            errors = []
+            for url in urls:
+              try:
+                req = urllib.request.Request(url, headers={
+                  "User-Agent": "MiracoloLab-FRED-Mirror/1.0",
+                  "Accept": "text/csv,text/plain,*/*"
+                })
+                with urllib.request.urlopen(req, timeout=7) as response:
+                  body = response.read().decode("utf-8-sig", "replace")
+                rows = list(csv.DictReader(io.StringIO(body)))
+                parsed = []
+                for row in rows:
+                  date = row.get("observation_date") or row.get("DATE") or row.get("date")
+                  value = row.get(series)
+                  if not date:
+                    vals = list(row.values())
+                    if len(vals) >= 2:
+                      date, value = vals[0], vals[1]
+                  try:
+                    number = float(value)
+                    if date and number == number:
+                      parsed.append((date, number))
+                  except (TypeError, ValueError):
+                    pass
+                if parsed:
+                  parsed.sort(key=lambda x: x[0])
+                  date, value = parsed[-1]
+                  previous = parsed[-2][1] if len(parsed) > 1 else None
+                  change = value - previous if previous is not None else None
+                  change_pct = (change / abs(previous) * 100) if previous not in (None, 0) else None
+                  return {"category":"macro","series":series,"label":label,"value":value,
+                          "previous":previous,"change":change,"changePct":change_pct,
+                          "status":"ok","asOf":date,"source":"FRED"}
+                errors.append(url.split("/")[2] + ": CSV without numeric observations")
+              except Exception as exc:
+                errors.append(url.split("/")[2] + ": " + str(exc)[:160])
+            return {"category":"macro","series":series,"label":label,"status":"unavailable",
+                    "source":"FRED","error":"; ".join(errors)}
+
+          results = []
+          with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(fetch_series, sid, label) for sid, label in SERIES.items()]
+            for future in as_completed(futures):
+              results.append(future.result())
+          results.sort(key=lambda x: list(SERIES).index(x["series"]))
+          available = [x for x in results if x.get("status") == "ok" and isinstance(x.get("value"), (int,float))]
+          errors = [x["series"] + ": " + x.get("error","unavailable") for x in results if x not in available]
+          if not available:
+            print(json.dumps({"available":0,"seriesResults":results}, ensure_ascii=False, indent=2))
+            raise SystemExit("FRED mirror: zero numeric series; KV not overwritten")
+          now = datetime.now(timezone.utc).isoformat()
+          payload = {
+            "timestamp": now,
+            "source": "FRED",
+            "provider": "GitHub Actions mirror",
+            "groups": {"macro": available},
+            "coverage": {"available": len(available), "total": len(SERIES)},
+            "errors": errors,
+            "seriesResults": results
+          }
+          with open("/tmp/quantitative-latest.json", "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, separators=(",",":"))
+          print(json.dumps({"timestamp":now,"coverage":payload["coverage"],"series":[{"series":x["series"],"status":x["status"],"asOf":x.get("asOf"),"error":x.get("error")} for x in results]}, ensure_ascii=False, indent=2))
+          PY
+      - name: Verify Cloudflare access
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler@4 whoami
+      - name: Write verified macro data to ML_KV
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler@4 kv key put quantitative/latest-v2 --path=/tmp/quantitative-latest.json --binding=ML_KV --remote --config=wrangler.toml
