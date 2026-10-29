@@ -33,6 +33,23 @@ try{
   assert.equal(execution.mode,'PAPER');
   assert.equal(execution.symbol,'BTC/USD');
   assert.equal(execution.timeInForce,'gtc');
+
+  global.fetch=async(url,options={})=>{
+    const u=String(url),method=String(options.method||'GET').toUpperCase();
+    assert.match(u,/paper-api\\.alpaca\\.markets\\/v2/,'exit must use Alpaca Paper endpoint');
+    if(u.endsWith('/positions')&&method==='GET')return new Response(JSON.stringify([{symbol:'BTCUSD',qty:'0.0036'}]),{status:200});
+    if(u.includes('/orders?status=open')&&method==='GET')return new Response(JSON.stringify([{id:'old-protection',symbol:'BTC/USD',side:'sell',status:'new'}]),{status:200});
+    if(u.endsWith('/orders/old-protection')&&method==='DELETE')return new Response('',{status:204});
+    if(u.endsWith('/orders')&&method==='POST'){
+      const body=JSON.parse(options.body);
+      assert.equal(body.side,'sell');assert.equal(body.qty,0.0036);assert.equal(body.notional,undefined);
+      return new Response(JSON.stringify({id:'paper-exit-order',status:'accepted',symbol:'BTC/USD'}),{status:200});
+    }
+    throw new Error('unexpected exit URL '+method+' '+u);
+  };
+  const exit=await executePaperDecision(env,{action:'SELL',symbol:'BTC/USD',notional:100,clientOrderId:'crypto-paper-exit-test'});
+  assert.equal(exit.executed,true);assert.equal(exit.qty,0.0036);assert.equal(exit.cancelledOrders,1);
+  console.log('BTC position-aware exit contract: PASS');
   console.log('BTC crypto decision contract: PASS');
   console.log('BTC paper execution contract: PASS');
 } finally { global.fetch=originalFetch; }
