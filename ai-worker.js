@@ -2,7 +2,7 @@ import baseWorker from './worker.js';
 
 const AI_STATE_KEY='state/latest';
 const AI_MODEL_DEFAULT='gemini-2.5-flash';
-const AI_BUILD='ML-AI-GEMINI-20260913-V3';
+const AI_BUILD='ML-AI-WORKERS-20261029-V4';
 const AI_MIN_INTERVAL_MS=60*60*1000;
 const AI_EDGE_CACHE_URL='https://miracolo-lab.listaconcerti.workers.dev/__internal/ai-result-cache';
 const NEWS_MIN_SAFE=50;
@@ -20,7 +20,7 @@ async function memoryRead(env,key){if(!env.ML_KV)return null;if(!/^memory\/snaps
 const clean=(v,max=700)=>String(v??'').replace(/\s+/g,' ').trim().slice(0,max);
 async function readKV(env,key){try{const v=await env.ML_KV.get(key);return v?JSON.parse(v):null}catch{return null}}
 async function writeKV(env,key,value){try{await env.ML_KV.put(key,JSON.stringify(value))}catch{}}
-async function readEdgeAI(){try{const cache=globalThis.caches?.default;if(!cache)return null;const response=await cache.match(new Request(AI_EDGE_CACHE_URL));if(!response)return null;const ai=await response.json(),generated=Date.parse(ai?.generatedAt||'')||0;const fallbackReason=String(ai?.fallbackReason||ai?.lastError||'');if(ai?.status==='fallback'&&/GEMINI_API_KEY non configurata|Workers AI risposta vuota|deprecated|binding non disponibile/i.test(fallbackReason))return null;const ttl=ai?.status==='ok'?AI_MIN_INTERVAL_MS:5*60*1000;return generated&&Date.now()-generated<ttl?ai:null}catch{return null}}
+async function readEdgeAI(){try{const cache=globalThis.caches?.default;if(!cache)return null;const response=await cache.match(new Request(AI_EDGE_CACHE_URL));if(!response)return null;const ai=await response.json(),generated=Date.parse(ai?.generatedAt||'')||0;if(ai?.build!==AI_BUILD)return null;const fallbackReason=String(ai?.fallbackReason||ai?.lastError||'');if(ai?.status==='fallback'&&/GEMINI_API_KEY non configurata|Workers AI risposta vuota|deprecated|binding non disponibile/i.test(fallbackReason))return null;const ttl=ai?.status==='ok'?AI_MIN_INTERVAL_MS:5*60*1000;return generated&&Date.now()-generated<ttl?ai:null}catch{return null}}
 async function writeEdgeAI(ai){try{const cache=globalThis.caches?.default;if(!cache||!ai)return;const ttl=ai.status==='ok'?AI_MIN_INTERVAL_MS/1000:300;await cache.put(new Request(AI_EDGE_CACHE_URL),Response.json(ai,{headers:{'Cache-Control':`public, max-age=${ttl}`,'Content-Type':'application/json'}}))}catch{}}
 function titleKey(v){return clean(v,220).toLowerCase().replace(/[^a-z0-9à-ÿ]+/gi,' ').trim()}
 
