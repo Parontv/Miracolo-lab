@@ -32,3 +32,29 @@ try {
 } finally {
   globalThis.fetch = originalFetch;
 }
+
+const mirrorRows = [
+  ['CPIAUCSL','CPI inflation'],['CPILFESL','Core CPI inflation'],['UNRATE','Unemployment'],
+  ['PAYEMS','Nonfarm payrolls'],['GDPC1','Real GDP'],['INDPRO','Industrial production'],
+  ['M2SL','M2 money supply'],['EFFR','Fed Funds effective rate']
+].map(([series,label],i)=>({category:'macro',series,label,value:100+i,previous:99+i,change:1,changePct:1,status:'ok',asOf:'2026-10-01',source:'FRED'}));
+const mirrorPayload={timestamp:'2026-10-29T20:00:00.000Z',source:'FRED',provider:'GitHub Actions mirror',groups:{macro:mirrorRows},coverage:{available:8,total:8},errors:[],seriesResults:mirrorRows};
+const mirrorSeen=[];
+globalThis.fetch=async url=>{
+  const u=String(url);mirrorSeen.push(u);
+  if(u.includes('raw.githubusercontent.com/Parontv/Miracolo-lab/main/public/fred-macro.json'))return new Response(JSON.stringify(mirrorPayload),{status:200});
+  if(u.includes('news.google.com'))return new Response('<rss><channel></channel></rss>',{status:200});
+  if(u.includes('gdeltproject.org'))return new Response(JSON.stringify({articles:[]}),{status:200});
+  if(u.includes('cnbc.com'))return new Response('<rss><channel></channel></rss>',{status:200});
+  throw new Error('FRED direct should not be called when mirror is available: '+u);
+};
+try {
+  const result=await refreshNewsAndMacro();
+  assert.equal(result.quantitative.provider,'GitHub Actions mirror');
+  assert.equal(result.quantitative.coverage.available,8);
+  assert.equal(result.macro.length,8);
+  assert.equal(mirrorSeen.filter(x=>x.includes('fred.stlouisfed.org')).length,0);
+  console.log('PASS GitHub FRED mirror fallback');
+} finally {
+  globalThis.fetch=originalFetch;
+}
