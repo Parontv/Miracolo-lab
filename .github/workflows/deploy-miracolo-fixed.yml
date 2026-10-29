@@ -69,6 +69,20 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler@4 deploy --config wrangler.toml
+      - name: Sync Gemini API key when configured in GitHub
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GEMINI_API_KEY: ${{ secrets.GOOGLE_GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          key="${GEMINI_API_KEY:-${GOOGLE_GEMINI_API_KEY:-}}"
+          if [ -n "$key" ]; then
+            printf '%s' "$key" | npx wrangler@4 secret put GEMINI_API_KEY --config wrangler.toml
+            echo "Gemini secret synced to Cloudflare Worker (value hidden)."
+          else
+            echo "No Gemini key present in GitHub Actions secrets; existing Cloudflare secret left unchanged."
+          fi
       - name: Verify production without placing orders
         env:
           WORKER_URL: https://miracolo-lab.listaconcerti.workers.dev
@@ -121,6 +135,11 @@ jobs:
               print('WARNING: FRED diagnostic non riuscita; deploy non bloccato per indisponibilità del provider.')
           elif not (fred.get('coverage') or {}).get('available',0):
               print('WARNING: FRED non restituisce osservazioni numeriche; controllare errors/seriesErrors.')
+          ai_diag_code,ai_diag=call('/api/ai/diagnostic')
+          print('=== AI DIAGNOSTIC ===');print(json.dumps(ai_diag,ensure_ascii=False,indent=2))
+          if ai_diag_code!=200 or not ai_diag.get('ok'): print('WARNING: AI diagnostic endpoint unavailable')
+          elif not ai_diag.get('keyConfigured'): print('WARNING: Gemini API key is not configured in Worker environment')
+          elif ai_diag.get('status') not in ('ok','cached'): print('WARNING: Gemini analysis is not live; inspect status/fallbackReason/lastError')
           ai_code,ai=call('/api/ai')
           print('=== AI STATUS ===');print(json.dumps(ai,ensure_ascii=False,indent=2))
           eval_code,report=call('/api/bot/eval')
