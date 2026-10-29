@@ -7,5 +7,6 @@ assert.match(source,/Promise\.all\(/,'FRED requests must be parallelized');
 assert.match(source,/news\.google\.com\/rss\/search/,'Google News source missing');
 assert.match(source,/api\.gdeltproject\.org\/api\/v2\/doc\/doc/,'GDELT fallback missing');
 assert.match(source,/fetches:11/,'context fetch budget accounting missing');
-assert.equal((source.match(/await fetch\(/g)||[]).length,4,'expected three news/fallback fetch sites plus the FRED series helper');
-console.log('PASS context enrichment contract: 3 news + 8 FRED fetches = 11');
+assert.equal((source.match(/await fetch\(/g)||[]).length,2,'expected one timeout-wrapped fetch helper plus the FRED series helper');
+assert.match(source,/fetchWithTimeout/,'news fetch timeout wrapper missing');
+console.log('PASS context enrichment contract: 3 bounded news providers + 8 FRED fetches = 11');
