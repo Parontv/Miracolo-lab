@@ -20,3 +20,7 @@ assert.match(engine,/riskEngine\(/,'decision engine must calculate deterministic
 assert.match(engine,/portfolio=\{approved:risk\.allowed/,'portfolio approval must be gated by risk engine');
 
 console.log('PAPER lifecycle + pipeline architecture contract: PASS');
+
+assert.match(router,/bot\/positions\/v1/,'router must persist normalized Alpaca positions for risk engine');
+assert.match(router,/bot\/positions\/status/,'router must expose position sync freshness/status');
+assert.match(router,/risk:marketValue\*\.015/,'normalized position must include conservative risk estimate');
