@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter} from '../bot-research-adapters.js';
+import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter,runDailyStockAnalysisAdapter} from '../bot-research-adapters.js';
 
 test('research adapters are registered read-only and cannot affect execution',()=>{
   const adapters=listResearchAdapters();
@@ -48,4 +48,10 @@ test('AI Hedge Fund analyst synthesis remains advisory and reports risk gate onl
  assert.equal(result.status,'ok');assert.equal(result.analysts.length,4);
  assert.equal(result.analysts.find(x=>x.id==='risk').stance,'RISK_GATE_BLOCKED');
  assert.equal(result.affectsConsensus,false);assert.equal(result.affectsRiskGate,false);assert.equal(result.affectsOrders,false);
+});
+
+test('Daily Stock Analysis brief requires evidence and stays advisory',()=>{
+ const result=runDailyStockAnalysisAdapter([{family:'market',direction:1,dataAvailable:true,evidence:['Breadth positive']},{family:'news',direction:-1,dataAvailable:true,evidence:['News mixed']}]);
+ assert.equal(result.status,'ok');assert.equal(result.stance,'MIXED');assert.equal(result.affectsConsensus,false);assert.equal(result.affectsRiskGate,false);assert.equal(result.affectsOrders,false);
+ assert.equal(runDailyStockAnalysisAdapter([]).status,'INSUFFICIENT_DATA');
 });
