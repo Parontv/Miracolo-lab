@@ -13,6 +13,9 @@ assert.match(workspaceSource, /addEventListener\(['"]click/);
 
 
 assert.match(workspaceSource, /AI Research Council/);
+assert.match(workspaceSource, /Integrazioni di ricerca/);
+assert.match(workspaceSource, /renderResearchAdapters\(d\.researchAdapters\)/);
+assert.match(workspaceSource, /DISABILITATI/);
 assert.match(workspaceSource, /renderAIResearch\(d\.researchCouncil\?\.aiResearch\)/);
 assert.match(workspaceSource, /affectsConsensus|non modifica consenso, rischio o ordini/);
 
