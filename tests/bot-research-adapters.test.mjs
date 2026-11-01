@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter,runDailyStockAnalysisAdapter,runDayTraderSkillAdapter,runFinancialToolUsePlanner,runFreqtradeBacktestAdapter} from '../bot-research-adapters.js';
+import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter,runDailyStockAnalysisAdapter,runDayTraderSkillAdapter,runFinancialToolUsePlanner,runFreqtradeBacktestAdapter,runLLMTradingLabAdapter} from '../bot-research-adapters.js';
 
 test('research adapters are registered read-only and cannot affect execution',()=>{
   const adapters=listResearchAdapters();
@@ -75,4 +75,12 @@ test('Freqtrade-inspired evaluator computes historical metrics and remains backt
  assert.equal(result.status,'ok');assert.equal(result.trades,5);assert.equal(result.winRatePct,60);
  assert.equal(result.netAfterCostsPct,1.5);assert.equal(result.backtestOnly,true);assert.equal(result.affectsOrders,false);
  assert.equal(runFreqtradeBacktestAdapter([]).status,'INSUFFICIENT_DATA');
+});
+
+test('LLM Trading Lab scores realized forecasts without operational effects',()=>{
+ const rows=[['UP','UP',.8],['DOWN','DOWN',.7],['UP','DOWN',.6],['FLAT','FLAT',null],['DOWN','UP',.4]].map(([predicted,actual,probability])=>({model:'test-model',predicted,actual,probability}));
+ const result=runLLMTradingLabAdapter(rows);
+ assert.equal(result.status,'ok');assert.equal(result.samples,5);assert.equal(result.accuracyPct,60);
+ assert.equal(result.evaluationOnly,true);assert.equal(result.affectsConsensus,false);assert.equal(result.affectsOrders,false);
+ assert.equal(runLLMTradingLabAdapter([]).status,'INSUFFICIENT_DATA');
 });
