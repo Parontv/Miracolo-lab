@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter,runDailyStockAnalysisAdapter,runDayTraderSkillAdapter} from '../bot-research-adapters.js';
+import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter,runDailyStockAnalysisAdapter,runDayTraderSkillAdapter,runFinancialToolUsePlanner} from '../bot-research-adapters.js';
 
 test('research adapters are registered read-only and cannot affect execution',()=>{
   const adapters=listResearchAdapters();
@@ -61,4 +61,11 @@ test('Day Trader Skill checklist is observational and reports incomplete control
  assert.equal(result.status,'READY');assert.equal(result.passed,result.total);assert.equal(result.affectsConsensus,false);assert.equal(result.affectsRiskGate,false);assert.equal(result.affectsOrders,false);
  const blocked=runDayTraderSkillAdapter({},[]);
  assert.equal(blocked.status,'REVIEW');
+});
+
+test('financial tool-use planner creates bounded read-only plan without executing tools',()=>{
+ const result=runFinancialToolUsePlanner([{family:'market',dataAvailable:true}],{risk:{approved:false}});
+ assert.equal(result.status,'PLAN_ONLY');assert.ok(result.tasks.length<=6);
+ assert.ok(result.tasks.every(x=>x.readOnly));assert.equal(result.executesTools,false);
+ assert.equal(result.riskGate,'BLOCKED');assert.equal(result.affectsOrders,false);
 });
