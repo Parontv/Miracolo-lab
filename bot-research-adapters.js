@@ -7,7 +7,7 @@ const ADAPTERS = Object.freeze([
   { id:'vibe-trading', name:'Vibe Trading', role:'signal and strategy research', mode:'INSPIRED_ADAPTER', status:'INTERNAL', execution:false },
   { id:'ai-hedge-fund', name:'AI Hedge Fund', role:'portfolio thesis and analyst perspectives', mode:'INSPIRED_ADAPTER', status:'INTERNAL', execution:false },
   { id:'daily-stock-analysis', name:'Daily Stock Analysis', role:'daily market/company research', mode:'SOURCE_ADAPTER', status:'INTERNAL', execution:false },
-  { id:'anthropic-financial-services', name:'Anthropic Financial Services', role:'tool-use and financial research patterns', mode:'PATTERN_ADAPTER', status:'PLANNED', execution:false },
+  { id:'anthropic-financial-services', name:'Anthropic Financial Services', role:'tool-use and financial research patterns', mode:'PATTERN_ADAPTER', status:'INTERNAL', execution:false },
   { id:'freqtrade', name:'Freqtrade', role:'backtesting research reference', mode:'BACKTEST_ADAPTER', status:'PLANNED', execution:false },
   { id:'day-trader-skill', name:'Day Trader Skill', role:'trading workflow and risk checklist', mode:'SKILL_ADAPTER', status:'INTERNAL', execution:false },
   { id:'llm-trading-lab', name:'LLM Trading Lab', role:'LLM experiment and evaluation patterns', mode:'EVALUATION_ADAPTER', status:'PLANNED', execution:false }
@@ -71,4 +71,17 @@ export function runDayTraderSkillAdapter(decision={},modules=[]){
  ];
  const passed=checks.filter(x=>x.ok).length;
  return{adapterId:'day-trader-skill',adapterName:'Day Trader Skill · pre-trade checklist',status:passed===checks.length?'READY':passed===0?'BLOCKED':'REVIEW',checks,passed,total:checks.length,summary:passed===checks.length?'Checklist consultiva completa.':'Checklist non completa: verificare gli elementi non soddisfatti.',readOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+}
+
+/* Anthropic Financial Services-inspired tool-use planner. Plans bounded read-only checks; it does not call external APIs. */
+export function runFinancialToolUsePlanner(modules=[],decision={}){
+ const list=Array.isArray(modules)?modules:[];
+ const families=new Set(list.filter(x=>x&&x.dataAvailable!==false).map(x=>x.family));
+ const tasks=[];
+ if(!families.has('market'))tasks.push({tool:'market_snapshot',purpose:'Recuperare quotazioni e timestamp',priority:'HIGH',readOnly:true});
+ if(!families.has('news'))tasks.push({tool:'news_digest',purpose:'Verificare notizie recenti e fonti',priority:'HIGH',readOnly:true});
+ if(!families.has('macro'))tasks.push({tool:'macro_snapshot',purpose:'Controllare indicatori macro disponibili',priority:'MEDIUM',readOnly:true});
+ if(!families.has('technical'))tasks.push({tool:'technical_snapshot',purpose:'Verificare indicatori tecnici',priority:'MEDIUM',readOnly:true});
+ tasks.push({tool:'risk_gate_review',purpose:'Leggere lo stato del risk gate esistente',priority:'HIGH',readOnly:true});
+ return{adapterId:'anthropic-financial-services',status:'PLAN_ONLY',tasks:tasks.slice(0,6),existingEvidenceFamilies:[...families].slice(0,12),riskGate:decision?.risk?.approved===true?'APPROVED':decision?.risk?.approved===false?'BLOCKED':'UNKNOWN',summary:'Piano di raccolta dati consultivo: nessun tool esterno viene eseguito e nessuna credenziale Anthropic è richiesta.',readOnly:true,executesTools:false,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
 }
