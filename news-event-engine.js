@@ -2,7 +2,9 @@
 const CATEGORIES={central:1.3,macro:1.2,rates:1.2,geopolitics:1.15,company:1,finance:1,commodities:.95,crypto:.7,social:.55,news:.8};
 const POS=/\b(rally|surge|beat|upgrade|inflow|record|growth|easing|rate cut|strong|bullish|breakout|recovery|disinflation|dovish)\b/gi;
 const NEG=/\b(crash|plunge|selloff|outflow|downgrade|recession|default|hawkish|rate hike|panic|weak|decline|bearish|miss|sanction|tariff|contagion|inflation shock|bank failure)\b/gi;
-const NEGATION=/\\b(no|not|without|unlikely|failed to|fails to|non|nessun|senza|improbabile)\\b/i;\nconst NEGATION_WINDOW=4;\nfunction isNegated(text,index){const before=text.slice(0,index).trim().split(/\\s+/).slice(-NEGATION_WINDOW).join(' ');return NEGATION.test(before)}
+const NEGATION=/\b(no|not|without|unlikely|failed to|fails to|non|nessun|senza|improbabile)\b/i;
+const NEGATION_WINDOW=4;
+function isNegated(text,index){const before=text.slice(0,index).trim().split(/\s+/).slice(-NEGATION_WINDOW).join(' ');return NEGATION.test(before)}
 const CRITICAL=/\b(invasion|bank failure|systemic|market halt|cyberattack|contagion|sovereign crisis|sovereign default|banking crisis|capital controls|exchange closure)\b/i;
 const HARD_CRITICAL=/\b(bank failure|market halt|cyberattack|sovereign default|banking crisis|capital controls|exchange closure)\b/i;
 const CRITICAL_CATEGORIES=new Set(['central','macro','rates','geopolitics','finance']);
