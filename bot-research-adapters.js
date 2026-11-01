@@ -10,7 +10,7 @@ const ADAPTERS = Object.freeze([
   { id:'anthropic-financial-services', name:'Anthropic Financial Services', role:'tool-use and financial research patterns', mode:'PATTERN_ADAPTER', status:'INTERNAL', execution:false },
   { id:'freqtrade', name:'Freqtrade', role:'backtesting research reference', mode:'BACKTEST_ADAPTER', status:'INTERNAL', execution:false },
   { id:'day-trader-skill', name:'Day Trader Skill', role:'trading workflow and risk checklist', mode:'SKILL_ADAPTER', status:'INTERNAL', execution:false },
-  { id:'llm-trading-lab', name:'LLM Trading Lab', role:'LLM experiment and evaluation patterns', mode:'EVALUATION_ADAPTER', status:'PLANNED', execution:false }
+  { id:'llm-trading-lab', name:'LLM Trading Lab', role:'LLM experiment and evaluation patterns', mode:'EVALUATION_ADAPTER', status:'INTERNAL', execution:false }
 ]);
 
 const safeText=(v,max=240)=>String(v??'').replace(/[\\u0000-\\u001f]/g,' ').slice(0,max);
@@ -94,4 +94,15 @@ export function runFreqtradeBacktestAdapter(trades=[],config={}){
  let equity=1,peak=1,maxDrawdown=0;for(const r of returns){equity*=1+r/100;peak=Math.max(peak,equity);maxDrawdown=Math.max(maxDrawdown,(peak-equity)/peak);}
  const costs=Number(config.costPct||0),netAfterCosts=net-costs*rows.length;
  return{adapterId:'freqtrade',status:'ok',trades:rows.length,winRatePct:Math.round(wins/rows.length*10000)/100,averageReturnPct:Math.round(avg*100)/100,netReturnPct:Math.round(net*100)/100,netAfterCostsPct:Math.round(netAfterCosts*100)/100,maxDrawdownPct:Math.round(maxDrawdown*10000)/100,warning:'Metriche indicative: dipendono dalla qualità dei dati, dall’ordine dei trade e dai costi configurati.',readOnly:true,backtestOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+}
+
+/* LLM Trading Lab-inspired evaluation harness: scores stored forecasts against realized outcomes; no model calls or trading authority. */
+export function runLLMTradingLabAdapter(experiments=[]){
+ const rows=(Array.isArray(experiments)?experiments:[]).slice(0,2000).filter(x=>['UP','DOWN','FLAT'].includes(String(x?.predicted||'').toUpperCase())&&['UP','DOWN','FLAT'].includes(String(x?.actual||'').toUpperCase()));
+ if(rows.length<5)return{adapterId:'llm-trading-lab',status:'INSUFFICIENT_DATA',reason:'Servono almeno 5 previsioni con esito osservato.',readOnly:true,evaluationOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+ const correct=rows.filter(x=>String(x.predicted).toUpperCase()===String(x.actual).toUpperCase()).length;
+ const probRows=rows.filter(x=>Number.isFinite(Number(x.probability))&&Number(x.probability)>=0&&Number(x.probability)<=1&&['UP','DOWN'].includes(String(x.actual).toUpperCase()));
+ const brier=probRows.length?probRows.reduce((sum,x)=>{const target=String(x.actual).toUpperCase()==='UP'?1:0;return sum+(Number(x.probability)-target)**2;},0)/probRows.length:null;
+ const byModel={};for(const x of rows){const key=safeText(x.model||'unspecified',80);byModel[key]??={n:0,correct:0};byModel[key].n++;if(String(x.predicted).toUpperCase()===String(x.actual).toUpperCase())byModel[key].correct++;}
+ return{adapterId:'llm-trading-lab',status:'ok',samples:rows.length,accuracyPct:Math.round(correct/rows.length*10000)/100,brierScore:brier===null?null:Math.round(brier*10000)/10000,probabilitySamples:probRows.length,models:Object.entries(byModel).slice(0,20).map(([model,v])=>({model,samples:v.n,accuracyPct:Math.round(v.correct/v.n*10000)/100})),warning:'Valutazione retrospettiva: non dimostra capacità predittiva futura e non modifica decisioni operative.',readOnly:true,evaluationOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
 }
