@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter,runDailyStockAnalysisAdapter} from '../bot-research-adapters.js';
+import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter,runDailyStockAnalysisAdapter,runDayTraderSkillAdapter} from '../bot-research-adapters.js';
 
 test('research adapters are registered read-only and cannot affect execution',()=>{
   const adapters=listResearchAdapters();
@@ -54,4 +54,11 @@ test('Daily Stock Analysis brief requires evidence and stays advisory',()=>{
  const result=runDailyStockAnalysisAdapter([{family:'market',direction:1,dataAvailable:true,evidence:['Breadth positive']},{family:'news',direction:-1,dataAvailable:true,evidence:['News mixed']}]);
  assert.equal(result.status,'ok');assert.equal(result.stance,'MIXED');assert.equal(result.affectsConsensus,false);assert.equal(result.affectsRiskGate,false);assert.equal(result.affectsOrders,false);
  assert.equal(runDailyStockAnalysisAdapter([]).status,'INSUFFICIENT_DATA');
+});
+
+test('Day Trader Skill checklist is observational and reports incomplete controls',()=>{
+ const result=runDayTraderSkillAdapter({action:'LONG',risk:{approved:true}},[{family:'market',coverage:.8,dataAvailable:true},{family:'news',coverage:.5,dataAvailable:true},{family:'technical',coverage:.6,dataAvailable:true}]);
+ assert.equal(result.status,'READY');assert.equal(result.passed,result.total);assert.equal(result.affectsConsensus,false);assert.equal(result.affectsRiskGate,false);assert.equal(result.affectsOrders,false);
+ const blocked=runDayTraderSkillAdapter({},[]);
+ assert.equal(blocked.status,'BLOCKED');
 });
