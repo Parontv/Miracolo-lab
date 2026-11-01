@@ -4,8 +4,8 @@
  */
 const ADAPTERS = Object.freeze([
   { id:'tradingagents', name:'TradingAgents', role:'multi-agent research debate', mode:'INSPIRED_ADAPTER', status:'INTERNAL', execution:false },
-  { id:'vibe-trading', name:'Vibe Trading', role:'signal and strategy research', mode:'INSPIRED_ADAPTER', status:'PLANNED', execution:false },
-  { id:'ai-hedge-fund', name:'AI Hedge Fund', role:'portfolio thesis and analyst perspectives', mode:'INSPIRED_ADAPTER', status:'PLANNED', execution:false },
+  { id:'vibe-trading', name:'Vibe Trading', role:'signal and strategy research', mode:'INSPIRED_ADAPTER', status:'INTERNAL', execution:false },
+  { id:'ai-hedge-fund', name:'AI Hedge Fund', role:'portfolio thesis and analyst perspectives', mode:'INSPIRED_ADAPTER', status:'INTERNAL', execution:false },
   { id:'daily-stock-analysis', name:'Daily Stock Analysis', role:'daily market/company research', mode:'SOURCE_ADAPTER', status:'PLANNED', execution:false },
   { id:'anthropic-financial-services', name:'Anthropic Financial Services', role:'tool-use and financial research patterns', mode:'PATTERN_ADAPTER', status:'PLANNED', execution:false },
   { id:'freqtrade', name:'Freqtrade', role:'backtesting research reference', mode:'BACKTEST_ADAPTER', status:'PLANNED', execution:false },
@@ -50,4 +50,13 @@ export function runAIHedgeFundAdapter(modules=[],decision=null){
  const votes=analysts.filter(x=>x.id!=='risk'&&x.stance!=='NEUTRAL');const bull=votes.filter(x=>x.stance==='BULLISH').length,bear=votes.filter(x=>x.stance==='BEARISH').length;const consensus=bull===bear?'MIXED':bull>bear?'BULLISH':'BEARISH';
  const risk=decision?.portfolio?.approved===true?'RISK_GATE_APPROVED':decision?.portfolio?.approved===false?'RISK_GATE_BLOCKED':'RISK_GATE_UNKNOWN';analysts[3].stance=risk;analysts[3].summary='Riepilogo del risk gate già calcolato dal motore; nessun override.';
  return{adapterId:'ai-hedge-fund',adapterName:'AI Hedge Fund · analyst synthesis',status:votes.length>=2?'ok':'INSUFFICIENT_DATA',consensus,analysts,summary:'Sintesi consultiva: '+bull+' prospettive rialziste, '+bear+' ribassiste. Risk gate: '+risk+'.',readOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+}
+
+/* Daily Stock Analysis-inspired daily brief, strictly derived from current engine evidence. */
+export function runDailyStockAnalysisAdapter(modules=[]){
+ const relevant=(Array.isArray(modules)?modules:[]).filter(x=>['market','news','macro','technical'].includes(x.family)&&x.dataAvailable!==false);
+ if(relevant.length<2)return{adapterId:'daily-stock-analysis',status:'INSUFFICIENT_DATA',reason:'Servono almeno due famiglie di evidenze valide.',readOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+ const positives=relevant.filter(x=>Number(x.direction)>0),negatives=relevant.filter(x=>Number(x.direction)<0);
+ const stance=positives.length===negatives.length?'MIXED':positives.length>negatives.length?'BULLISH':'BEARISH';
+ return{adapterId:'daily-stock-analysis',adapterName:'Daily Stock Analysis · daily brief',status:'ok',stance,coverage:relevant.length/4,asOf:new Date().toISOString(),headline:'Quadro giornaliero '+(stance==='BULLISH'?'costruttivo':stance==='BEARISH'?'debole':'contrastato'),summary:'Sintesi delle evidenze già raccolte dal motore; non è un’analisi fondamentale societaria né una fonte dati indipendente.',positive:positives.map(x=>({family:safeText(x.family,40),summary:safeText(x.reason||x.evidence?.[0]||'Segnale positivo',180)})),negative:negatives.map(x=>({family:safeText(x.family,40),summary:safeText(x.reason||x.evidence?.[0]||'Segnale negativo',180)})),readOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
 }
