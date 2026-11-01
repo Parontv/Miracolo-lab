@@ -25,7 +25,8 @@ try{
   assert.equal(cryptoAction({ok:true,direction:-1,confidence:70},{qty:'0.01',marketValue:100,unrealizedPl:0}).action,'SELL');
   assert.equal(cryptoAction({ok:true,direction:1,confidence:70},null).action,'BUY');
 
-  const env={BOT_MODE:'PAPER',PAPER_AUTO_EXECUTION:'true',ALPACA_BASE_URL:'https://paper-api.alpaca.markets/v2',ALPACA_API_KEY:'test-key',ALPACA_API_SECRET:'test-secret'};
+  const kvStore=new Map();
+  const env={BOT_MODE:'PAPER',PAPER_AUTO_EXECUTION:'true',ALPACA_BASE_URL:'https://paper-api.alpaca.markets/v2',ALPACA_API_KEY:'test-key',ALPACA_API_SECRET:'test-secret',ML_KV:{async get(k){return kvStore.get(k)||null},async put(k,v){kvStore.set(k,v)}}};
   global.fetch=async(url,options={})=>{
     const u=String(url);
     assert.match(u,/paper-api\.alpaca\.markets\/v2/,'paper execution must use Alpaca Paper endpoint');
@@ -57,6 +58,8 @@ try{
   global.fetch=async(url,options={})=>{
     const u=String(url),method=String(options.method||'GET').toUpperCase();
     assert.ok(u.startsWith('https://paper-api.alpaca.markets/v2/'),'equity entry must use Alpaca Paper endpoint');
+    if(u.endsWith('/clock')&&method==='GET')return new Response(JSON.stringify({is_open:true}),{status:200});
+    if(u.includes('/orders?status=open')&&method==='GET')return new Response('[]',{status:200});
     assert.equal(method,'POST');
     const body=JSON.parse(options.body);assert.equal(body.side,'buy');assert.equal(body.qty,1);assert.equal(body.notional,undefined);assert.equal(body.order_class,'bracket');assert.ok(body.stop_loss?.stop_price);assert.ok(body.take_profit?.limit_price);
     return new Response(JSON.stringify({id:'paper-equity-bracket',status:'accepted',symbol:'SPY'}),{status:200});
