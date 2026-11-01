@@ -56,6 +56,8 @@ jobs:
           node --check public/bot-controller.js
           node --check public/bot-workspace.js
           node --check public/v1/tab-navigation.js
+      - name: PAPER lifecycle and pipeline architecture contract
+        run: node tests/bot-pipeline-architecture.test.mjs
       - name: Unified decision engine contract
         run: node tests/bot-server-engine.test.mjs
       - name: AI Research Council advisory contract
