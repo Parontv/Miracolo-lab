@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter,runDailyStockAnalysisAdapter,runDayTraderSkillAdapter,runFinancialToolUsePlanner} from '../bot-research-adapters.js';
+import {listResearchAdapters,normalizeResearchAdapterResult,runVibeTradingAdapter,runAIHedgeFundAdapter,runDailyStockAnalysisAdapter,runDayTraderSkillAdapter,runFinancialToolUsePlanner,runFreqtradeBacktestAdapter} from '../bot-research-adapters.js';
 
 test('research adapters are registered read-only and cannot affect execution',()=>{
   const adapters=listResearchAdapters();
@@ -68,4 +68,11 @@ test('financial tool-use planner creates bounded read-only plan without executin
  assert.equal(result.status,'PLAN_ONLY');assert.ok(result.tasks.length<=6);
  assert.ok(result.tasks.every(x=>x.readOnly));assert.equal(result.executesTools,false);
  assert.equal(result.riskGate,'BLOCKED');assert.equal(result.affectsOrders,false);
+});
+
+test('Freqtrade-inspired evaluator computes historical metrics and remains backtest-only',()=>{
+ const result=runFreqtradeBacktestAdapter([{returnPct:2},{returnPct:-1},{returnPct:1},{returnPct:0.5},{returnPct:-.5}],{costPct:.1});
+ assert.equal(result.status,'ok');assert.equal(result.trades,5);assert.equal(result.winRatePct,60);
+ assert.equal(result.netAfterCostsPct,1.5);assert.equal(result.backtestOnly,true);assert.equal(result.affectsOrders,false);
+ assert.equal(runFreqtradeBacktestAdapter([]).status,'INSUFFICIENT_DATA');
 });
