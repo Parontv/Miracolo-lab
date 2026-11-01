@@ -85,3 +85,13 @@ export function runFinancialToolUsePlanner(modules=[],decision={}){
  tasks.push({tool:'risk_gate_review',purpose:'Leggere lo stato del risk gate esistente',priority:'HIGH',readOnly:true});
  return{adapterId:'anthropic-financial-services',status:'PLAN_ONLY',tasks:tasks.slice(0,6),existingEvidenceFamilies:[...families].slice(0,12),riskGate:decision?.risk?.approved===true?'APPROVED':decision?.risk?.approved===false?'BLOCKED':'UNKNOWN',summary:'Piano di raccolta dati consultivo: nessun tool esterno viene eseguito e nessuna credenziale Anthropic è richiesta.',readOnly:true,executesTools:false,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
 }
+
+/* Freqtrade-inspired backtest evaluator. Consumes supplied historical trade results only; never places orders. */
+export function runFreqtradeBacktestAdapter(trades=[],config={}){
+ const rows=(Array.isArray(trades)?trades:[]).slice(0,5000).filter(t=>Number.isFinite(Number(t?.returnPct)));
+ if(rows.length<5)return{adapterId:'freqtrade',status:'INSUFFICIENT_DATA',reason:'Servono almeno 5 risultati storici validi.',readOnly:true,backtestOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+ const returns=rows.map(t=>Number(t.returnPct)),wins=returns.filter(x=>x>0).length,net=returns.reduce((a,b)=>a+b,0),avg=net/returns.length;
+ let equity=1,peak=1,maxDrawdown=0;for(const r of returns){equity*=1+r/100;peak=Math.max(peak,equity);maxDrawdown=Math.max(maxDrawdown,(peak-equity)/peak);}
+ const costs=Number(config.costPct||0),netAfterCosts=net-costs*rows.length;
+ return{adapterId:'freqtrade',status:'ok',trades:rows.length,winRatePct:Math.round(wins/rows.length*10000)/100,averageReturnPct:Math.round(avg*100)/100,netReturnPct:Math.round(net*100)/100,netAfterCostsPct:Math.round(netAfterCosts*100)/100,maxDrawdownPct:Math.round(maxDrawdown*10000)/100,warning:'Metriche indicative: dipendono dalla qualità dei dati, dall’ordine dei trade e dai costi configurati.',readOnly:true,backtestOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+}
