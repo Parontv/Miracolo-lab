@@ -35,3 +35,14 @@ body[data-active-panel="bot"] #sidePanel> :not(.bot-unified){display:none!import
 .bot-unified #alpacaPositions table{width:100%;font-size:11px}
 .bot-unified #alpacaPositions th{font-size:10px;color:#9aabc0}
 @media(min-width:720px){.bot-unified #alpacaStatus{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Alpaca Paper readability pass */
+.bot-alpaca-card .bot-fold-description{font-size:13px;line-height:1.5;color:#aebed0}
+.bot-alpaca-card #alpacaStatus{gap:9px}
+.bot-alpaca-card #alpacaStatus>div{font-size:12px;line-height:1.5;padding:11px 12px;border-radius:10px}
+.bot-alpaca-card #alpacaStatus>div b{display:inline-block;font-size:15px;line-height:1.45;margin-top:3px;color:#e6f0fb;overflow-wrap:anywhere}
+.bot-alpaca-card .alpaca-positions,.bot-workspace .bot-history-body{font-size:12px;line-height:1.55}
+.bot-workspace .bot-history-body{padding:10px 12px}
+.bot-workspace .bot-history-body table{width:100%;font-size:12px}
+.bot-workspace .bot-history-body th,.bot-workspace .bot-history-body td{padding:8px 6px}
+@media(max-width:480px){.bot-alpaca-card #alpacaStatus{grid-template-columns:repeat(2,minmax(0,1fr))}.bot-alpaca-card #alpacaStatus>div{font-size:12px;padding:10px}.bot-alpaca-card #alpacaStatus>div b{font-size:14px}}
