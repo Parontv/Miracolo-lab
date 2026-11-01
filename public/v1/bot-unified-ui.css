@@ -26,3 +26,12 @@ body[data-active-panel="bot"] #sidePanel> :not(.bot-unified){display:none!import
 .bot-unified .bot-module-fold[open]>summary{background:rgba(8,20,32,.45)}
 .bot-unified .bot-module-fold>summary:before{content:'＋';margin-right:7px;color:#67e8f9}
 .bot-unified .bot-module-fold[open]>summary:before{content:'−'}
+
+/* Alpaca Paper: improve readability on mobile */
+.bot-unified #alpacaStatus{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.bot-unified #alpacaStatus>div{padding:10px 11px;border:1px solid rgba(148,163,184,.14);border-radius:10px;background:rgba(2,6,23,.32);font-size:12px;line-height:1.4;color:#9aabc0}
+.bot-unified #alpacaStatus>div b{display:inline-block;margin-top:4px;font-size:14px;line-height:1.35;color:#e2e8f0;overflow-wrap:anywhere}
+.bot-unified #alpacaPositions{font-size:12px;line-height:1.5}
+.bot-unified #alpacaPositions table{width:100%;font-size:11px}
+.bot-unified #alpacaPositions th{font-size:10px;color:#9aabc0}
+@media(min-width:720px){.bot-unified #alpacaStatus{grid-template-columns:repeat(3,minmax(0,1fr))}}
