@@ -44,6 +44,8 @@ jobs:
           node-version: 22
       - name: Syntax check — canonical runtime
         run: |
+          node --check bot-live-router.js
+          node --check bot-evaluation.js
           node --check bot-server-engine.js
           node --check bot-risk-engine.js
           node --check bot-crypto-engine.js
