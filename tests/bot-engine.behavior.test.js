@@ -11,4 +11,9 @@ assert.match(workspaceSource, /id=\\?['"]botUnifiedRun/);
 assert.match(workspaceSource, /window\.MiracoloBot\?\.run/);
 assert.match(workspaceSource, /addEventListener\(['"]click/);
 
-console.log('PASS bot-engine behavior contract: canonical UI click -> server POST /api/bot/run');
+
+assert.match(workspaceSource, /AI Research Council/);
+assert.match(workspaceSource, /renderAIResearch\(d\.researchCouncil\?\.aiResearch\)/);
+assert.match(workspaceSource, /affectsConsensus|non modifica consenso, rischio o ordini/);
+
+console.log('PASS bot-engine behavior contract: canonical UI click -> server POST /api/bot/run + advisory AI research rendering');
