@@ -44,6 +44,8 @@ jobs:
           node-version: 22
       - name: Syntax check — canonical runtime
         run: |
+          node --check bot-live-router.js
+          node --check bot-evaluation.js
           node --check bot-server-engine.js
           node --check bot-risk-engine.js
           node --check bot-crypto-engine.js
@@ -54,8 +56,14 @@ jobs:
           node --check public/bot-controller.js
           node --check public/bot-workspace.js
           node --check public/v1/tab-navigation.js
+      - name: PAPER lifecycle and pipeline architecture contract
+        run: node tests/bot-pipeline-architecture.test.mjs
       - name: Unified decision engine contract
         run: node tests/bot-server-engine.test.mjs
+      - name: AI Research Council advisory contract
+        run: node tests/bot-ai-research.test.mjs
+      - name: External research adapter contracts
+        run: node tests/bot-research-adapters.test.mjs
       - name: Consensus v3 regression
         run: node tests/bot-consensus-v3.test.mjs
       - name: Risk guardrail regression

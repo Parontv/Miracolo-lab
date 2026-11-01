@@ -16,7 +16,7 @@ const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>
   const d=consensus(modules);
   assert.equal(d.dataCoverage,1);
   assert.equal(d.agreement,1);
-  assert.match(d.reason,/dataCoverage 100%/);
+  assert.match(d.reason,/copertura 100%/);
 }
 
 // market + technical + historical are one correlated vote, not three.
@@ -25,7 +25,7 @@ const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>
   const d=consensus(modules);
   assert.equal(d.families,2);
   assert.equal(d.direction,0);
-  assert.match(d.reason,/almeno 3 voti/);
+  assert.match(d.reason,/2 voti/);
 }
 
 // Numeric WAIT -> LONG example: same 100% dataCoverage, adding an independent third vote crosses the rule.

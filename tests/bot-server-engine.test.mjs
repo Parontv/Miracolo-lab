@@ -38,3 +38,22 @@ test('engine produces explainable modules and a portfolio decision',async()=>{
   assert.ok(result.diagnostics.inputAudit.technicalFields.includes('rsi'));
   assert.ok(result.decision && result.decision.portfolio);
 });
+
+test('AI Research Council is attached as advisory and cannot change decision or risk',async()=>{
+  const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map((ticker,i)=>({ticker,changePct:.8+i*.05,rsi:55+i,volumeChangePct:20+i*2,smaSignal:.1,emaSignal:.1,atrPct:1.2}));
+  const news=Array.from({length:12},(_,i)=>({title:`Market update ${i}`,date:new Date().toISOString(),score:.2}));
+  const state={market:{timestamp:new Date().toISOString(),indices},news:{timestamp:new Date().toISOString(),items:news},ai:{status:'ok',direction:'LONG',confidence:75,regime:'risk-on',thesis:'Trend positivo'}};
+  const quant={timestamp:new Date().toISOString(),coverage:{available:3},groups:{macro:[{status:'ok',label:'Inflazione USA',trendPct:-.4}]}};
+  const noAI=await runBot(envWith(state,quant));
+  const withAI=await runBot({...envWith(state,quant),AI:{async run(){return{response:JSON.stringify({stance:'BULLISH',confidence:78,summary:'Evidenze prevalentemente positive.',bullCase:'Breadth positiva.',bearCase:'Dati limitati.',risks:['Volatilità'],missingData:['Volumi completi'],evidenceFamilies:['market','technical']})}}}});
+  assert.equal(withAI.ok,true);
+  assert.equal(withAI.researchCouncil.aiResearch.status,'ok');
+  assert.equal(withAI.researchCouncil.aiResearch.advisoryOnly,true);
+  assert.equal(withAI.researchCouncil.aiResearch.affectsConsensus,false);
+  assert.equal(withAI.researchCouncil.aiResearch.affectsRiskGate,false);
+  assert.equal(withAI.researchCouncil.aiResearch.affectsOrders,false);
+  for(const key of ['direction','confidence','dataCoverage','agreement','score']) assert.ok(Math.abs(withAI.decision[key]-noAI.decision[key])<1e-9,`decision.${key} changed with advisory AI: ${withAI.decision[key]} vs ${noAI.decision[key]}`);
+  assert.equal(withAI.decision.reason,noAI.decision.reason,'decision.reason changed with advisory AI');
+  assert.deepEqual(withAI.decision.contributors.map(({family,direction,weight})=>({family,direction,weight})),noAI.decision.contributors.map(({family,direction,weight})=>({family,direction,weight})));
+  for(const key of ['allowed','reason','flags','level']) assert.deepEqual(withAI.risk[key],noAI.risk[key],`risk.${key} changed with advisory AI`);
+});
