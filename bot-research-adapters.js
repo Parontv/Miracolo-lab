@@ -9,7 +9,7 @@ const ADAPTERS = Object.freeze([
   { id:'daily-stock-analysis', name:'Daily Stock Analysis', role:'daily market/company research', mode:'SOURCE_ADAPTER', status:'PLANNED', execution:false },
   { id:'anthropic-financial-services', name:'Anthropic Financial Services', role:'tool-use and financial research patterns', mode:'PATTERN_ADAPTER', status:'PLANNED', execution:false },
   { id:'freqtrade', name:'Freqtrade', role:'backtesting research reference', mode:'BACKTEST_ADAPTER', status:'PLANNED', execution:false },
-  { id:'day-trader-skill', name:'Day Trader Skill', role:'trading workflow and risk checklist', mode:'SKILL_ADAPTER', status:'PLANNED', execution:false },
+  { id:'day-trader-skill', name:'Day Trader Skill', role:'trading workflow and risk checklist', mode:'SKILL_ADAPTER', status:'INTERNAL', execution:false },
   { id:'llm-trading-lab', name:'LLM Trading Lab', role:'LLM experiment and evaluation patterns', mode:'EVALUATION_ADAPTER', status:'PLANNED', execution:false }
 ]);
 
@@ -59,4 +59,16 @@ export function runDailyStockAnalysisAdapter(modules=[]){
  const positives=relevant.filter(x=>Number(x.direction)>0),negatives=relevant.filter(x=>Number(x.direction)<0);
  const stance=positives.length===negatives.length?'MIXED':positives.length>negatives.length?'BULLISH':'BEARISH';
  return{adapterId:'daily-stock-analysis',adapterName:'Daily Stock Analysis · daily brief',status:'ok',stance,coverage:relevant.length/4,asOf:new Date().toISOString(),headline:'Quadro giornaliero '+(stance==='BULLISH'?'costruttivo':stance==='BEARISH'?'debole':'contrastato'),summary:'Sintesi delle evidenze già raccolte dal motore; non è un’analisi fondamentale societaria né una fonte dati indipendente.',positive:positives.map(x=>({family:safeText(x.family,40),summary:safeText(x.reason||x.evidence?.[0]||'Segnale positivo',180)})),negative:negatives.map(x=>({family:safeText(x.family,40),summary:safeText(x.reason||x.evidence?.[0]||'Segnale negativo',180)})),readOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+}
+
+/* Day Trader Skill-inspired pre-trade checklist; observes existing decision and risk outputs only. */
+export function runDayTraderSkillAdapter(decision={},modules=[]){
+ const checks=[
+  {id:'signal',label:'Segnale operativo',ok:['LONG','SHORT'].includes(String(decision.action||decision.signal||'').toUpperCase()),detail:'Richiede una direzione LONG o SHORT esplicita.'},
+  {id:'risk',label:'Risk gate',ok:decision?.risk?.approved===true||decision?.portfolio?.approved===true,detail:'Richiede approvazione del risk gate già calcolato.'},
+  {id:'data',label:'Copertura dati',ok:(Array.isArray(modules)?modules:[]).filter(x=>x.dataAvailable!==false&&Number(x.coverage)>0).length>=3,detail:'Richiede almeno 3 moduli con copertura positiva.'},
+  {id:'paper',label:'Ambiente',ok:true,detail:'L’integrazione è consultiva; l’esecuzione resta nel percorso PAPER esistente.'}
+ ];
+ const passed=checks.filter(x=>x.ok).length;
+ return{adapterId:'day-trader-skill',adapterName:'Day Trader Skill · pre-trade checklist',status:passed===checks.length?'READY':passed===0?'BLOCKED':'REVIEW',checks,passed,total:checks.length,summary:passed===checks.length?'Checklist consultiva completa.':'Checklist non completa: verificare gli elementi non soddisfatti.',readOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
 }
