@@ -13,6 +13,7 @@ assert.match(router,/filledQty/,'reconciliation must persist filled quantity');
 assert.match(router,/filledAt/,'reconciliation must persist fill timestamp');
 assert.match(router,/analysisResult:botResult/,'scheduled pipeline must reuse the already computed decision');
 assert.match(auto,/analysisResult=null/,'auto executor must accept a precomputed analysis');
+assert.match(auto,/todayOrders>=maxDailyOrders/,'global daily order cap must cover both crypto and equities');
 assert.match(executor,/ensurePaper\(env\)/,'executor must enforce PAPER endpoint');
 assert.match(executor,/auditPersisted/,'executor must expose audit persistence status');
 assert.match(engine,/riskEngine\(/,'decision engine must calculate deterministic risk gate');
