@@ -52,7 +52,8 @@ test('AI Research Council is attached as advisory and cannot change decision or 
   assert.equal(withAI.researchCouncil.aiResearch.affectsConsensus,false);
   assert.equal(withAI.researchCouncil.aiResearch.affectsRiskGate,false);
   assert.equal(withAI.researchCouncil.aiResearch.affectsOrders,false);
-  for(const key of ['direction','confidence','dataCoverage','agreement','score','reason']) assert.ok(Math.abs(withAI.decision[key]-noAI.decision[key])<1e-9,`decision.${key} changed with advisory AI: ${withAI.decision[key]} vs ${noAI.decision[key]}`);
+  for(const key of ['direction','confidence','dataCoverage','agreement','score']) assert.ok(Math.abs(withAI.decision[key]-noAI.decision[key])<1e-9,`decision.${key} changed with advisory AI: ${withAI.decision[key]} vs ${noAI.decision[key]}`);
+  assert.equal(withAI.decision.reason,noAI.decision.reason,'decision.reason changed with advisory AI');
   assert.deepEqual(withAI.decision.contributors.map(({family,direction,weight})=>({family,direction,weight})),noAI.decision.contributors.map(({family,direction,weight})=>({family,direction,weight})));
   for(const key of ['allowed','reason','flags','level']) assert.deepEqual(withAI.risk[key],noAI.risk[key],`risk.${key} changed with advisory AI`);
 });
