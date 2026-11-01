@@ -16,7 +16,7 @@ const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>
   const d=consensus(modules);
   assert.equal(d.dataCoverage,1);
   assert.equal(d.agreement,1);
-  assert.match(d.reason,/dataCoverage 100%/);
+  assert.match(d.reason,/copertura 100%/);
 }
 
 // market + technical + historical are one correlated vote, not three.
