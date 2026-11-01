@@ -6,7 +6,7 @@ const ADAPTERS = Object.freeze([
   { id:'tradingagents', name:'TradingAgents', role:'multi-agent research debate', mode:'INSPIRED_ADAPTER', status:'INTERNAL', execution:false },
   { id:'vibe-trading', name:'Vibe Trading', role:'signal and strategy research', mode:'INSPIRED_ADAPTER', status:'INTERNAL', execution:false },
   { id:'ai-hedge-fund', name:'AI Hedge Fund', role:'portfolio thesis and analyst perspectives', mode:'INSPIRED_ADAPTER', status:'INTERNAL', execution:false },
-  { id:'daily-stock-analysis', name:'Daily Stock Analysis', role:'daily market/company research', mode:'SOURCE_ADAPTER', status:'PLANNED', execution:false },
+  { id:'daily-stock-analysis', name:'Daily Stock Analysis', role:'daily market/company research', mode:'SOURCE_ADAPTER', status:'INTERNAL', execution:false },
   { id:'anthropic-financial-services', name:'Anthropic Financial Services', role:'tool-use and financial research patterns', mode:'PATTERN_ADAPTER', status:'PLANNED', execution:false },
   { id:'freqtrade', name:'Freqtrade', role:'backtesting research reference', mode:'BACKTEST_ADAPTER', status:'PLANNED', execution:false },
   { id:'day-trader-skill', name:'Day Trader Skill', role:'trading workflow and risk checklist', mode:'SKILL_ADAPTER', status:'INTERNAL', execution:false },
