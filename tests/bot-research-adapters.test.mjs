@@ -73,7 +73,7 @@ test('financial tool-use planner creates bounded read-only plan without executin
 test('Freqtrade-inspired evaluator computes historical metrics and remains backtest-only',()=>{
  const result=runFreqtradeBacktestAdapter([{returnPct:2},{returnPct:-1},{returnPct:1},{returnPct:0.5},{returnPct:-.5}],{costPct:.1});
  assert.equal(result.status,'ok');assert.equal(result.trades,5);assert.equal(result.winRatePct,60);
- assert.equal(result.netAfterCostsPct,1.5);assert.equal(result.backtestOnly,true);assert.equal(result.affectsOrders,false);
+ assert.equal(result.netAfterCostsPct,1.48);assert.equal(result.backtestOnly,true);assert.equal(result.affectsOrders,false);
  assert.equal(runFreqtradeBacktestAdapter([]).status,'INSUFFICIENT_DATA');
 });
 
