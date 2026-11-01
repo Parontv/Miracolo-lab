@@ -56,6 +56,8 @@ jobs:
           node --check public/v1/tab-navigation.js
       - name: Unified decision engine contract
         run: node tests/bot-server-engine.test.mjs
+      - name: AI Research Council advisory contract
+        run: node tests/bot-ai-research.test.mjs
       - name: Consensus v3 regression
         run: node tests/bot-consensus-v3.test.mjs
       - name: Risk guardrail regression
