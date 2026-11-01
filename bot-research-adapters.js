@@ -90,9 +90,8 @@ export function runFinancialToolUsePlanner(modules=[],decision={}){
 export function runFreqtradeBacktestAdapter(trades=[],config={}){
  const rows=(Array.isArray(trades)?trades:[]).slice(0,5000).filter(t=>Number.isFinite(Number(t?.returnPct)));
  if(rows.length<5)return{adapterId:'freqtrade',status:'INSUFFICIENT_DATA',reason:'Servono almeno 5 risultati storici validi.',readOnly:true,backtestOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
- const returns=rows.map(t=>Number(t.returnPct)),wins=returns.filter(x=>x>0).length,net=returns.reduce((a,b)=>a+b,0),avg=net/returns.length;
- let equity=1,peak=1,maxDrawdown=0;for(const r of returns){equity*=1+r/100;peak=Math.max(peak,equity);maxDrawdown=Math.max(maxDrawdown,(peak-equity)/peak);}
- const costs=Number(config.costPct||0),netAfterCosts=net-costs*rows.length;
+ const returns=rows.map(t=>Number(t.returnPct)),wins=returns.filter(x=>x>0).length,avg=returns.reduce((a,b)=>a+b,0)/returns.length;
+ const costs=Number.isFinite(Number(config.costPct))?Math.max(0,Number(config.costPct)):0;let equity=1,peak=1,maxDrawdown=0,netCostEquity=1;for(const r of returns){equity*=Math.max(0,1+r/100);netCostEquity*=Math.max(0,1+(r-costs)/100);peak=Math.max(peak,equity);maxDrawdown=Math.max(maxDrawdown,(peak-equity)/peak);}const net=(equity-1)*100,netAfterCosts=(netCostEquity-1)*100;
  return{adapterId:'freqtrade',status:'ok',trades:rows.length,winRatePct:Math.round(wins/rows.length*10000)/100,averageReturnPct:Math.round(avg*100)/100,netReturnPct:Math.round(net*100)/100,netAfterCostsPct:Math.round(netAfterCosts*100)/100,maxDrawdownPct:Math.round(maxDrawdown*10000)/100,warning:'Metriche indicative: dipendono dalla qualità dei dati, dall’ordine dei trade e dai costi configurati.',readOnly:true,backtestOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
 }
 
