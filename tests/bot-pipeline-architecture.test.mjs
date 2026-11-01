@@ -18,6 +18,8 @@ assert.match(executor,/ensurePaper\(env\)/,'executor must enforce PAPER endpoint
 assert.match(executor,/auditPersisted/,'executor must expose audit persistence status');
 assert.match(engine,/riskEngine\(/,'decision engine must calculate deterministic risk gate');
 assert.match(engine,/portfolio=\{approved:risk\.allowed/,'portfolio approval must be gated by risk engine');
+assert.match(auto,/action==='BUY'&&symbol==='BTC\/USD'[\s\S]*?cryptoRisk\.allowed/,'crypto BUY must pass deterministic risk engine');
+assert.match(executor,/if\(!crypto\)\{const clock=await call\(env,'\/clock'\);if\(clock\?\.is_open!==true\)/,'every equity order must be blocked when Alpaca market is closed');
 
 console.log('PAPER lifecycle + pipeline architecture contract: PASS');
 
