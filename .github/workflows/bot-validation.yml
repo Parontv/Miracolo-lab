@@ -58,6 +58,8 @@ jobs:
         run: node tests/bot-server-engine.test.mjs
       - name: AI Research Council advisory contract
         run: node tests/bot-ai-research.test.mjs
+      - name: External research adapter contracts
+        run: node tests/bot-research-adapters.test.mjs
       - name: Consensus v3 regression
         run: node tests/bot-consensus-v3.test.mjs
       - name: Risk guardrail regression
