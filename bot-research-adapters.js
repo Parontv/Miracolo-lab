@@ -30,3 +30,15 @@ export function normalizeResearchAdapterResult(adapterId,result={}){
     warnings:Array.isArray(result.warnings)?result.warnings.slice(0,5).map(x=>safeText(x,180)):[],
     readOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
 }
+
+// Internal Vibe Trading-inspired read-only strategy lens over existing module outputs.
+export function runVibeTradingAdapter(modules=[]){
+  const byFamily=new Map((Array.isArray(modules)?modules:[]).map(x=>[x.family,x]));
+  const pick=['market','technical','news','flow','macro'].map(id=>byFamily.get(id)).filter(x=>x&&x.dataAvailable!==false&&Number.isFinite(Number(x.direction)));
+  if(pick.length<3)return {adapterId:'vibe-trading',status:'INSUFFICIENT_DATA',reason:'Servono almeno 3 famiglie di dati valide.',readOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+  const bullish=pick.filter(x=>Number(x.direction)>0).length,bearish=pick.filter(x=>Number(x.direction)<0).length,neutral=pick.length-bullish-bearish;
+  const spread=Math.abs(bullish-bearish)/pick.length;
+  const stance=spread<.2?'MIXED':bullish>bearish?'BULLISH':'BEARISH';
+  const sorted=[...pick].sort((a,b)=>Number(b.confidence||0)-Number(a.confidence||0));
+  return {adapterId:'vibe-trading',adapterName:'Vibe Trading · internal strategy lens',status:'ok',stance,confidence:Math.round(spread*100),coverage:pick.length/5,summary:`Lettura ${stance.toLowerCase()}: ${bullish} famiglie positive, ${bearish} negative, ${neutral} neutrali su ${pick.length} disponibili.`,evidence:sorted.slice(0,5).map(x=>({family:safeText(x.family,40),direction:Number(x.direction),confidence:Math.max(0,Math.min(100,Number(x.confidence)||0))})),readOnly:true,affectsConsensus:false,affectsRiskGate:false,affectsOrders:false};
+}
