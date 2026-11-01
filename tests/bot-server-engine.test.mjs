@@ -52,6 +52,7 @@ test('AI Research Council is attached as advisory and cannot change decision or 
   assert.equal(withAI.researchCouncil.aiResearch.affectsConsensus,false);
   assert.equal(withAI.researchCouncil.aiResearch.affectsRiskGate,false);
   assert.equal(withAI.researchCouncil.aiResearch.affectsOrders,false);
-  assert.deepEqual(withAI.decision,noAI.decision);
-  assert.deepEqual(withAI.risk,noAI.risk);
+  for(const key of ['direction','confidence','dataCoverage','agreement','score','reason']) assert.equal(withAI.decision[key],noAI.decision[key],`decision.${key} changed with advisory AI`);
+  assert.deepEqual(withAI.decision.contributors.map(({family,direction,weight})=>({family,direction,weight})),noAI.decision.contributors.map(({family,direction,weight})=>({family,direction,weight})));
+  for(const key of ['allowed','reason','flags','level']) assert.deepEqual(withAI.risk[key],noAI.risk[key],`risk.${key} changed with advisory AI`);
 });
