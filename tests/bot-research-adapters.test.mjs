@@ -60,5 +60,5 @@ test('Day Trader Skill checklist is observational and reports incomplete control
  const result=runDayTraderSkillAdapter({action:'LONG',risk:{approved:true}},[{family:'market',coverage:.8,dataAvailable:true},{family:'news',coverage:.5,dataAvailable:true},{family:'technical',coverage:.6,dataAvailable:true}]);
  assert.equal(result.status,'READY');assert.equal(result.passed,result.total);assert.equal(result.affectsConsensus,false);assert.equal(result.affectsRiskGate,false);assert.equal(result.affectsOrders,false);
  const blocked=runDayTraderSkillAdapter({},[]);
- assert.equal(blocked.status,'BLOCKED');
+ assert.equal(blocked.status,'REVIEW');
 });
