@@ -4,7 +4,7 @@ const seed=fs.readFileSync('bot-market-seed.js','utf8');
 const router=fs.readFileSync('bot-live-router.js','utf8');
 const evalEngine=fs.readFileSync('bot-evaluation.js','utf8');
 assert.equal((seed.match(/fetch\(/g)||[]).length,1,'Yahoo fallback must use one fetch');
-assert.match(router,/status=closed&limit=20/,'Journal sync must use one closed-orders Alpaca request');
+assert.match(router,/status=all&limit=100&direction=desc/,'Journal sync must fetch Alpaca orders once, including open and terminal orders');
 assert.match(router,/fetches:2,alpaca/,'market-test must report exactly two market fetches');
 assert.match(router,/name:'market',fetches:0/,'Decision phase must not fetch');
 assert.match(router,/name:'crypto',fetches:3/,'Crypto phase budget must remain three fetches');
