@@ -5,6 +5,7 @@ on:
     branches: [main, fix/bot-consensus-v3, fix/bot-ai-fred-live-20261029, fix/fred-proxy-fallback-20261029]
     paths:
       - 'bot-server-engine.js'
+      - 'bot-order-flow.js'
       - 'bot-context-enrichment.js'
       - 'ai-worker.js'
       - 'bot-risk-engine.js'
@@ -22,6 +23,7 @@ on:
   pull_request:
     paths:
       - 'bot-server-engine.js'
+      - 'bot-order-flow.js'
       - 'bot-live-router.js'
       - 'bot-context-enrichment.js'
       - 'ai-worker.js'
@@ -54,6 +56,7 @@ jobs:
           node --check ai-worker.js
           node --check hummingbot-adapter.js
           node --check bot-server-engine.js
+          node --check bot-order-flow.js
           node --check bot-risk-engine.js
           node --check bot-crypto-engine.js
           node --check news-event-engine.js
@@ -66,6 +69,8 @@ jobs:
           node --check public/v1/tab-navigation.js
       - name: Unified decision engine contract
         run: node tests/bot-server-engine.test.mjs
+      - name: Binance order flow contracts
+        run: node tests/bot-order-flow.test.mjs
       - name: Protective position risk verification
         run: node tests/bot-position-risk.test.mjs
       - name: Live context and FRED freshness contracts
