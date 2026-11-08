@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {cryptoSignal,runCryptoPaperCycle,getCryptoPaperStatus} from '../bot-crypto-paper.js';
 const candles=Array.from({length:60},(_,i)=>[Date.now()-((59-i)*60_000),0,0,0,100+i*.2,i===59?300:100]);
-const sig=cryptoSignal(candles);assert.equal(sig.action,'BUY');assert.ok(sig.volumeRatio>1);
+const sig=cryptoSignal(candles);assert.equal(sig.action,'BUY');assert.ok(sig.volumeRatio>1);assert.ok(Number.isFinite(sig.trendScore));assert.ok(sig.agents&&Number.isFinite(sig.agents.momentum)&&Number.isFinite(sig.agents.trend)&&Number.isFinite(sig.agents.volume));
 const kv=new Map();const env={ML_KV:{get:async k=>kv.get(k)||null,put:async(k,v)=>kv.set(k,v)}};
 const contextProvider=async()=>({ok:true,source:'test-context',modules:{flow:{dataAvailable:true,direction:1,strength:.8,coverage:1,marketType:'perpetual',freshness:'fresh',asOf:new Date().toISOString()},macro:{dataAvailable:true,direction:1,strength:.7,coverage:1,freshness:'fresh',asOf:new Date().toISOString()},news:{dataAvailable:true,direction:1,strength:.7,coverage:1,asOf:new Date().toISOString()},crypto:{dataAvailable:true,symbol:'BTC/USD',direction:1,strength:.7,coverage:1,asOf:new Date().toISOString()}}});
 const result=await runCryptoPaperCycle(env,{fetcher:async url=>{assert.match(url,/interval=1m/);return candles},contextProvider});
