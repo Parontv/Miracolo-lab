@@ -14,15 +14,26 @@ function countTradesToday(journal,day){
  }
  return count;
 }
-export function riskEngine({decision,positions=[],journal=[],eventRisk={level:'NORMAL',count:0},capital=2000,riskPerTrade=10,maxTradesPerDay=null,maxPositions=3,now=new Date()}){
+export function riskEngine({decision,positions=[],journal=[],eventRisk={level:'NORMAL',count:0},capital=2000,riskPerTrade=8,stopLossPct=1.5,maxTradesPerDay=null,maxPositions=3,now=new Date()}){
  const day=now.toISOString().slice(0,10),tradesToday=countTradesToday(journal,day);
- const exposure=(positions||[]).reduce((s,p)=>s+Math.abs(n(p.notional)||0),0),riskBudget=(positions||[]).reduce((s,p)=>s+(n(p.risk)||0),0),eventLevel=String(eventRisk?.level||'NORMAL').toUpperCase(),flags=[];
+ const exposure=(positions||[]).reduce((s,p)=>s+Math.abs(n(p.notional)||0),0);
+ const verifiedPositions=(positions||[]).filter(p=>p.riskVerified===true&&n(p.risk)!==null);
+ const unknownRiskPositions=(positions||[]).filter(p=>p.riskVerified!==true||n(p.risk)===null);
+ const riskBudget=verifiedPositions.reduce((s,p)=>s+Math.max(0,n(p.risk)||0),0);
+ const eventLevel=String(eventRisk?.level||'NORMAL').toUpperCase(),flags=[];
  if(eventLevel==='CRITICAL')flags.push('EVENT_CRITICAL');
  if(maxPositions!=null&&(positions||[]).length>=maxPositions)flags.push('POSITION_LIMIT');
  if(maxTradesPerDay!=null&&tradesToday>=Number(maxTradesPerDay))flags.push('DAILY_TRADE_LIMIT');
+ if(unknownRiskPositions.length)flags.push('EXISTING_POSITION_RISK_UNKNOWN');
  if(riskBudget>=capital*.02)flags.push('RISK_BUDGET_LIMIT');
  if(exposure>=capital*.9)flags.push('EXPOSURE_LIMIT');
  const aiRisk=decision?.contributors?.some(x=>x.family==='ai'&&x.riskFlag);if(aiRisk)flags.push('AI_RISK_VETO');
- const allowed=Boolean(decision?.direction)&&Number(decision?.confidence)>=65&&flags.length===0;
- return{mode:'PAPER',allowed,flags,level:flags.length?'RESTRICTED':'NORMAL',capital,riskPerTrade,maxTradesPerDay,maxPositions,tradesToday,openPositions:(positions||[]).length,exposure,riskBudget,eventRisk:eventLevel,score:clamp(Number(decision?.score)||0,-1,1),reason:flags.length? `Ingresso bloccato: ${flags.join(', ')}`:'Guardrail superati; eventuale ordine resta PAPER.'};
+ const direction=Number(decision?.direction)||0,confidence=Number(decision?.confidence)||0;
+ const signal=Boolean(direction)&&confidence>=65;
+ const stopPct=clamp(n(stopLossPct)??1.5,.1,20);
+ const riskUsd=Math.max(0,n(riskPerTrade)??8);
+ const maxNotionalUsd=Number((riskUsd/(stopPct/100)).toFixed(2));
+ const allowed=signal&&(direction<0||flags.length===0);
+ const reason=!signal?'Segnale insufficiente.':direction<0?'Uscita consentita: i limiti di ingresso non bloccano la riduzione del rischio.':flags.length?'Ingresso bloccato: '+flags.join(', '):'Guardrail superati; ingresso PAPER dimensionato sul rischio.';
+ return{mode:'PAPER',allowed,flags,level:flags.length?'RESTRICTED':'NORMAL',capital,riskPerTradeUsd:riskUsd,stopLossPct:stopPct,maxNotionalUsd,modeledStopRiskUsd:Number((maxNotionalUsd*stopPct/100).toFixed(2)),maxTradesPerDay,maxPositions,tradesToday,openPositions:(positions||[]).length,unknownRiskPositions:unknownRiskPositions.length,exposure,riskBudget,eventRisk:eventLevel,score:clamp(Number(decision?.score)||0,-1,1),reason};
 }
