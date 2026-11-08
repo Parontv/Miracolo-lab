@@ -36,30 +36,46 @@ export function analyzeOrderFlow(symbol,trades,book,now=Date.now(),{venue='Binan
  const score=Math.max(-1,Math.min(1,deltaRatio*.7+obi*.3));
  return{symbol,status:'ok',venue,marketType,tradeCount:valid.length,sampleTruncated:valid.length>=1000,sampleFrom:new Date(firstTradeAt).toISOString(),sampleTo:new Date(lastTradeAt).toISOString(),sampleSpanMs:lastTradeAt-firstTradeAt,lastTradeAt,ageMs,bookAt:new Date(now).toISOString(),bestBid,bestAsk,mid,spreadBps:Number(spreadBps.toFixed(3)),buyNotional:Number(buyNotional.toFixed(2)),sellNotional:Number(sellNotional.toFixed(2)),deltaNotional:Number(deltaNotional.toFixed(2)),deltaRatio:Number(deltaRatio.toFixed(4)),bidDepth10bps:Number(bidDepth.toFixed(2)),askDepth10bps:Number(askDepth.toFixed(2)),obi:Number(obi.toFixed(4)),score:Number(score.toFixed(4)),freshUntil:new Date(lastTradeAt+MAX_AGE_MS).toISOString()};
 }
+async function fetchBybitLinear(symbol,fetcher){
+ const base='https://api.bybit.com';
+ const [tradePayload,bookPayload]=await Promise.all([
+  getJson(base+'/v5/market/recent-trade?category=linear&symbol='+encodeURIComponent(symbol)+'&limit=1000',fetcher),
+  getJson(base+'/v5/market/orderbook?category=linear&symbol='+encodeURIComponent(symbol)+'&limit=50',fetcher)
+ ]);
+ if(Number(tradePayload?.retCode)!==0||Number(bookPayload?.retCode)!==0)throw Error('Bybit API: '+String(tradePayload?.retMsg||bookPayload?.retMsg||'retCode non-zero'));
+ const trades=(tradePayload?.result?.list||[]).filter(x=>x?.isRPITrade!==true).map(x=>({p:x.price,q:x.size,T:Number(x.time),m:String(x.side).toLowerCase()==='sell'}));
+ const book={bids:bookPayload?.result?.b||[],asks:bookPayload?.result?.a||[]};
+ return{trades,book};
+}
 export async function refreshBinanceOrderFlow({fetcher=fetch,now=Date.now(),symbols=SYMBOLS}={}){
  const started=Date.now();let fetches=0;
  const countedFetcher=(url,options)=>{fetches++;return fetcher(url,options)};
  const results=await Promise.all(symbols.map(async symbol=>{
+  const errors=[];
   try{
-   let trades,book,venue='Binance USD-M Futures',marketType='perpetual';
    try{
-    [trades,book]=await Promise.all([
+    const [trades,book]=await Promise.all([
      getJson(BASE+'/fapi/v1/aggTrades?symbol='+encodeURIComponent(symbol)+'&limit=1000',countedFetcher),
      getJson(BASE+'/fapi/v1/depth?symbol='+encodeURIComponent(symbol)+'&limit=20',countedFetcher)
     ]);
-   }catch(error){
-    if(!/HTTP (403|451)/.test(String(error?.message||error)))throw error;
+    return analyzeOrderFlow(symbol,trades,book,now,{venue:'Binance USD-M Futures',marketType:'perpetual'});
+   }catch(error){errors.push('Binance Futures: '+String(error?.message||error))}
+   try{
     const spot='https://data-api.binance.vision';
-    [trades,book]=await Promise.all([
+    const [trades,book]=await Promise.all([
      getJson(spot+'/api/v3/aggTrades?symbol='+encodeURIComponent(symbol)+'&limit=1000',countedFetcher),
      getJson(spot+'/api/v3/depth?symbol='+encodeURIComponent(symbol)+'&limit=20',countedFetcher)
     ]);
-    venue='Binance Spot (public data API)';marketType='spot';
-   }
-   return analyzeOrderFlow(symbol,trades,book,now,{venue,marketType});
+    return analyzeOrderFlow(symbol,trades,book,now,{venue:'Binance Spot (public data API)',marketType:'spot'});
+   }catch(error){errors.push('Binance Spot: '+String(error?.message||error))}
+   try{
+    const data=await fetchBybitLinear(symbol,countedFetcher);
+    return analyzeOrderFlow(symbol,data.trades,data.book,now,{venue:'Bybit Linear public REST',marketType:'perpetual'});
+   }catch(error){errors.push('Bybit Linear: '+String(error?.message||error))}
+   return{symbol,status:'unavailable',reason:errors.join(' · '),providerErrors:errors};
   }catch(e){return{symbol,status:'unavailable',reason:String(e?.message||e)}}
  }));
  const good=results.filter(x=>x.status==='ok'),errors=results.filter(x=>x.status!=='ok'),venues=[...new Set(good.map(x=>x.venue))];
  const freshUntil=good.length?new Date(Math.min(...good.map(x=>Date.parse(x.freshUntil)))).toISOString():new Date(now+30_000).toISOString();
- return{provider:venues.length===1?venues[0]:'Binance public REST (spot/futures)',source:'aggregate trades + depth snapshot',marketType:venues.length===1?(good[0]?.marketType||'unknown'):'mixed-crypto',status:good.length===symbols.length?'ok':good.length?'partial':'unavailable',freshness:good.length===symbols.length?'fresh':'incomplete',symbols:[...symbols],instrumentCount:good.length,expectedInstruments:symbols.length,instruments:results,errors:errors.map(x=>({symbol:x.symbol,reason:x.reason})),fetches,generatedAt:new Date(now).toISOString(),durationMs:Date.now()-started,freshUntil,readOnly:true,executionEnabled:false};
+ return{provider:venues.length===1?venues[0]:'Multi-venue public REST',source:'aggregate trades + depth snapshot',marketType:venues.length===1?(good[0]?.marketType||'unknown'):'mixed-crypto',status:good.length===symbols.length?'ok':good.length?'partial':'unavailable',freshness:good.length===symbols.length?'fresh':'incomplete',symbols:[...symbols],instrumentCount:good.length,expectedInstruments:symbols.length,instruments:results,errors:errors.map(x=>({symbol:x.symbol,reason:x.reason})),fetches,generatedAt:new Date(now).toISOString(),durationMs:Date.now()-started,freshUntil,readOnly:true,executionEnabled:false};
 }
