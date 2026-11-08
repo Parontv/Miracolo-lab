@@ -30,3 +30,10 @@ assert.equal(lockedProfit.riskVerified,true);
 assert.equal(lockedProfit.risk,0);
 
 console.log('Alpaca protective position risk verification: PASS');
+
+const held=assessPositionRisk([{symbol:'SPY',qty:'10',side:'long',avg_entry_price:'100'}],[{id:'sl-held',symbol:'SPY',side:'sell',type:'stop',status:'held',qty:'10',stop_price:'98'}])[0];
+assert.equal(held.riskVerified,false);
+
+const partialFill=assessPositionRisk([{symbol:'SPY',qty:'8',side:'long',avg_entry_price:'100'}],[{id:'sl-partial-fill',symbol:'SPY',side:'sell',type:'stop',status:'partially_filled',qty:'10',remaining_qty:'8',stop_price:'98'}])[0];
+assert.equal(partialFill.riskVerified,true);
+assert.equal(partialFill.protectiveOrderQty,8);
