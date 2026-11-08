@@ -51,6 +51,8 @@ test('falls back to official Binance public spot market-data API on Futures geo-
  assert.equal(result.status,'ok');
  assert.equal(result.provider,'Binance Spot (public data API)');
  assert.ok(result.instruments.every(x=>x.marketType==='spot'));
+ assert.equal(result.instruments[0].venueSymbol,'XBTUSD');
+ assert.equal(result.instruments[1].venueSymbol,'ETHUSD');
 });
 
 test('falls back to Bybit Linear public REST when Binance hosts are blocked',async()=>{
