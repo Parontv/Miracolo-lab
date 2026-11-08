@@ -66,3 +66,10 @@ assert.match(engine,/aiHedgeFundResearch:hedge/,'Analyst synthesis must be inclu
 assert.match(engine,/never vote or execute/i,'Research sidecars must remain read-only');
 for (const id of ['botAIResearchStatus','botAdaptersStatus','botVibeStatus','botFreqtradeStatus','botLLMLabStatus','botDayTraderStatus','botDailyStockStatus','botHedgeFundStatus']) assert.ok(workspace.includes('id="'+id+'"'),'Missing research status badge '+id);
 console.log('PASS research sidecar payload contract');
+
+const controller=fs.readFileSync('public/bot-controller.js','utf8');
+assert.match(router,/researchPayloadReady=data=>Boolean\(data\?\.researchCouncil\?\.aiResearch/,'Cached decisions must be rebuilt when research payloads are missing');
+assert.match(router,/decisionFresh\(data\)&&researchPayloadReady\(data\)/,'Edge cache must not serve stale decisions without research sidecars');
+assert.match(workspace,/window\.MiracoloBot\?\.load\?\./,'Opening the Bot workspace must request the current server decision');
+assert.match(controller,/async function load\(\)/,'Bot controller must expose a read-only decision loader');
+console.log('PASS research refresh and cache invalidation contract');
