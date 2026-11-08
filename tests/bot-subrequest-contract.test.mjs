@@ -46,3 +46,5 @@ assert.ok(paperAuto.indexOf("if(action==='BUY'){const gate=await preflightBuy")<
 assert.match(router,/flattenAlpacaOrders\(orders\)/,'Journal must import nested Alpaca bracket child orders');
 
 assert.match(router,/groupRole:o\.group_role\|\|prev\.groupRole/,'Journal must preserve Alpaca bracket group roles for daily trade counting');
+
+assert.match(router,/orderFlow\},ai:/,'order flow snapshot must be stored in market state before AI/decision analysis');
