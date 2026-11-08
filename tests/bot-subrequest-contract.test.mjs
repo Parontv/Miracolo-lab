@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 const seed=fs.readFileSync('bot-market-seed.js','utf8');
 const router=fs.readFileSync('bot-live-router.js','utf8');
 const evalEngine=fs.readFileSync('bot-evaluation.js','utf8');
+const paperAuto=fs.readFileSync('bot-paper-auto.js','utf8');
 assert.equal((seed.match(/fetch\(/g)||[]).length,1,'Yahoo fallback must use one fetch');
 assert.match(router,/status=all&nested=true&limit=500&direction=desc/,'Journal sync must fetch Alpaca orders once, including nested bracket fills and terminal orders');
 assert.match(router,/reconcileFilledOrders\(orders/,'Journal must calculate realized P&L from verified fills');
@@ -10,7 +11,9 @@ assert.match(router,/realizedBasis:exit\?'GROSS_BEFORE_FEES'/,'Journal must labe
 assert.match(router,/fetches:2,alpaca/,'market-test must report exactly two market fetches');
 assert.match(router,/name:'market',fetches:0/,'Decision phase must not fetch');
 assert.match(router,/name:'crypto',fetches:3/,'Crypto phase budget must remain three fetches');
-assert.match(router,/name:'position',fetches:1/,'Position phase must remain one fetch');
+assert.match(router,/name:'position',fetches:0/,'Position phase starts with zero actual fetches');
+assert.match(router,/p\.fetches=2/,'Position risk reconciliation must fetch both positions and active nested orders');
+assert.match(router,/assessPositionRisk\(raw,orders\)/,'Position risk must be derived from verified Alpaca stop orders');
 assert.match(router,/name:'journal'/,'Journal phase must be explicit');
 assert.match(router,/evaluationPhase/,'Evaluation phase must be explicit');
 assert.match(router,/fetches:0,errors:\[\],durationMs:0/,'Evaluation phase adds no external fetches');
@@ -29,3 +32,11 @@ console.log('PASS bot subrequest/evaluation contract');
 
 assert.match(router,/function decisionFresh\(data\)/,'cached decisions must validate input freshness');
 assert.match(router,/macroUntil>now&&aiAt>now-60\*60\*1000/,'cached decision must expire when macro or AI evidence expires');
+
+assert.match(paperAuto,/if\(!Array\.isArray\(positions\)\|\|!Array\.isArray\(orders\)\)/,'PAPER buy preflight must fail closed on invalid Alpaca response shapes');
+assert.match(paperAuto,/if\(!Array\.isArray\(rows\)\)return\{ok:false,position:null,positions:\[\]\}/,'PAPER position sync must fail closed on invalid Alpaca positions');
+
+assert.match(router,/async function refreshRiskState\(env\)/,'execution routes must refresh live positions and orders before decisions');
+assert.match(router,/const riskState=await refreshRiskState\(env\);if\(!riskState\.ok\)/,'manual plan/run routes must fail closed on reconciliation errors');
+assert.match(paperAuto,/assessPositionRisk\(positions,orders\)/,'PAPER preflight must verify stop coverage for all existing positions');
+assert.match(paperAuto,/pendingEntries/,'PAPER preflight must count pending entry orders against the position cap');
