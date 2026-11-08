@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 const seed=fs.readFileSync('bot-market-seed.js','utf8');
 const router=fs.readFileSync('bot-live-router.js','utf8');
 const evalEngine=fs.readFileSync('bot-evaluation.js','utf8');
+const paperAuto=fs.readFileSync('bot-paper-auto.js','utf8');
 assert.equal((seed.match(/fetch\(/g)||[]).length,1,'Yahoo fallback must use one fetch');
 assert.match(router,/status=all&nested=true&limit=500&direction=desc/,'Journal sync must fetch Alpaca orders once, including nested bracket fills and terminal orders');
 assert.match(router,/reconcileFilledOrders\(orders/,'Journal must calculate realized P&L from verified fills');
@@ -31,3 +32,6 @@ console.log('PASS bot subrequest/evaluation contract');
 
 assert.match(router,/function decisionFresh\(data\)/,'cached decisions must validate input freshness');
 assert.match(router,/macroUntil>now&&aiAt>now-60\*60\*1000/,'cached decision must expire when macro or AI evidence expires');
+
+assert.match(paperAuto,/if\(!Array\.isArray\(positions\)\|\|!Array\.isArray\(orders\)\)/,'PAPER buy preflight must fail closed on invalid Alpaca response shapes');
+assert.match(paperAuto,/if\(!Array\.isArray\(rows\)\)return\{ok:false,position:null,positions:\[\]\}/,'PAPER position sync must fail closed on invalid Alpaca positions');
