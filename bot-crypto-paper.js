@@ -22,7 +22,7 @@ async function fetchMarketCandles(symbol,fetcher=json){
   {provider:'COINBASE',url:'https://api.exchange.coinbase.com/products/'+(COINBASE_PRODUCTS[symbol]||symbol.replace('USDT','-USD'))+'/candles?granularity=60',parse:normalizeCoinbase},
   {provider:'KRAKEN',url:'https://api.kraken.com/0/public/OHLC?pair='+(KRAKEN_PAIRS[symbol]||symbol.replace('USDT','USD'))+'&interval=1',parse:normalizeKraken}
  ];
- for(const source of urls){try{const payload=await fetcher(source.url);const candles=source.parse(payload);if(!Array.isArray(candles)||candles.length<30)throw Error(source.provider+' returned fewer than 30 candles');return{candles,provider:source.provider}}catch(e){errors.push(source.provider+': '+String(e.message||e))}}
+ for(const source of urls){try{const payload=await fetcher(source.url);const candles=source.parse(payload);if(!Array.isArray(candles)||candles.length<30)throw Error(source.provider+' returned fewer than 30 candles');const lastAt=Number(candles.at(-1)?.[0]);if(!Number.isFinite(lastAt)||lastAt>Date.now()+60_000||Date.now()-lastAt>3*60_000)throw Error(source.provider+' candles stale or timestamp invalid');return{candles,provider:source.provider}}catch(e){errors.push(source.provider+': '+String(e.message||e))}}
  throw Error('Tutte le fonti crypto non disponibili. '+errors.join(' | '));
 }
 async function read(env){try{const raw=await env.ML_KV?.get(KEY);return raw?JSON.parse(raw):null}catch{return null}}
@@ -47,12 +47,11 @@ function cryptoConsensus(local,context,symbol){
  const m=context?.modules||{},votes=[];
  if(Number.isFinite(Number(local?.score)))votes.push({family:'technical',direction:Math.sign(local.score),score:local.score,weight:.48,coverage:local.coverage||0,source:'OHLCV '+(local.provider||'market')});
  const flow=m.flow;if(freshModule(flow,90_000)&&['perpetual','spot','mixed-crypto'].includes(String(flow.marketType||'').toLowerCase()))votes.push({family:'order_flow',direction:Math.sign(moduleScore(flow)),score:moduleScore(flow),weight:.22,coverage:Number(flow.coverage)||0,source:flow.source||'Order Flow'});
- const macro=m.macro,news=m.crypto_news,broad=[];
- if(freshModule(macro,45*86400_000))broad.push({family:'macro',score:moduleScore(macro),coverage:Number(macro.coverage)||0});
- if(freshModule(news,72*60*60*1000))broad.push({family:'crypto_news',score:moduleScore(news),coverage:Number(news.coverage)||0});
- if(broad.length){const v=broad.reduce((a,x)=>a+x.score,0)/broad.length;votes.push({family:'macro_news',direction:Math.sign(v),score:v,weight:.12,coverage:Math.min(...broad.map(x=>x.coverage)),source:'News + FRED'});}
- const btc=m.crypto;if(symbol!=='BTCUSDT'&&freshModule(btc,5*60_000)&&btc.symbol==='BTC/USD')votes.push({family:'btc_market',direction:Math.sign(moduleScore(btc)),score:moduleScore(btc),weight:.10,coverage:Number(btc.coverage)||0,source:'BTC/USD market structure'});
- const ai=m.ai;if(freshModule(ai,60*60*1000)&&Number(ai.confidence)>=65&&Math.abs(Number(ai.direction)||0)>0)votes.push({family:'ai_context',direction:Math.sign(moduleScore(ai)),score:moduleScore(ai),weight:.08,coverage:Number(ai.coverage)||0,source:'AI consultiva'});
+ const macro=m.macro,news=m.crypto_news;
+ if(freshModule(macro,45*86400_000))votes.push({family:'macro',direction:Math.sign(moduleScore(macro)),score:moduleScore(macro),weight:.08,coverage:Number(macro.coverage)||0,source:'FRED macro'});
+ if(freshModule(news,72*60*60*1000))votes.push({family:'crypto_news',direction:Math.sign(moduleScore(news)),score:moduleScore(news),weight:.08,coverage:Number(news.coverage)||0,source:'Crypto-filtered news'});
+ const btc=m.crypto;if(symbol!=='BTCUSDT'&&freshModule(btc,5*60_000)&&btc.symbol==='BTC/USD')votes.push({family:'btc_market',direction:Math.sign(moduleScore(btc)),score:moduleScore(btc),weight:.08,coverage:Number(btc.coverage)||0,source:'BTC/USD market structure'});
+ const ai=m.ai;if(freshModule(ai,60*60*1000)&&Number(ai.confidence)>=65&&Math.abs(Number(ai.direction)||0)>0)votes.push({family:'ai_context',direction:Math.sign(moduleScore(ai)),score:moduleScore(ai),weight:.06,coverage:Number(ai.coverage)||0,source:'AI consultiva'});
  const weight=votes.reduce((a,v)=>a+v.weight,0),score=weight?votes.reduce((a,v)=>a+v.score*v.weight,0)/weight:0;
  const directional=votes.filter(v=>v.direction!==0),agree=directional.length?directional.filter(v=>v.direction===Math.sign(score)).length/directional.length:0;
  const independent=votes.length,active=directional.length,confidence=Math.round(Math.min(95,50+Math.abs(score)*35+Math.min(10,active*3)));
