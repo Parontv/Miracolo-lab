@@ -33,11 +33,7 @@ try{
     if(u.endsWith('/orders'))return new Response(JSON.stringify({id:'paper-test-order',status:'accepted',symbol:'BTC/USD'}),{status:200});
     throw new Error('unexpected paper URL');
   };
-  const execution=await executePaperDecision(env,{action:'BUY',symbol:'BTC/USD',notional:100,clientOrderId:'crypto-paper-test-1'});
-  assert.equal(execution.executed,true);
-  assert.equal(execution.mode,'PAPER');
-  assert.equal(execution.symbol,'BTC/USD');
-  assert.equal(execution.timeInForce,'gtc');
+  await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'BTC/USD',notional:100,clientOrderId:'crypto-paper-test-1'}),/Acquisto crypto automatico disabilitato/);
 
   global.fetch=async(url,options={})=>{
     const u=String(url),method=String(options.method||'GET').toUpperCase();
@@ -62,10 +58,12 @@ try{
     return new Response(JSON.stringify({id:'paper-equity-bracket',status:'accepted',symbol:'SPY'}),{status:200});
   };
   const equity=await executePaperDecision(env,{action:'BUY',symbol:'SPY',notional:100,referencePrice:100,clientOrderId:'equity-bracket-test'});
-  assert.equal(equity.executed,true);assert.equal(equity.orderClass,'bracket');
+  assert.equal(equity.executed,true);assert.equal(equity.orderClass,'bracket');assert.equal(equity.modeledStopRiskUsd,1.5);assert.equal(equity.riskCapUsd,8);
   await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'QQQ',notional:100}),/prezzo di riferimento non disponibile/);
   console.log('Equity bracket protection contract: PASS');
   console.log('BTC position-aware exit contract: PASS');
   console.log('BTC crypto decision contract: PASS');
   console.log('BTC paper execution contract: PASS');
 } finally { global.fetch=originalFetch; }
+
+await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'SPY',notional:1000,referencePrice:100,maxRiskUsd:8}),/supera il limite 8 USD/);
