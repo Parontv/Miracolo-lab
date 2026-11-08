@@ -6,6 +6,7 @@ on:
     paths:
       - 'bot-server-engine.js'
       - 'bot-context-enrichment.js'
+      - 'ai-worker.js'
       - 'bot-risk-engine.js'
       - 'bot-crypto-engine.js'
       - 'news-event-engine.js'
@@ -48,6 +49,7 @@ jobs:
         run: |
           node --check bot-live-router.js
           node --check bot-context-enrichment.js
+          node --check ai-worker.js
           node --check hummingbot-adapter.js
           node --check bot-server-engine.js
           node --check bot-risk-engine.js
