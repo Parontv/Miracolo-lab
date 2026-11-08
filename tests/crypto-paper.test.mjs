@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { getCryptoDecision } from '../bot-crypto-engine.js';
 import { executePaperDecision } from '../bot-paper-executor.js';
-import { cryptoAction } from '../bot-paper-auto.js';
+import { cryptoAction, runAutoPaperBot } from '../bot-paper-auto.js';
 
 const originalFetch=global.fetch;
 try{
@@ -60,6 +60,29 @@ try{
   const equity=await executePaperDecision(env,{action:'BUY',symbol:'SPY',notional:100,referencePrice:100,clientOrderId:'equity-bracket-test'});
   assert.equal(equity.executed,true);assert.equal(equity.orderClass,'bracket');assert.equal(equity.modeledStopRiskUsd,1.5);assert.equal(equity.riskCapUsd,8);
   await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'QQQ',notional:100}),/prezzo di riferimento non disponibile/);
+  const candidate={ok:true,mode:'PAPER',decision:{portfolio:{approved:true,action:'BUY',reason:'Test paper autorizzato.'}},risk:{maxNotionalUsd:533.33},crypto:null};
+  const state={market:{indices:[{ticker:'SPY',price:100}]}};
+  let submitted=0;
+  global.fetch=async(url,options={})=>{
+    const u=String(url),method=String(options.method||'GET').toUpperCase();
+    if(u.endsWith('/positions')&&method==='GET')return new Response('[]',{status:200});
+    if(u.includes('/orders?status=open')&&method==='GET')return new Response('[]',{status:200});
+    if(u.endsWith('/orders')&&method==='POST'){submitted++;return new Response(JSON.stringify({id:'paper-auto-order',status:'accepted',symbol:'SPY'}),{status:200});}
+    throw new Error('unexpected auto-paper URL '+method+' '+u);
+  };
+  const disabled=await runAutoPaperBot({...env,PAPER_AUTO_EXECUTION:'false'},{stateOverride:state,decisionOverride:structuredClone(candidate)});
+  assert.equal(disabled.execution.executed,false);
+  assert.equal(disabled.execution.dryRun,true);
+  assert.match(disabled.execution.reason,/PAPER_AUTO_EXECUTION/);
+  assert.equal(submitted,0,'disabled auto execution must never submit an order');
+  const enabled=await runAutoPaperBot({...env,PAPER_AUTO_EXECUTION:'true'},{stateOverride:state,decisionOverride:structuredClone(candidate)});
+  assert.equal(enabled.execution.executed,true);
+  assert.equal(enabled.execution.mode,'PAPER');
+  assert.equal(submitted,1,'enabled paper execution submits exactly one paper order');
+  const wrongMode=await runAutoPaperBot({...env,BOT_MODE:'LIVE',PAPER_AUTO_EXECUTION:'true'},{stateOverride:state,decisionOverride:structuredClone(candidate)});
+  assert.equal(wrongMode.execution.executed,false);
+  assert.equal(submitted,1,'non-PAPER mode must never submit an order');
+
   await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'SPY',notional:1000,referencePrice:100,maxRiskUsd:8}),/supera il limite 8 USD/);
   console.log('Equity bracket protection contract: PASS');
   console.log('BTC position-aware exit contract: PASS');
