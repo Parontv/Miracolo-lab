@@ -22,8 +22,8 @@ test('engine fails safely when market state is absent',async()=>{
 test('engine produces explainable modules and a portfolio decision',async()=>{
   const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map((ticker,i)=>({ticker,changePct:.8+i*.05,rsi:55+i,volumeChangePct:20+i*2,smaSignal:.1,emaSignal:.1,atrPct:1.2}));
   const news=Array.from({length:12},(_,i)=>({title:`Market update ${i}`,date:new Date().toISOString(),score:.2}));
-  const state={market:{timestamp:new Date().toISOString(),indices},news:{timestamp:new Date().toISOString(),items:news},ai:{status:'ok',direction:'LONG',confidence:75,regime:'risk-on',thesis:'Trend positivo'}};
-  const quant={timestamp:new Date().toISOString(),coverage:{available:3},groups:{macro:[{status:'ok',label:'Inflazione USA',trendPct:-.4}],rates:[{status:'ok',label:'Fed Funds effettivo',trendPct:-.2}]}};
+  const state={market:{timestamp:new Date().toISOString(),indices},news:{timestamp:new Date().toISOString(),items:news},ai:{status:'ok',direction:'LONG',confidence:75,regime:'risk-on',thesis:'Trend positivo',generatedAt:new Date().toISOString()}};
+  const quant={timestamp:new Date().toISOString(),coverage:{available:3},groups:{macro:[{status:'ok',freshness:'fresh',label:'Inflazione USA',trendPct:-.4}],rates:[{status:'ok',freshness:'fresh',label:'Fed Funds effettivo',trendPct:-.2}]}};
   const result=await runBot(envWith(state,quant));
   assert.equal(result.ok,true);
   assert.equal(result.mode,'PAPER');
@@ -37,6 +37,8 @@ test('engine produces explainable modules and a portfolio decision',async()=>{
   assert.ok(technical.indicators.includes('ATR'));
   assert.ok(result.diagnostics.inputAudit.technicalFields.includes('rsi'));
   assert.ok(result.decision && result.decision.portfolio);
+  assert.equal(result.modules.find(m=>m.family==='macro').dataAvailable,true);
+  assert.equal(result.modules.find(m=>m.family==='ai').dataAvailable,true);
 });
 
 test('backtest module never treats an unvalidated market snapshot as backtest evidence',async()=>{const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:.8}));const state={market:{timestamp:new Date().toISOString(),indices},backtest:{returnPct:1.2,method:'current-market-sanity-check'}};const result=await runBot(envWith(state,{}));const backtest=result.modules.find(m=>m.family==='backtest');assert.equal(backtest.dataAvailable,false);assert.equal(backtest.status,'NO_DATA');});
@@ -46,7 +48,7 @@ test('learning excludes closed orders without verified realized PnL',async()=>{c
 test('stale macro and AI inputs never contribute to consensus',async()=>{
   const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:.8}));
   const state={market:{timestamp:new Date().toISOString(),indices},ai:{status:'stale',direction:'LONG',confidence:95,generatedAt:'2026-11-01T00:00:00Z'}};
-  const quant={timestamp:new Date().toISOString(),groups:{macro:[{status:'ok',freshness:'stale',label:'CPI inflation',changePct:-1,value:100}]}};
+  const quant={timestamp:new Date().toISOString(),coverage:{available:1},groups:{macro:[{status:'ok',freshness:'stale',label:'CPI inflation',changePct:-1,value:100}]}};
   const result=await runBot(envWith(state,quant),state);
   const macro=result.modules.find(m=>m.family==='macro');
   const ai=result.modules.find(m=>m.family==='ai');
