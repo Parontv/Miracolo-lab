@@ -24,7 +24,7 @@ async function syncJournal(env){
  try{
   const key=env?.ALPACA_API_KEY,secret=env?.ALPACA_API_SECRET;
   if(!key||!secret)throw Error('Alpaca credentials missing');
-  const r=await fetch('https://paper-api.alpaca.markets/v2/orders?status=all&limit=500&direction=desc',{headers:{'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':secret,'Accept':'application/json'}});
+  const r=await fetch('https://paper-api.alpaca.markets/v2/orders?status=all&nested=true&limit=500&direction=desc',{headers:{'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':secret,'Accept':'application/json'}});
   p.fetches++;
   if(!r.ok)throw Error('Alpaca orders HTTP '+r.status);
   const orders=await r.json(),old=await read(env,JOURNAL,[]),rows=Array.isArray(old)?old:[],byId=new Map(rows.filter(x=>x?.orderId).map(x=>[String(x.orderId),x]));
