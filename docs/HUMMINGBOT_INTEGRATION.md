@@ -2,7 +2,7 @@
 
 ## Stato
 
-Proposta tecnica registrata su branch dedicato. **Non attiva in produzione**: nessun servizio Hummingbot è stato installato o collegato, nessun ordine viene inviato a Hummingbot e il motore Alpaca PAPER resta invariato.
+Adapter read-only implementato su branch dedicato e coperto da test automatici. **Non attivo in produzione**: nessun servizio Hummingbot è stato installato o collegato, nessun ordine viene inviato a Hummingbot e il motore Alpaca PAPER resta invariato.
 
 Repository di riferimento:
 - Hummingbot Client: https://github.com/hummingbot/hummingbot
@@ -79,7 +79,7 @@ Alpaca PAPER       Hummingbot Service
 
 ### Fase 1 — Osservabilità read-only
 
-Aggiungere un modulo isolato, ad esempio `hummingbot-adapter.js`, con timeout, validazione schema e normalizzazione dei dati. Inizialmente solo:
+Implementato `hummingbot-adapter.js` con timeout, validazione JSON, limite alla dimensione delle risposte, autenticazione Basic e supporto opzionale Cloudflare Access. Il Worker espone `GET /api/hummingbot/overview`. Il modulo interroga soltanto:
 - stato/health del servizio;
 - elenco connettori e account disponibili;
 - market data, order book e candele;
@@ -121,7 +121,7 @@ Valutare Hummingbot Strategy V2 e i suoi backtest per:
 
 I risultati Hummingbot non devono essere confusi con quelli del backtest Miracolo: salvare sempre motore, versione, dataset, intervallo e parametri.
 
-## Guardrail non negoziabili
+## Configurazione adapter read-only\n\nImpostare esclusivamente nei Worker Secrets/Variables, mai nel frontend o nel repository:\n\n- `HUMMINGBOT_API_URL`: URL HTTPS dell'API, idealmente Cloudflare Tunnel protetto da Access.\n- `HUMMINGBOT_API_USERNAME` e `HUMMINGBOT_API_PASSWORD`: credenziali HTTP Basic dedicate all'API.\n- `CF_ACCESS_CLIENT_ID` e `CF_ACCESS_CLIENT_SECRET`: opzionali, per Cloudflare Access Service Auth.\n\nSenza URL o credenziali l'adapter restituisce `configured=false` e non effettua chiamate. Rifiuta URL HTTP, credenziali incorporate nell'URL e redirect. L'endpoint pubblico Miracolo è `GET /api/hummingbot/overview`; richieste diverse da GET vengono rifiutate.\n\n## Guardrail non negoziabili
 
 - Modalità PAPER only in tutte le prime fasi.
 - Nessuna chiave exchange live e nessun wallet reale.
@@ -133,7 +133,7 @@ I risultati Hummingbot non devono essere confusi con quelli del backtest Miracol
 - Kill switch globale che blocca nuove aperture; la chiusura di emergenza deve essere una procedura separata, testata e tracciata.
 - Mai interpretare un timeout come prova che l'ordine non sia stato eseguito: prima riconciliare per ID.
 
-## Criteri di accettazione
+## Verifiche eseguite\n\n- Test dedicati `tests/hummingbot-adapter.test.mjs`: configurazione assente, rifiuto HTTP, autenticazione, sole richieste GET, normalizzazione, errori parziali e JSON non valido.\n- Il test usa risposte simulate: verifica il contratto del modulo, non la disponibilità di un server Hummingbot reale.\n- Nessun deploy eseguito e nessun segreto Hummingbot configurato.\n\n## Criteri di accettazione
 
 L'integrazione non è pronta finché:
 1. Hummingbot è raggiungibile solo attraverso un canale autenticato e privato.
