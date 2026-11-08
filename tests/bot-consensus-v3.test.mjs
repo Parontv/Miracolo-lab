@@ -84,3 +84,18 @@ const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>
 }
 
 console.log('PASS bot consensus v3');
+
+// Binance Spot/Futures flow and Alpaca BTC crypto are correlated exposures, not two independent votes.
+{
+ const modules=[
+  m('market',1,.14,80,.8),m('technical',1,.17,80,.8),m('historical',1,.07,80,.8),
+  m('news',1,.13,75,.6),m('macro',0,.13,50,0),
+  {...m('flow',1,.07,80,.8),marketType:'spot'},
+  m('crypto',1,.08,80,.8),m('backtest',0,.06,50,0),m('learning',0,.04,50,0),m('memory',0,.03,50,0),m('ai',0,.08,50,0)
+ ];
+ const d=consensus(modules);
+ assert.equal(d.dataCoverage,1);
+ assert.equal(d.families,3);
+ assert.equal(d.direction,1);
+ assert.equal(d.voters.filter(x=>x.family==='crypto-orderflow').length,1);
+}
