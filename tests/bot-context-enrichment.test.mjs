@@ -20,7 +20,7 @@ assert.match(source,/provider:'FRED live'/,'live FRED observations must identify
 assert.match(source,/const \[news,liveFred\]=await Promise\.all/,'live FRED must be fetched before mirror fallback');
 assert.match(source,/mirror fallback/,'FRED mirror must be explicitly marked as fallback');
 
-const { classifyFredFreshness } = await import('../bot-context-enrichment.js');
+const { classifyFredFreshness, parseGdelt } = await import('../bot-context-enrichment.js');
 const now=Date.parse('2026-11-08T00:00:00Z');
 assert.equal(classifyFredFreshness({series:'EFFR',asOf:'2026-11-07'},now).freshness,'fresh');
 assert.equal(classifyFredFreshness({series:'EFFR',asOf:'2026-10-01'},now).freshness,'stale');
@@ -28,3 +28,13 @@ assert.equal(classifyFredFreshness({series:'GDPC1',asOf:'2026-08-01'},now).fresh
 assert.equal(classifyFredFreshness({series:'CPIAUCSL',asOf:null},now).freshness,'unknown');
 assert.equal(classifyFredFreshness({series:'EFFR',asOf:'2026-11-10'},now).freshness,'unknown');
 console.log('PASS FRED freshness thresholds and live-first fallback');
+
+const parsedGdelt=parseGdelt({articles:[
+  {title:'Compact timestamp',seendate:'20261108T140000Z'},
+  {title:'Missing timestamp'},
+  {title:'Invalid timestamp',seendate:'not-a-date'}
+]});
+assert.equal(parsedGdelt[0].date,'2026-11-08T14:00:00.000Z');
+assert.equal(parsedGdelt[1].date,null);
+assert.equal(parsedGdelt[2].date,null);
+console.log('PASS GDELT compact publication timestamps');
