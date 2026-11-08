@@ -50,8 +50,18 @@ export async function runAlpacaCryptoPaperSmokeTest(env){
   const filledQty=Number(buyFinal?.filled_qty||0);
   report.buy={...report.buy,status:buyFinal?.status||report.buy.status,filledQty,filledAvgPrice:Number(buyFinal?.filled_avg_price||0),submittedNotional:Number(buyFinal?.notional||10)};
   if(!(filledQty>0)){report.ok=false;report.result='BUY_NOT_FILLED';report.completedAt=new Date().toISOString();lastSmokeReport=report;return report;}
-  const sell=await api(env,'/orders',{method:'POST',body:JSON.stringify({symbol:'BTC/USD',qty:String(filledQty),side:'sell',type:'market',time_in_force:'gtc',client_order_id:'ml-crypto-test-sell-'+Date.now()})});
-  report.sell={id:sell.id,status:sell.status,qty:filledQty,clientOrderId:sell.client_order_id};
+  // Alpaca may charge crypto trading fees in the base asset: filled_qty can exceed
+  // the sellable position quantity. Read the actual position and close only that amount.
+  let postBuyPositions=await api(env,'/positions');
+  let held=Array.isArray(postBuyPositions)?postBuyPositions.find(x=>norm(x.symbol)==='BTCUSD'):null;
+  let sellableQty=Number(held?.qty||0);
+  if(!(sellableQty>0))throw Error('Acquisto eseguito ma quantità BTC disponibile non rilevata: posizione da verificare manualmente.');
+  const increment=Number(asset.min_trade_increment||0);
+  if(increment>0)sellableQty=Math.floor((sellableQty+Number.EPSILON)/increment)*increment;
+  const qtyText=String(sellableQty);
+  report.buy.sellableQty=sellableQty;
+  const sell=await api(env,'/orders',{method:'POST',body:JSON.stringify({symbol:'BTC/USD',qty:qtyText,side:'sell',type:'market',time_in_force:'gtc',client_order_id:'ml-crypto-test-sell-'+Date.now()})});
+  report.sell={id:sell.id,status:sell.status,qty:sellableQty,clientOrderId:sell.client_order_id};
   const sellFinal=await waitOrder(env,sell.id,15000);
   report.sell={...report.sell,status:sellFinal?.status||sell.status,filledQty:Number(sellFinal?.filled_qty||0),filledAvgPrice:Number(sellFinal?.filled_avg_price||0)};
   const remaining=await api(env,'/positions');
