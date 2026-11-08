@@ -70,3 +70,20 @@ test('undated and stale news cannot contribute to market consensus',async()=>{
   assert.equal(news.dataAvailable,false);
   assert.equal(news.status,'NO_DATA');
 });
+
+test('learning remains warming up until thirty verified exits exist',async()=>{
+  const state={market:{timestamp:new Date().toISOString(),indices:['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:0}))}};
+  const exits=Array.from({length:5},(_,i)=>({orderId:'verified-'+i,symbol:'SPY',side:'sell',status:'filled',closedAt:new Date().toISOString(),realizedStatus:'GROSS_WEIGHTED_AVERAGE',realized:i%2===0?1:-.5}));
+  const store=new Map([['state/latest',JSON.stringify(state)],['quantitative/latest-v2',JSON.stringify({timestamp:new Date().toISOString(),coverage:{available:1},groups:{macro:[]}})],['bot/journal/v1',JSON.stringify(exits)],['bot/positions/v1','[]']]);
+  const env={ML_KV:{async get(k){return store.get(k)||null},async put(k,v){store.set(k,v)}}};
+  const warming=await runBot(env,state);
+  const learning=warming.modules.find(m=>m.family==='learning');
+  assert.equal(learning.status,'WARMING_UP');
+  assert.equal(learning.dataAvailable,true);
+  assert.equal(learning.verifiedExits,5);
+  assert.equal(learning.minSamples,30);
+  assert.equal(learning.coverage,5/30);
+  store.set('bot/journal/v1',JSON.stringify(Array.from({length:30},(_,i)=>({...exits[i%5],orderId:'verified-'+i}))));
+  const ready=await runBot(env,state);
+  assert.equal(ready.modules.find(m=>m.family==='learning').status,'READY');
+});
