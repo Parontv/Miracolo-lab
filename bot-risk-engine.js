@@ -8,6 +8,8 @@ function countTradesToday(journal,day){
   if(String(x.time||'').slice(0,10)!==day)continue;
   const status=String(x.status||'').toLowerCase();
   if(status&&!ACTIVE_ORDER_STATUSES.has(status))continue;
+  const groupRole=String(x.groupRole||x.group_role||'').toLowerCase(),isProtectiveLeg=['take_profit','stop_loss'].includes(groupRole)||Boolean(x.parentOrderId||x.parent_order_id);
+  if(isProtectiveLeg&&!['partially_filled','filled'].includes(status))continue;
   const id=x.orderId||x.clientOrderId;
   if(id){if(seen.has(String(id)))continue;seen.add(String(id));}
   count++;
