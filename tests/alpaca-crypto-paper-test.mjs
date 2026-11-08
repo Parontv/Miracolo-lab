@@ -6,13 +6,13 @@ globalThis.fetch=async(url,options={})=>{
  const u=new URL(url),method=String(options.method||'GET').toUpperCase();calls.push({path:u.pathname+u.search,method,body:options.body?JSON.parse(options.body):null});
  if(u.pathname==='/v2/account')return Response.json({cash:'1000',trading_blocked:false});
  if(u.pathname==='/v2/assets')return Response.json([{symbol:'BTC/USD',asset_class:'crypto',tradable:true,fractionable:true,min_order_size:'0.0001'}]);
- if(u.pathname==='/v2/positions'){positionReads++;return Response.json(positionReads===1?[]:[{symbol:'BTC/USD',qty:'0.000129033',market_value:'10'}]);}
+ if(u.pathname==='/v2/positions'){positionReads++;return Response.json(positionReads===1?[]:positionReads===2?[{symbol:'BTC/USD',qty:'0.000129033',market_value:'10'}]:[]);}
  if(u.pathname==='/v2/orders'&&u.searchParams.get('status')==='open')return Response.json([]);
  if(u.pathname==='/v2/orders'&&method==='POST'){
   const body=JSON.parse(options.body);return Response.json({id:body.side==='buy'?'buy-1':'sell-1',status:'new',client_order_id:body.client_order_id});
  }
  if(u.pathname==='/v2/orders/buy-1')return Response.json({id:'buy-1',status:'filled',filled_qty:'0.00013',filled_avg_price:'76923.08',notional:'10'});
- if(u.pathname==='/v2/orders/sell-1')return Response.json({id:'sell-1',status:'filled',filled_qty:'0.00013',filled_avg_price:'76920.00'});
+ if(u.pathname==='/v2/orders/sell-1')return Response.json({id:'sell-1',status:'filled',filled_qty:'0.000129033',filled_avg_price:'76920.00'});
  throw Error('Unexpected Alpaca test request '+method+' '+u.pathname+u.search);
 };
 try{
