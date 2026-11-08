@@ -13,14 +13,15 @@ console.log('PASS context enrichment contract: bounded live-first FRED requests 
 
 assert.match(source,/tag\('pubDate'\).*tag\('published'\)/,'RSS parser must preserve original publication timestamps');
 assert.match(source,/parsedDate&&Number\.isFinite\(parsedDate\.getTime\(\)\)/,'invalid RSS dates must not be replaced with the current time');
-assert.match(source,/const raw=String\(x\?\.seendate\|\|''\)/,'GDELT dates must be parsed from source timestamps');
+assert.match(source,/function parseSourceDate/,'GDELT timestamp parser missing');
+assert.match(source,/date:parseSourceDate\(x\?\.seendate\)/,'GDELT dates must be parsed from source timestamps');
 assert.doesNotMatch(source,/x\?\.seendate\?new Date\(x\.seendate\)\.toISOString\(\):new Date\(\)\.toISOString\(\)/,'GDELT must not invent current timestamps');
 assert.match(source,/const FRED_MAX_AGE_DAYS=/,'FRED freshness limits missing');
 assert.match(source,/provider:'FRED live'/,'live FRED observations must identify their provider');
 assert.match(source,/const \[news,liveFred\]=await Promise\.all/,'live FRED must be fetched before mirror fallback');
 assert.match(source,/mirror fallback/,'FRED mirror must be explicitly marked as fallback');
 
-const { classifyFredFreshness } = await import('../bot-context-enrichment.js');
+const { classifyFredFreshness, parseGdelt } = await import('../bot-context-enrichment.js');
 const now=Date.parse('2026-11-08T00:00:00Z');
 assert.equal(classifyFredFreshness({series:'EFFR',asOf:'2026-11-07'},now).freshness,'fresh');
 assert.equal(classifyFredFreshness({series:'EFFR',asOf:'2026-10-01'},now).freshness,'stale');
@@ -28,3 +29,13 @@ assert.equal(classifyFredFreshness({series:'GDPC1',asOf:'2026-08-01'},now).fresh
 assert.equal(classifyFredFreshness({series:'CPIAUCSL',asOf:null},now).freshness,'unknown');
 assert.equal(classifyFredFreshness({series:'EFFR',asOf:'2026-11-10'},now).freshness,'unknown');
 console.log('PASS FRED freshness thresholds and live-first fallback');
+
+const parsedGdelt=parseGdelt({articles:[
+  {title:'Compact timestamp',seendate:'20261108T140000Z'},
+  {title:'Missing timestamp'},
+  {title:'Invalid timestamp',seendate:'not-a-date'}
+]});
+assert.equal(parsedGdelt[0].date,'2026-11-08T14:00:00.000Z');
+assert.equal(parsedGdelt[1].date,null);
+assert.equal(parsedGdelt[2].date,null);
+console.log('PASS GDELT compact publication timestamps');
