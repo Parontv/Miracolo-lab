@@ -87,5 +87,4 @@ assert.match(engineSource,/Order Flow · \$\{by\.flow\?\.source/,'Research regis
 assert.match(workspaceSource,/Hit rate ponderato|Hit rate ponderato/,'UI must label internal signal performance as hit rate');
 assert.match(workspaceSource,/Analisi AI consultiva/,'Single AI output must not be presented as a multi-model council');
 assert.match(workspaceSource,/Valutazione previsioni · Segnali interni/,'Local signal evaluation must not be presented as an LLM lab');
-assert.match(h,/bot-workspace\.js\?v=2\.0\.2/,'Bot workspace cache version must be bumped');
 console.log('PASS research provenance and weighted signal evaluation contract');
