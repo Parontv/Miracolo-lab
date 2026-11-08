@@ -92,7 +92,7 @@ function applySignal(s,symbol,signal){
  s.cash=round(s.cash-spend-fee,2);s.fees=round(s.fees+fee,4);
  s.positions.push({symbol,qty:round(qty),entryPrice:fill,markPrice:raw,costBasis:spend+fee,openedAt:now(),stopLossPct:CONFIG.stopLossPct,takeProfitPct:CONFIG.takeProfitPct});
  s.orders.push({id:'cp-'+Date.now()+'-'+s.orders.length,symbol,side:'BUY',qty:round(qty),price:fill,fee,pnl:null,reason:signal.reason,time:now(),mode:'PAPER'});
- s.symbols[symbol]={...(s.symbols[symbol]||{}),lastEntryAt:now()};s.daily.trades++;
+ s.symbols[symbol]={...(s.symbols[symbol]||{}),lastEntryAt:now()};s.daily.trades++;s.daily.entries++;
 }
 export async function runCryptoPaperCycle(env,{fetcher=json,contextProvider=null}={}){
  const s=await read(env)||emptyState(),today=now().slice(0,10);if(s.daily?.date!==today)s.daily={date:today,trades:0,entries:0};if(!Number.isFinite(Number(s.daily.entries)))s.daily.entries=Number(s.daily.trades)||0;
