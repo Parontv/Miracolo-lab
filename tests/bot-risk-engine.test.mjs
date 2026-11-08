@@ -43,3 +43,13 @@ const exitDespiteEntryLimits=riskEngine({...base,decision:{direction:-1,confiden
 assert.equal(exitDespiteEntryLimits.allowed,true);
 assert.ok(exitDespiteEntryLimits.flags.includes('DAILY_TRADE_LIMIT'));
 assert.ok(exitDespiteEntryLimits.flags.includes('EXISTING_POSITION_RISK_UNKNOWN'));
+
+const bracketOrders=[
+ {time:'2026-10-26T08:00:00Z',status:'filled',orderId:'entry',side:'buy',groupRole:'entry'},
+ {time:'2026-10-26T08:01:00Z',status:'accepted',orderId:'tp',side:'sell',parentOrderId:'entry',groupRole:'take_profit'},
+ {time:'2026-10-26T08:01:00Z',status:'accepted',orderId:'sl',side:'sell',parentOrderId:'entry',groupRole:'stop_loss'}
+];
+const bracketPending=riskEngine({...base,journal:bracketOrders});
+assert.equal(bracketPending.tradesToday,1,'unfilled protective legs are not separate daily trades');
+const bracketExit=riskEngine({...base,journal:[...bracketOrders,{time:'2026-10-26T10:00:00Z',status:'filled',orderId:'tp-filled',side:'sell',parentOrderId:'entry',groupRole:'take_profit'}]});
+assert.equal(bracketExit.tradesToday,2,'a filled protective exit counts as an executed operation');
