@@ -122,7 +122,7 @@ jobs:
           if crypto_paper_code!=200 or crypto_paper.get('mode')!='PAPER' or crypto_paper.get('market')!='CRYPTO_24_7' or crypto_state.get('cycles',0)<1 or crypto_paper.get('heartbeat',{}).get('ok') is not True:sys.exit('FAIL: crypto cron non ha completato un ciclo PAPER verificato entro 90 secondi')
           if crypto_cycle.get('contextAvailable') is not True:sys.exit('FAIL: crypto cycle senza consenso condiviso Miracolo')
           if crypto_cycle.get('available')!=5 or crypto_cycle.get('total')!=5:sys.exit('FAIL: copertura Crypto non completa 5/5')
-          if len(crypto_signals)!=5 or any(int(x.get('independentVotes') or 0)<3 for x in crypto_signals):sys.exit('FAIL: consenso multi-fonte crypto incompleto: servono almeno 3 voti per ciascun asset')
+          if len(crypto_signals)!=5 or any(int(x.get('independentVotes') or 0)<2 or int(x.get('agentVotes') or 0)<3 for x in crypto_signals):sys.exit('FAIL: consenso multi-fonte crypto incompleto: servono almeno 2 fonti indipendenti e 3 agenti per ciascun asset')
           crypto_code,crypto=call('/api/bot/crypto')
           print('=== BTC ===');print(json.dumps(crypto,ensure_ascii=False,indent=2))
           if crypto_code!=200 or not crypto.get('ok') or crypto.get('symbol')!='BTC/USD':sys.exit('FAIL: BTC/USD non disponibile')
