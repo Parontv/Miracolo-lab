@@ -33,7 +33,21 @@ try{
     if(u.endsWith('/orders'))return new Response(JSON.stringify({id:'paper-test-order',status:'accepted',symbol:'BTC/USD'}),{status:200});
     throw new Error('unexpected paper URL');
   };
-  await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'BTC/USD',notional:100,clientOrderId:'crypto-paper-test-1'}),/Acquisto crypto automatico disabilitato/);
+  await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'BTC/USD',notional:100,clientOrderId:'crypto-paper-test-1'}),/PAPER_CRYPTO_SOFTWARE_PROTECTION/);
+  const cryptoPaperEnv={...env,PAPER_CRYPTO_SOFTWARE_PROTECTION:'true',PAPER_CRYPTO_NOTIONAL:'50'};
+  let cryptoBuySubmitted=0;
+  global.fetch=async(url,options={})=>{
+    const u=String(url),method=String(options.method||'GET').toUpperCase();
+    if(u.endsWith('/positions')&&method==='GET')return new Response('[]',{status:200});
+    if(u.includes('/orders?status=open')&&method==='GET')return new Response('[]',{status:200});
+    if(u.endsWith('/orders')&&method==='POST'){const body=JSON.parse(options.body);assert.equal(body.symbol,'BTC/USD');assert.equal(body.side,'buy');assert.equal(body.notional,50);assert.equal(body.order_class,undefined);cryptoBuySubmitted++;return new Response(JSON.stringify({id:'paper-btc-entry',status:'accepted',symbol:'BTC/USD'}),{status:200});}
+    throw new Error('unexpected crypto Paper entry '+method+' '+u);
+  };
+  const cryptoEntry=await runCryptoAlpacaExitCheck(cryptoPaperEnv,{action:'BUY',score:.42,confidence:72,price:70000});
+  assert.equal(cryptoEntry.botAction.action,'BUY');
+  assert.equal(cryptoEntry.execution.executed,true);
+  assert.equal(cryptoEntry.execution.protection,'SOFTWARE_MONITORED_EVERY_MINUTE');
+  assert.equal(cryptoBuySubmitted,1);
 
   global.fetch=async(url,options={})=>{
     const u=String(url),method=String(options.method||'GET').toUpperCase();
