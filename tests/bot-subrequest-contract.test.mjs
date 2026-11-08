@@ -73,3 +73,7 @@ assert.match(router,/decisionFresh\(data\)&&researchPayloadReady\(data\)/,'Edge 
 assert.match(workspace,/window\.MiracoloBot\?\.load\?\./,'Opening the Bot workspace must request the current server decision');
 assert.match(controller,/async function load\(\)/,'Bot controller must expose a read-only decision loader');
 console.log('PASS research refresh and cache invalidation contract');
+
+const indexHtml=fs.readFileSync('public/index.html','utf8');
+assert.match(indexHtml,/bot-workspace\.js\?v=2\.0\.1/,'Bot workspace asset cache version must be bumped after UI changes');
+console.log('PASS Bot workspace cache-busting contract');
