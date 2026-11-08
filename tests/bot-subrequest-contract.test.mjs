@@ -43,7 +43,9 @@ assert.match(router,/const riskState=await refreshRiskState\(env\);if\(!riskStat
 assert.match(paperAuto,/assessPositionRisk\(positions,orders\)/,'PAPER preflight must verify stop coverage for all existing positions');
 assert.match(paperAuto,/pendingEntries/,'PAPER preflight must count pending entry orders against the position cap');
 
-assert.ok(paperAuto.indexOf("if(action==='BUY'){const gate=await preflightBuy")<paperAuto.indexOf('if(!execute){result.execution={executed:false,mode:\'PAPER\',dryRun:true'),'Dry-run plans must pass the same live buy preflight before showing an executable plan');
+assert.ok(paperAuto.indexOf("if(action==='BUY'){const gate=await preflightBuy")<paperAuto.indexOf('if(!shouldExecute){const why=!executionEnabled?'),'Dry-run plans must pass the same live buy preflight before showing an executable plan');
+assert.match(paperAuto,/PAPER_AUTO_EXECUTION/,'automatic paper execution must require an explicit enable switch');
+assert.match(paperAuto,/BOT_MODE\?\?'PAPER'\)\.toUpperCase\(\)==='PAPER'/,'automatic execution must be impossible outside PAPER mode');
 
 assert.match(router,/flattenAlpacaOrders\(orders\)/,'Journal must import nested Alpaca bracket child orders');
 
