@@ -108,8 +108,13 @@ jobs:
           print('=== ALPACA STATUS ===');print(json.dumps(status,ensure_ascii=False,indent=2))
           if status_code!=200 or status.get('mode')!='PAPER':sys.exit('FAIL: Alpaca Paper non verificato')
           crypto_paper_code,crypto_paper=call('/api/crypto-bot/status')
+          for attempt in range(18):
+            if crypto_paper_code==200 and crypto_paper.get('mode')=='PAPER' and crypto_paper.get('market')=='CRYPTO_24_7' and (crypto_paper.get('state') or {}).get('cycles',0)>=1 and crypto_paper.get('heartbeat',{}).get('ok') is True:
+              break
+            time.sleep(5)
+            crypto_paper_code,crypto_paper=call('/api/crypto-bot/status')
           print('=== INDEPENDENT CRYPTO PAPER BOT ===');print(json.dumps({'http':crypto_paper_code,'mode':crypto_paper.get('mode'),'market':crypto_paper.get('market'),'cycles':(crypto_paper.get('state') or {}).get('cycles'),'heartbeat':crypto_paper.get('heartbeat')},ensure_ascii=False,indent=2))
-          if crypto_paper_code!=200 or crypto_paper.get('mode')!='PAPER' or crypto_paper.get('market')!='CRYPTO_24_7':sys.exit('FAIL: independent crypto paper endpoint unavailable')
+          if crypto_paper_code!=200 or crypto_paper.get('mode')!='PAPER' or crypto_paper.get('market')!='CRYPTO_24_7' or (crypto_paper.get('state') or {}).get('cycles',0)<1 or crypto_paper.get('heartbeat',{}).get('ok') is not True:sys.exit('FAIL: crypto cron non ha completato un ciclo PAPER verificato entro 90 secondi')
           crypto_code,crypto=call('/api/bot/crypto')
           print('=== BTC ===');print(json.dumps(crypto,ensure_ascii=False,indent=2))
           if crypto_code!=200 or not crypto.get('ok') or crypto.get('symbol')!='BTC/USD':sys.exit('FAIL: BTC/USD non disponibile')
