@@ -77,3 +77,15 @@ console.log('PASS research refresh and cache invalidation contract');
 const indexHtml=fs.readFileSync('public/index.html','utf8');
 assert.match(indexHtml,/bot-workspace\.js\?v=2\.0\.1/,'Bot workspace asset cache version must be bumped after UI changes');
 console.log('PASS Bot workspace cache-busting contract');
+
+const engineSource=fs.readFileSync('bot-server-engine.js','utf8');
+const workspaceSource=fs.readFileSync('public/bot-workspace.js','utf8');
+assert.match(engineSource,/weightedHitRate=samples\?validEval\.reduce/,'Signal hit rate must be weighted by valid sample count');
+assert.match(engineSource,/hitRatePct/,'Signal evaluation must expose the weighted hit rate');
+assert.doesNotMatch(engineSource,/accuracyPct/,'Internal signal hit rate must not be labelled LLM accuracy');
+assert.match(engineSource,/Order Flow · \$\{by\.flow\?\.source/,'Research registry must identify the actual order-flow provider');
+assert.match(workspaceSource,/Hit rate ponderato|Hit rate ponderato/,'UI must label internal signal performance as hit rate');
+assert.match(workspaceSource,/Analisi AI consultiva/,'Single AI output must not be presented as a multi-model council');
+assert.match(workspaceSource,/Valutazione previsioni · Segnali interni/,'Local signal evaluation must not be presented as an LLM lab');
+assert.match(h,/bot-workspace\.js\?v=2\.0\.2/,'Bot workspace cache version must be bumped');
+console.log('PASS research provenance and weighted signal evaluation contract');
