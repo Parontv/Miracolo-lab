@@ -25,3 +25,21 @@ assert.equal(deduped.allowed,true);
 assert.equal(deduped.tradesToday,2);
 
 console.log('bot-risk-engine: PASS');
+
+const sized=riskEngine({...base,riskPerTrade:8,stopLossPct:1.5});
+assert.equal(sized.riskPerTradeUsd,8);
+assert.equal(sized.maxNotionalUsd,533.33);
+assert.equal(sized.modeledStopRiskUsd,8);
+
+const unknownPosition=riskEngine({...base,positions:[{symbol:'SPY',notional:100,risk:5,riskVerified:false}]});
+assert.equal(unknownPosition.allowed,false);
+assert.ok(unknownPosition.flags.includes('EXISTING_POSITION_RISK_UNKNOWN'));
+
+const verifiedPosition=riskEngine({...base,positions:[{symbol:'SPY',notional:100,risk:1.5,riskVerified:true}]});
+assert.equal(verifiedPosition.allowed,true);
+assert.equal(verifiedPosition.riskBudget,1.5);
+
+const exitDespiteEntryLimits=riskEngine({...base,decision:{direction:-1,confidence:80,score:-.6,contributors:[]},journal,positions:[{symbol:'SPY',notional:100,risk:null,riskVerified:false}]});
+assert.equal(exitDespiteEntryLimits.allowed,true);
+assert.ok(exitDespiteEntryLimits.flags.includes('DAILY_TRADE_LIMIT'));
+assert.ok(exitDespiteEntryLimits.flags.includes('EXISTING_POSITION_RISK_UNKNOWN'));
