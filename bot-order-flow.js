@@ -12,7 +12,7 @@ async function getJson(url,fetcher=fetch,timeoutMs=TIMEOUT_MS){
  }catch(e){throw Error(e?.name==='AbortError'?'timeout':String(e?.message||e))}
  finally{clearTimeout(timer)}
 }
-export function analyzeOrderFlow(symbol,trades,book,now=Date.now()){
+export function analyzeOrderFlow(symbol,trades,book,now=Date.now(),{venue='Binance USD-M Futures',marketType='perpetual'}={}){
  const valid=(Array.isArray(trades)?trades:[]).map(t=>({price:n(t?.p),qty:n(t?.q),time:n(t?.T),buyerMaker:t?.m})).filter(t=>t.price>0&&t.qty>0&&t.time>0&&typeof t.buyerMaker==='boolean').sort((a,b)=>a.time-b.time);
  if(valid.length<20)return{symbol,status:'unavailable',reason:'Meno di 20 scambi aggregati validi.',tradeCount:valid.length};
  const lastTradeAt=valid[valid.length-1].time,firstTradeAt=valid[0].time,ageMs=now-lastTradeAt;
@@ -34,19 +34,32 @@ export function analyzeOrderFlow(symbol,trades,book,now=Date.now()){
  if(!(depthTotal>0))return{symbol,status:'unavailable',reason:'Profondità entro 10 punti base non disponibile.',tradeCount:valid.length,lastTradeAt};
  const obi=(bidDepth-askDepth)/depthTotal,spreadBps=(bestAsk-bestBid)/mid*10000;
  const score=Math.max(-1,Math.min(1,deltaRatio*.7+obi*.3));
- return{symbol,status:'ok',venue:'Binance USD-M Futures',marketType:'perpetual',tradeCount:valid.length,sampleTruncated:valid.length>=1000,sampleFrom:new Date(firstTradeAt).toISOString(),sampleTo:new Date(lastTradeAt).toISOString(),sampleSpanMs:lastTradeAt-firstTradeAt,lastTradeAt,ageMs,bookAt:new Date(now).toISOString(),bestBid,bestAsk,mid,spreadBps:Number(spreadBps.toFixed(3)),buyNotional:Number(buyNotional.toFixed(2)),sellNotional:Number(sellNotional.toFixed(2)),deltaNotional:Number(deltaNotional.toFixed(2)),deltaRatio:Number(deltaRatio.toFixed(4)),bidDepth10bps:Number(bidDepth.toFixed(2)),askDepth10bps:Number(askDepth.toFixed(2)),obi:Number(obi.toFixed(4)),score:Number(score.toFixed(4)),freshUntil:new Date(lastTradeAt+MAX_AGE_MS).toISOString()};
+ return{symbol,status:'ok',venue,marketType,tradeCount:valid.length,sampleTruncated:valid.length>=1000,sampleFrom:new Date(firstTradeAt).toISOString(),sampleTo:new Date(lastTradeAt).toISOString(),sampleSpanMs:lastTradeAt-firstTradeAt,lastTradeAt,ageMs,bookAt:new Date(now).toISOString(),bestBid,bestAsk,mid,spreadBps:Number(spreadBps.toFixed(3)),buyNotional:Number(buyNotional.toFixed(2)),sellNotional:Number(sellNotional.toFixed(2)),deltaNotional:Number(deltaNotional.toFixed(2)),deltaRatio:Number(deltaRatio.toFixed(4)),bidDepth10bps:Number(bidDepth.toFixed(2)),askDepth10bps:Number(askDepth.toFixed(2)),obi:Number(obi.toFixed(4)),score:Number(score.toFixed(4)),freshUntil:new Date(lastTradeAt+MAX_AGE_MS).toISOString()};
 }
 export async function refreshBinanceOrderFlow({fetcher=fetch,now=Date.now(),symbols=SYMBOLS}={}){
- const started=Date.now(),results=await Promise.all(symbols.map(async symbol=>{
+ const started=Date.now();let fetches=0;
+ const countedFetcher=(url,options)=>{fetches++;return fetcher(url,options)};
+ const results=await Promise.all(symbols.map(async symbol=>{
   try{
-   const [trades,book]=await Promise.all([
-    getJson(BASE+'/fapi/v1/aggTrades?symbol='+encodeURIComponent(symbol)+'&limit=1000',fetcher),
-    getJson(BASE+'/fapi/v1/depth?symbol='+encodeURIComponent(symbol)+'&limit=20',fetcher)
-   ]);
-   return analyzeOrderFlow(symbol,trades,book,now);
+   let trades,book,venue='Binance USD-M Futures',marketType='perpetual';
+   try{
+    [trades,book]=await Promise.all([
+     getJson(BASE+'/fapi/v1/aggTrades?symbol='+encodeURIComponent(symbol)+'&limit=1000',countedFetcher),
+     getJson(BASE+'/fapi/v1/depth?symbol='+encodeURIComponent(symbol)+'&limit=20',countedFetcher)
+    ]);
+   }catch(error){
+    if(!/HTTP (403|451)/.test(String(error?.message||error)))throw error;
+    const spot='https://data-api.binance.vision';
+    [trades,book]=await Promise.all([
+     getJson(spot+'/api/v3/aggTrades?symbol='+encodeURIComponent(symbol)+'&limit=1000',countedFetcher),
+     getJson(spot+'/api/v3/depth?symbol='+encodeURIComponent(symbol)+'&limit=20',countedFetcher)
+    ]);
+    venue='Binance Spot (public data API)';marketType='spot';
+   }
+   return analyzeOrderFlow(symbol,trades,book,now,{venue,marketType});
   }catch(e){return{symbol,status:'unavailable',reason:String(e?.message||e)}}
  }));
- const good=results.filter(x=>x.status==='ok'),errors=results.filter(x=>x.status!=='ok');
+ const good=results.filter(x=>x.status==='ok'),errors=results.filter(x=>x.status!=='ok'),venues=[...new Set(good.map(x=>x.venue))];
  const freshUntil=good.length?new Date(Math.min(...good.map(x=>Date.parse(x.freshUntil)))).toISOString():new Date(now+30_000).toISOString();
- return{provider:'Binance USD-M Futures public REST',source:'aggregate trades + depth snapshot',marketType:'perpetual',status:good.length===symbols.length?'ok':good.length?'partial':'unavailable',freshness:good.length===symbols.length?'fresh':'incomplete',symbols:[...symbols],instrumentCount:good.length,expectedInstruments:symbols.length,instruments:results,errors:errors.map(x=>({symbol:x.symbol,reason:x.reason})),fetches:symbols.length*2,generatedAt:new Date(now).toISOString(),durationMs:Date.now()-started,freshUntil,readOnly:true,executionEnabled:false};
+ return{provider:venues.length===1?venues[0]:'Binance public REST (spot/futures)',source:'aggregate trades + depth snapshot',marketType:venues.length===1?(good[0]?.marketType||'unknown'):'mixed-crypto',status:good.length===symbols.length?'ok':good.length?'partial':'unavailable',freshness:good.length===symbols.length?'fresh':'incomplete',symbols:[...symbols],instrumentCount:good.length,expectedInstruments:symbols.length,instruments:results,errors:errors.map(x=>({symbol:x.symbol,reason:x.reason})),fetches,generatedAt:new Date(now).toISOString(),durationMs:Date.now()-started,freshUntil,readOnly:true,executionEnabled:false};
 }
