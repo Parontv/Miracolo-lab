@@ -41,3 +41,14 @@ test('partial provider failures never claim full coverage',async()=>{
  assert.equal(result.instrumentCount,1);
 });
 console.log('PASS Binance order-flow data validation and safety contracts');
+
+test('falls back to official Binance public spot market-data API on Futures geo-block',async()=>{
+ let calls=0;
+ const fetcher=async url=>{calls++;const u=String(url);if(u.includes('fapi.binance.com'))return{ok:false,status:403,async json(){return{}}};return{ok:true,status:200,async json(){return u.includes('aggTrades')?trades():book()}}};
+ const result=await refreshBinanceOrderFlow({fetcher,now});
+ assert.equal(calls,8);
+ assert.equal(result.fetches,8);
+ assert.equal(result.status,'ok');
+ assert.equal(result.provider,'Binance Spot (public data API)');
+ assert.ok(result.instruments.every(x=>x.marketType==='spot'));
+});
