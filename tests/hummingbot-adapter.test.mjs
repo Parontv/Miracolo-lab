@@ -34,7 +34,7 @@ test('Hummingbot adapter performs only authenticated GET requests and normalizes
   const fixtures = {
     '/system/info': { api_version: '2.14.0', hummingbot_version: '2.14.0', docker_available: true, secret: 'must-not-leak' },
     '/connectors/': ['binance', 'binance_paper_trade', 42],
-    '/executors/summary': { total_active: 2, total_completed: 10, total_pnl: 12.5, api_key: 'must-not-leak' }
+    '/executors/summary': { total_active: 2, total_pnl_quote: 12.5, total_volume_quote: 900, by_connector: { binance: 2 }, api_key: 'must-not-leak' }
   };
   const result = await getHummingbotOverview(env, {
     fetchImpl: async (url, options) => {
@@ -49,7 +49,9 @@ test('Hummingbot adapter performs only authenticated GET requests and normalizes
   assert.equal(result.mode, 'READ_ONLY');
   assert.deepEqual(result.connectors.available, ['binance', 'binance_paper_trade']);
   assert.equal(result.executors.summary.total_active, 2);
-  assert.equal(result.executors.summary.total_pnl, 12.5);
+  assert.equal(result.executors.summary.total_pnl_quote, 12.5);
+  assert.equal(result.executors.summary.total_volume_quote, 900);
+  assert.deepEqual(result.executors.summary.by_connector, { binance: 2 });
   assert.equal(JSON.stringify(result).includes('must-not-leak'), false);
   assert.equal(calls.length, 3);
   for (const call of calls) {
