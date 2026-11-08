@@ -51,7 +51,7 @@ function memoryModule(state,previous){const ok=Boolean(state?.market?.timestamp|
 function correlatedVotes(modules){
  const correlated=['market','technical','historical'];
  const core=modules.filter(m=>correlated.includes(m.family)&&m.dataAvailable&&m.weight>0);
- const cryptoFlow=modules.filter(m=>(m.family==='crypto'||(m.family==='flow'&&['spot','perpetual'].includes(m.marketType)))&&m.dataAvailable&&m.weight>0);
+ const cryptoFlow=modules.filter(m=>(m.family==='crypto'||(m.family==='flow'&&['spot','perpetual','mixed-crypto'].includes(m.marketType)))&&m.dataAvailable&&m.weight>0);
  const isCryptoFlow=m=>m.family==='crypto'||(m.family==='flow'&&['spot','perpetual'].includes(m.marketType));
  const rest=modules.filter(m=>!correlated.includes(m.family)&&!isCryptoFlow(m)&&m.dataAvailable&&m.weight>0);
  if(core.length){const directional=core.filter(m=>m.direction!==0),weight=core.reduce((sum,m)=>sum+m.weight,0),directionalWeight=directional.reduce((sum,m)=>sum+m.weight,0),direction=directionalWeight?Math.sign(directional.reduce((sum,m)=>sum+m.direction*m.weight,0)):0,strength=directionalWeight?directional.reduce((sum,m)=>sum+Math.abs(m.strength||m.direction)*m.weight,0)/directionalWeight:0,confidence=directionalWeight?directional.reduce((sum,m)=>sum+m.confidence*m.weight,0)/directionalWeight:50;rest.push({family:'market-technical-historical',direction,strength,confidence,coverage:Math.min(1,weight/.38),weight,dataAvailable:true,status:direction?'CONTRIBUISCE':'READY',evidence:core.flatMap(m=>m.evidence||[]).slice(0,10),reason:'Market, technical e historical sono una sola famiglia di voto finché non usano dati indipendenti (candele giornaliere).',asOf:iso(),correlatedFamilies:core.map(m=>m.family)})}
