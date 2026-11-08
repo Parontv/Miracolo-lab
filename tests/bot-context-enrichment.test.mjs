@@ -9,7 +9,7 @@ assert.match(source,/api\.gdeltproject\.org\/api\/v2\/doc\/doc/,'GDELT fallback 
 assert.match(source,/fetches:news\.fetches\+liveFred\.fetches\+\(mirror\?1:0\)/,'context fetch accounting must report actual bounded requests');
 assert.equal((source.match(/await fetch\(/g)||[]).length,3,'expected news timeout, direct FRED and GitHub mirror fetch sites');
 assert.match(source,/fetchWithTimeout/,'news fetch timeout wrapper missing');
-console.log('PASS context enrichment contract: 3 bounded news providers + 8 FRED fetches = 11');
+console.log('PASS context enrichment contract: bounded live-first FRED requests and freshness');
 
 assert.match(source,/tag\('pubDate'\).*tag\('published'\)/,'RSS parser must preserve original publication timestamps');
 assert.match(source,/parsedDate&&Number\.isFinite\(parsedDate\.getTime\(\)\)/,'invalid RSS dates must not be replaced with the current time');
