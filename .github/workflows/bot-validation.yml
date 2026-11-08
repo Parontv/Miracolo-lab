@@ -44,6 +44,8 @@ jobs:
           node-version: 22
       - name: Syntax check — canonical runtime
         run: |
+          node --check bot-live-router.js
+          node --check hummingbot-adapter.js
           node --check bot-server-engine.js
           node --check bot-risk-engine.js
           node --check bot-crypto-engine.js
@@ -64,5 +66,7 @@ jobs:
         run: node tests/bot-engine.behavior.test.js
       - name: BTC and Paper execution contracts
         run: node tests/crypto-paper.test.mjs
+      - name: Hummingbot read-only adapter contract
+        run: node tests/hummingbot-adapter.test.mjs
       - name: Market and News contracts
         run: node tests/market-ui.test.js && node tests/news-contract.test.js
