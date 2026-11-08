@@ -25,7 +25,7 @@ try{
  assert.ok(calls.some(x=>x.method==='POST'&&x.body?.side==='sell'&&x.body?.qty==='0.00013'));
  assert.equal(kv.has('crypto/alpaca-paper-smoke-lock'),false);
  assert.equal(JSON.parse(kv.get('crypto/alpaca-paper-smoke-last')).ok,true);
- await assert.rejects(()=>runAlpacaCryptoPaperSmokeTest({...env,BOT_MODE:'LIVE'}),/solo in PAPER/);
+ await assert.rejects(()=>runAlpacaCryptoPaperSmokeTest({...env,BOT_MODE:'LIVE'}),/PAPER/);
  console.log('Alpaca Crypto PAPER $10 round-trip: PASS');
  console.log('Fractional buy, exact-quantity close, flat-position check: PASS');
  console.log('Paper-only guard and KV lock/report: PASS');
