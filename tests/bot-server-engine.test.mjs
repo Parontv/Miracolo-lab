@@ -38,3 +38,7 @@ test('engine produces explainable modules and a portfolio decision',async()=>{
   assert.ok(result.diagnostics.inputAudit.technicalFields.includes('rsi'));
   assert.ok(result.decision && result.decision.portfolio);
 });
+
+test('backtest module never treats an unvalidated market snapshot as backtest evidence',async()=>{const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:.8}));const state={market:{timestamp:new Date().toISOString(),indices},backtest:{returnPct:1.2,method:'current-market-sanity-check'}};const result=await runBot(envWith(state,{}));const backtest=result.modules.find(m=>m.family==='backtest');assert.equal(backtest.dataAvailable,false);assert.equal(backtest.status,'NO_DATA');});
+
+test('learning excludes closed orders without verified realized PnL',async()=>{const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:0}));const state={market:{timestamp:new Date().toISOString(),indices}};const store=new Map([['state/latest',JSON.stringify(state)],['quantitative/latest-v2','{}'],['bot/journal/v1',JSON.stringify([{orderId:'unknown-pnl',status:'filled',closedAt:new Date().toISOString(),realized:null}])],['bot/positions/v1','[]']]);const result=await runBot({ML_KV:{async get(k){return store.get(k)||null},async put(k,v){store.set(k,v)}}},state);const learning=result.modules.find(m=>m.family==='learning');assert.equal(learning.dataAvailable,false);assert.equal(learning.status,'NO_DATA');});

@@ -10,3 +10,6 @@ assert.match(source,/fetches:11/,'context fetch budget accounting missing');
 assert.equal((source.match(/await fetch\(/g)||[]).length,3,'expected news timeout, direct FRED and GitHub mirror fetch sites');
 assert.match(source,/fetchWithTimeout/,'news fetch timeout wrapper missing');
 console.log('PASS context enrichment contract: 3 bounded news providers + 8 FRED fetches = 11');
+
+assert.match(source,/tag\('pubDate'\).*tag\('published'\)/,'RSS parser must preserve original publication timestamps');
+assert.match(source,/parsedDate&&Number\.isFinite\(parsedDate\.getTime\(\)\)/,'invalid RSS dates must not be replaced with the current time');
