@@ -9,7 +9,8 @@ on:
       - 'bot-context-enrichment.js'
       - 'ai-worker.js'
       - 'bot-risk-engine.js'
-      - 'bot-crypto-engine.js'\n      - 'bot-crypto-paper.js'
+      - 'bot-crypto-engine.js'
+      - 'bot-crypto-paper.js'
       - 'news-event-engine.js'
       - 'bot-paper-executor.js'
       - 'bot-paper-auto.js'
@@ -58,7 +59,8 @@ jobs:
           node --check bot-server-engine.js
           node --check bot-order-flow.js
           node --check bot-risk-engine.js
-          node --check bot-crypto-engine.js\n          node --check bot-crypto-paper.js
+          node --check bot-crypto-engine.js
+          node --check bot-crypto-paper.js
           node --check news-event-engine.js
           node --check bot-paper-executor.js
           node --check bot-paper-auto.js
