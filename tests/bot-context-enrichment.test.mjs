@@ -6,7 +6,7 @@ assert.match(source,/FRED\.map\(async series/,'FRED batch series loop missing');
 assert.match(source,/Promise\.all\(/,'FRED requests must be parallelized');
 assert.match(source,/news\.google\.com\/rss\/search/,'Google News source missing');
 assert.match(source,/api\.gdeltproject\.org\/api\/v2\/doc\/doc/,'GDELT fallback missing');
-assert.match(source,/fetches:news\.fetches\+liveFred\.fetches\+\(mirror\?1:0\)/,'context fetch accounting must report actual bounded requests');
+assert.match(source,/fetches:news\.fetches\+liveFred\.fetches\+\(mirrorAttempted\?1:0\)/,'context fetch accounting must report attempted mirror requests');
 assert.equal((source.match(/await fetch\(/g)||[]).length,3,'expected news timeout, direct FRED and GitHub mirror fetch sites');
 assert.match(source,/fetchWithTimeout/,'news fetch timeout wrapper missing');
 console.log('PASS context enrichment contract: bounded live-first FRED requests and freshness');
