@@ -65,7 +65,7 @@ test('undated and stale news cannot contribute to market consensus',async()=>{
     {title:'Old critical market event',date:'2026-10-01T00:00:00Z',cat:'geopolitics',score:-1},
     {title:'Undated critical market event',date:null,cat:'geopolitics',score:-1}
   ]}};
-  const result=await runBot(envWith(state,{}),state);
+  const result=await runBot(envWith(state,{coverage:{available:1},groups:{macro:[]}}),state);
   const news=result.modules.find(m=>m.family==='news');
   assert.equal(news.dataAvailable,false);
   assert.equal(news.status,'NO_DATA');
