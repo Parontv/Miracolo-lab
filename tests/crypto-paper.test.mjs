@@ -60,10 +60,9 @@ try{
   const equity=await executePaperDecision(env,{action:'BUY',symbol:'SPY',notional:100,referencePrice:100,clientOrderId:'equity-bracket-test'});
   assert.equal(equity.executed,true);assert.equal(equity.orderClass,'bracket');assert.equal(equity.modeledStopRiskUsd,1.5);assert.equal(equity.riskCapUsd,8);
   await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'QQQ',notional:100}),/prezzo di riferimento non disponibile/);
+  await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'SPY',notional:1000,referencePrice:100,maxRiskUsd:8}),/supera il limite 8 USD/);
   console.log('Equity bracket protection contract: PASS');
   console.log('BTC position-aware exit contract: PASS');
   console.log('BTC crypto decision contract: PASS');
   console.log('BTC paper execution contract: PASS');
 } finally { global.fetch=originalFetch; }
-
-await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'SPY',notional:1000,referencePrice:100,maxRiskUsd:8}),/supera il limite 8 USD/);
