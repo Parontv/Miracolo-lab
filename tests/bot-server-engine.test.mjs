@@ -115,3 +115,17 @@ test('stale or partial Binance order flow never votes',async()=>{
  assert.equal(flow.dataAvailable,false);
  assert.equal(flow.status,'NO_DATA');
 });
+
+test('one strong crypto instrument cannot create an Order Flow directional vote alone',async()=>{
+ const now=Date.now(),orderFlow={status:'ok',freshness:'fresh',provider:'Kraken Spot public REST',marketType:'spot',generatedAt:new Date(now).toISOString(),freshUntil:new Date(now+30000).toISOString(),instruments:[
+  {symbol:'BTCUSDT',venueSymbol:'XBTUSD',status:'ok',score:.30,deltaRatio:.5,obi:-.1,spreadBps:.5,tradeCount:1000,sampleSpanMs:600000,lastTradeAt:now-500},
+  {symbol:'ETHUSDT',venueSymbol:'ETHUSD',status:'ok',score:.02,deltaRatio:.01,obi:.04,spreadBps:.7,tradeCount:1000,sampleSpanMs:1200000,lastTradeAt:now-700}
+ ]};
+ const state={market:{timestamp:new Date().toISOString(),indices:['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:0})),orderFlow}};
+ const result=await runBot(envWith(state,{coverage:{available:0},groups:{macro:[]}}),state);
+ const flow=result.modules.find(m=>m.family==='flow');
+ assert.equal(flow.dataAvailable,true);
+ assert.equal(flow.status,'READY');
+ assert.equal(flow.direction,0);
+ assert.match(flow.reason,/non confermano entrambi/);
+});

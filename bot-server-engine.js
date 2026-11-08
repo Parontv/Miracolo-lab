@@ -24,14 +24,14 @@ function flowModule(state){
    const score=clamp(valid.reduce((sum,x)=>sum+Number(x.score),0)/valid.length,-1,1);
    const delta=valid.reduce((sum,x)=>sum+Number(x.deltaRatio),0)/valid.length;
    const obi=valid.reduce((sum,x)=>sum+Number(x.obi),0)/valid.length;
-   const direction=Math.abs(score)>=.15?Math.sign(score):0;
+   const directional=valid.filter(x=>Math.abs(Number(x.score))>=.15),sameDirection=directional.length===valid.length&&directional.every(x=>Math.sign(Number(x.score))===Math.sign(Number(directional[0]?.score))),direction=sameDirection?Math.sign(score):0;
    const asOf=new Date(Math.min(...valid.map(x=>Number(x.lastTradeAt)||0))).toISOString();
    const evidence=valid.map(x=>{const label=x.venueSymbol&&x.venueSymbol!==x.symbol?`${x.symbol} (${x.venueSymbol})`:x.symbol,span=Number(x.sampleSpanMs)>0?` · campione ${(Number(x.sampleSpanMs)/60000).toFixed(1)} min`:'';return`${label}: delta ${(Number(x.deltaRatio)*100).toFixed(1)}% · OBI ${(Number(x.obi)*100).toFixed(1)}% · spread ${Number(x.spreadBps).toFixed(2)} bps · ${x.tradeCount} scambi${span}`});
-   return normalize({direction,strength:Math.abs(score),confidence:direction?60+Math.min(30,Math.abs(score)*30):52,coverage:valid.length/2,weight:WEIGHTS.flow,dataAvailable:true,freshness:'fresh',freshUntil:snapshot.freshUntil,asOf,source:snapshot.provider,marketType:snapshot.marketType||'perpetual',score,deltaRatio:delta,obi,spreadBps:valid.reduce((sum,x)=>sum+Number(x.spreadBps||0),0)/valid.length,instruments:valid,evidence,reason:direction?'Flusso eseguito e liquidità del book concordano sul segno del flusso.':'Flusso eseguito e liquidità senza pressione direzionale sufficiente.'},'flow');
+   return normalize({direction,strength:Math.abs(score),confidence:direction?60+Math.min(30,Math.abs(score)*30):52,coverage:valid.length/2,weight:WEIGHTS.flow,dataAvailable:true,freshness:'fresh',freshUntil:snapshot.freshUntil,asOf,source:snapshot.provider,marketType:snapshot.marketType||'perpetual',score,deltaRatio:delta,obi,spreadBps:valid.reduce((sum,x)=>sum+Number(x.spreadBps||0),0)/valid.length,instruments:valid,evidence,reason:direction?'BTC ed ETH confermano la stessa pressione direzionale nel campione.':'Order Flow disponibile ma BTC ed ETH non confermano entrambi la stessa direzione: il modulo resta neutrale.'},'flow');
   }
-  const reason=snapshot.errors?.map(x=>x.reason).filter(Boolean).join(' · ')||'Snapshot Binance incompleto o scaduto: il modulo non vota.';
+  const reason=snapshot.errors?.map(x=>x.reason).filter(Boolean).join(' · ')||'Snapshot Order Flow incompleto o scaduto: il modulo non vota.';
   const unavailable=empty('flow',reason);
-  return{...unavailable,source:snapshot.provider||'Binance USD-M Futures',freshness:'incomplete',asOf:snapshot.generatedAt||iso(),freshUntil:snapshot.freshUntil||new Date(Date.now()+30_000).toISOString(),instrumentCount:valid.length,expectedInstruments:snapshot.expectedInstruments||2,instruments};
+  return{...unavailable,source:snapshot.provider||'Public Order Flow REST',freshness:'incomplete',asOf:snapshot.generatedAt||iso(),freshUntil:snapshot.freshUntil||new Date(Date.now()+30_000).toISOString(),instrumentCount:valid.length,expectedInstruments:snapshot.expectedInstruments||2,instruments};
  }
  const all=[...rows(state),...(Array.isArray(state?.market?.crypto)?state.market.crypto:[])];
  const quoteRows=all.map(x=>{const bid=num(x?.bidSize),ask=num(x?.askSize),bidPrice=num(x?.bidPrice??x?.bid),askPrice=num(x?.askPrice??x?.ask);if(bid===null||ask===null||bid<=0||ask<=0||bid+ask<=0)return null;const imbalance=(bid-ask)/(bid+ask);return{symbol:x?.ticker||x?.symbol||x?.name||'unknown',bid,ask,bidPrice,askPrice,imbalance}}).filter(Boolean);
