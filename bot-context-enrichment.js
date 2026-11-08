@@ -1,4 +1,4 @@
-/* Bot context enrichment. Bounded phase: max 3 news fetches + 8 FRED series fetches = 11 fetches. */
+/* Bot context enrichment. Bounded phase: max 3 news fetches + 16 FRED attempts + 1 mirror fallback. */
 const UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 const FRED=['CPIAUCSL','CPILFESL','UNRATE','PAYEMS','GDPC1','INDPRO','M2SL','EFFR'];
 const FRED_LABELS={CPIAUCSL:'CPI inflation',CPILFESL:'Core CPI inflation',UNRATE:'Unemployment',PAYEMS:'Nonfarm payrolls',GDPC1:'Real GDP',INDPRO:'Industrial production',M2SL:'M2 money supply',EFFR:'Fed Funds effective rate'};
