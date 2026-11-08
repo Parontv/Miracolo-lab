@@ -38,6 +38,7 @@ test('engine produces explainable modules and a portfolio decision',async()=>{
   assert.ok(result.diagnostics.inputAudit.technicalFields.includes('rsi'));
   assert.ok(result.decision && result.decision.portfolio);
   assert.equal(result.modules.find(m=>m.family==='macro').dataAvailable,true);
+  assert.ok(Date.parse(result.modules.find(m=>m.family==='macro').freshUntil)>Date.now());
   assert.equal(result.modules.find(m=>m.family==='ai').dataAvailable,true);
 });
 
