@@ -21,6 +21,8 @@ on:
   pull_request:
     paths:
       - 'bot-server-engine.js'
+      - 'bot-live-router.js'
+      - 'bot-context-enrichment.js'
       - 'bot-risk-engine.js'
       - 'bot-crypto-engine.js'
       - 'news-event-engine.js'
@@ -45,6 +47,7 @@ jobs:
       - name: Syntax check — canonical runtime
         run: |
           node --check bot-live-router.js
+          node --check bot-context-enrichment.js
           node --check hummingbot-adapter.js
           node --check bot-server-engine.js
           node --check bot-risk-engine.js
@@ -59,6 +62,8 @@ jobs:
           node --check public/v1/tab-navigation.js
       - name: Unified decision engine contract
         run: node tests/bot-server-engine.test.mjs
+      - name: Live context and FRED freshness contracts
+        run: node tests/bot-context-enrichment.test.mjs && node tests/bot-macro-context.test.mjs && node tests/bot-subrequest-contract.test.mjs
       - name: Consensus v3 regression
         run: node tests/bot-consensus-v3.test.mjs
       - name: Risk guardrail regression
