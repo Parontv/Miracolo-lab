@@ -14,6 +14,7 @@ const CONFIG={capital:1000,orderUsd:50,maxPositions:3,maxTradesPerDay:8,stopLoss
 const now=()=>new Date().toISOString();
 const num=v=>Number.isFinite(Number(v))?Number(v):null;
 const round=(v,d=8)=>Number(Number(v).toFixed(d));
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 async function json(url){const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'MiracoloLab-CryptoPaper/1.0'}});if(!r.ok)throw Error('Market data HTTP '+r.status+' '+url);return r.json()}
 function normalizeCoinbase(rows){if(!Array.isArray(rows))throw Error('Coinbase response non valida');return rows.map(x=>[Number(x[0])*1000,Number(x[3]),Number(x[2]),Number(x[1]),Number(x[4]),Number(x[5])]).sort((a,b)=>a[0]-b[0])}
 function normalizeKraken(payload){const result=payload?.result;if(!result||payload.error?.length)throw Error('Kraken response non valida: '+(payload?.error||[]).join(', '));const key=Object.keys(result).find(k=>k!=='last');const rows=key?result[key]:null;if(!Array.isArray(rows))throw Error('Kraken OHLC non disponibile');return rows.map(x=>[Number(x[0])*1000,Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[6])])}
