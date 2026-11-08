@@ -24,6 +24,7 @@ on:
       - 'bot-server-engine.js'
       - 'bot-live-router.js'
       - 'bot-context-enrichment.js'
+      - 'ai-worker.js'
       - 'bot-risk-engine.js'
       - 'bot-crypto-engine.js'
       - 'news-event-engine.js'
