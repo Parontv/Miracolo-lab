@@ -52,3 +52,20 @@ test('falls back to official Binance public spot market-data API on Futures geo-
  assert.equal(result.provider,'Binance Spot (public data API)');
  assert.ok(result.instruments.every(x=>x.marketType==='spot'));
 });
+
+test('falls back to Bybit Linear public REST when Binance hosts are blocked',async()=>{
+ let calls=0;
+ const fetcher=async url=>{
+  calls++;const u=String(url);
+  if(u.includes('fapi.binance.com')||u.includes('data-api.binance.vision'))return{ok:false,status:403,async json(){return{}}};
+  if(u.includes('/v5/market/recent-trade'))return{ok:true,status:200,async json(){return{retCode:0,retMsg:'OK',result:{list:trades().map(t=>({price:t.p,size:t.q,time:String(t.T),side:t.m?'Sell':'Buy',isRPITrade:false}))}}}};
+  return{ok:true,status:200,async json(){return{retCode:0,retMsg:'OK',result:{b:book().bids,a:book().asks,ts:now}}}};
+ };
+ const result=await refreshBinanceOrderFlow({fetcher,now});
+ assert.equal(calls,12);
+ assert.equal(result.fetches,12);
+ assert.equal(result.status,'ok');
+ assert.equal(result.provider,'Bybit Linear public REST');
+ assert.ok(result.instruments.every(x=>x.venue==='Bybit Linear public REST'));
+ assert.ok(result.instruments.every(x=>x.marketType==='perpetual'));
+});
