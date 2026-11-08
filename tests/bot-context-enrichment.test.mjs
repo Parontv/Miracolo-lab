@@ -26,4 +26,5 @@ assert.equal(classifyFredFreshness({series:'EFFR',asOf:'2026-11-07'},now).freshn
 assert.equal(classifyFredFreshness({series:'EFFR',asOf:'2026-10-01'},now).freshness,'stale');
 assert.equal(classifyFredFreshness({series:'GDPC1',asOf:'2026-08-01'},now).freshness,'fresh');
 assert.equal(classifyFredFreshness({series:'CPIAUCSL',asOf:null},now).freshness,'unknown');
+assert.equal(classifyFredFreshness({series:'EFFR',asOf:'2026-11-10'},now).freshness,'unknown');
 console.log('PASS FRED freshness thresholds and live-first fallback');
