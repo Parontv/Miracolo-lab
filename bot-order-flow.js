@@ -12,11 +12,11 @@ async function getJson(url,fetcher=fetch,timeoutMs=TIMEOUT_MS){
  }catch(e){throw Error(e?.name==='AbortError'?'timeout':String(e?.message||e))}
  finally{clearTimeout(timer)}
 }
-export function analyzeOrderFlow(symbol,trades,book,now=Date.now(),{venue='Binance USD-M Futures',marketType='perpetual'}={}){
+export function analyzeOrderFlow(symbol,trades,book,now=Date.now(),{venue='Binance USD-M Futures',marketType='perpetual',venueSymbol=symbol}={}){
  const valid=(Array.isArray(trades)?trades:[]).map(t=>({price:n(t?.p),qty:n(t?.q),time:n(t?.T),buyerMaker:t?.m})).filter(t=>t.price>0&&t.qty>0&&t.time>0&&typeof t.buyerMaker==='boolean').sort((a,b)=>a.time-b.time);
  if(valid.length<20)return{symbol,status:'unavailable',reason:'Meno di 20 scambi aggregati validi.',tradeCount:valid.length};
  const lastTradeAt=valid[valid.length-1].time,firstTradeAt=valid[0].time,ageMs=now-lastTradeAt;
- if(ageMs< -5000||ageMs>MAX_AGE_MS)return{symbol,status:'stale',reason:'Ultimo scambio Binance non aggiornato.',tradeCount:valid.length,lastTradeAt,ageMs};
+ if(ageMs< -5000||ageMs>MAX_AGE_MS)return{symbol,status:'stale',reason:'Ultimo scambio non aggiornato.',tradeCount:valid.length,lastTradeAt,ageMs};
  const bids=Array.isArray(book?.bids)?book.bids.map(x=>[n(x?.[0]),n(x?.[1])]).filter(x=>x[0]>0&&x[1]>0):[];
  const asks=Array.isArray(book?.asks)?book.asks.map(x=>[n(x?.[0]),n(x?.[1])]).filter(x=>x[0]>0&&x[1]>0):[];
  if(!bids.length||!asks.length)return{symbol,status:'unavailable',reason:'Order book privo di bid o ask validi.',tradeCount:valid.length,lastTradeAt};
@@ -34,7 +34,7 @@ export function analyzeOrderFlow(symbol,trades,book,now=Date.now(),{venue='Binan
  if(!(depthTotal>0))return{symbol,status:'unavailable',reason:'Profondità entro 10 punti base non disponibile.',tradeCount:valid.length,lastTradeAt};
  const obi=(bidDepth-askDepth)/depthTotal,spreadBps=(bestAsk-bestBid)/mid*10000;
  const score=Math.max(-1,Math.min(1,deltaRatio*.7+obi*.3));
- return{symbol,status:'ok',venue,marketType,tradeCount:valid.length,sampleTruncated:valid.length>=1000,sampleFrom:new Date(firstTradeAt).toISOString(),sampleTo:new Date(lastTradeAt).toISOString(),sampleSpanMs:lastTradeAt-firstTradeAt,lastTradeAt,ageMs,bookAt:new Date(now).toISOString(),bestBid,bestAsk,mid,spreadBps:Number(spreadBps.toFixed(3)),buyNotional:Number(buyNotional.toFixed(2)),sellNotional:Number(sellNotional.toFixed(2)),deltaNotional:Number(deltaNotional.toFixed(2)),deltaRatio:Number(deltaRatio.toFixed(4)),bidDepth10bps:Number(bidDepth.toFixed(2)),askDepth10bps:Number(askDepth.toFixed(2)),obi:Number(obi.toFixed(4)),score:Number(score.toFixed(4)),freshUntil:new Date(lastTradeAt+MAX_AGE_MS).toISOString()};
+ return{symbol,venueSymbol,status:'ok',venue,marketType,tradeCount:valid.length,sampleTruncated:valid.length>=1000,sampleFrom:new Date(firstTradeAt).toISOString(),sampleTo:new Date(lastTradeAt).toISOString(),sampleSpanMs:lastTradeAt-firstTradeAt,lastTradeAt,ageMs,bookAt:new Date(now).toISOString(),bestBid,bestAsk,mid,spreadBps:Number(spreadBps.toFixed(3)),buyNotional:Number(buyNotional.toFixed(2)),sellNotional:Number(sellNotional.toFixed(2)),deltaNotional:Number(deltaNotional.toFixed(2)),deltaRatio:Number(deltaRatio.toFixed(4)),bidDepth10bps:Number(bidDepth.toFixed(2)),askDepth10bps:Number(askDepth.toFixed(2)),obi:Number(obi.toFixed(4)),score:Number(score.toFixed(4)),freshUntil:new Date(lastTradeAt+MAX_AGE_MS).toISOString()};
 }
 async function fetchBybitLinear(symbol,fetcher){
  const base='https://api.bybit.com';
@@ -58,7 +58,7 @@ async function fetchKrakenSpot(symbol,fetcher){
  if(!tradeKey||!bookKey)throw Error('Kraken: risposta Trades/Depth senza coppia richiesta');
  const trades=(tradePayload.result[tradeKey]||[]).map(x=>({p:x[0],q:x[1],T:Number(x[2])*1000,m:String(x[3]).toLowerCase()==='s'}));
  const rawBook=bookPayload.result[bookKey],book={bids:rawBook?.bids||[],asks:rawBook?.asks||[]};
- return{trades,book};
+ return{trades,book,pair};
 }
 export async function refreshBinanceOrderFlow({fetcher=fetch,now=Date.now(),symbols=SYMBOLS}={}){
  const started=Date.now();let fetches=0;
@@ -87,7 +87,7 @@ export async function refreshBinanceOrderFlow({fetcher=fetch,now=Date.now(),symb
    }catch(error){errors.push('Bybit Linear: '+String(error?.message||error))}
    try{
     const data=await fetchKrakenSpot(symbol,countedFetcher);
-    return analyzeOrderFlow(symbol,data.trades,data.book,now,{venue:'Kraken Spot public REST',marketType:'spot'});
+    return analyzeOrderFlow(symbol,data.trades,data.book,now,{venue:'Kraken Spot public REST',marketType:'spot',venueSymbol:data.pair});
    }catch(error){errors.push('Kraken Spot: '+String(error?.message||error))}
    return{symbol,status:'unavailable',reason:errors.join(' · '),providerErrors:errors};
   }catch(e){return{symbol,status:'unavailable',reason:String(e?.message||e)}}

@@ -122,7 +122,7 @@ jobs:
           print(f'PLAN ACTION: {action} {symbol or ""}'.strip())
           print('MODULES:', ', '.join(f"{m.get('family')}={m.get('status')}" for m in modules))
           flow_code,orderflow=call('/api/bot/order-flow')
-          print('=== BINANCE ORDER FLOW ===');print(json.dumps(orderflow,ensure_ascii=False,indent=2))
+          print('=== ORDER FLOW ===');print(json.dumps(orderflow,ensure_ascii=False,indent=2))
           if flow_code!=200 or orderflow.get('mode')!='READ_ONLY' or orderflow.get('executionEnabled') is not False:
               sys.exit('FAIL: Order Flow diagnostic is not read-only or unavailable')
           if orderflow.get('status')!='ok':

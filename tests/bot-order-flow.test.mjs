@@ -85,4 +85,6 @@ test('falls back to Kraken public Trades and Depth when Binance and Bybit are bl
  assert.equal(result.provider,'Kraken Spot public REST');
  assert.ok(result.instruments.every(x=>x.venue==='Kraken Spot public REST'));
  assert.ok(result.instruments.every(x=>x.marketType==='spot'));
+ assert.equal(result.instruments[0].venueSymbol,'XBTUSD');
+ assert.equal(result.instruments[1].venueSymbol,'ETHUSD');
 });
