@@ -7,7 +7,7 @@ const KRAKEN_PAIRS={BTCUSDT:'XBTUSD',ETHUSDT:'ETHUSD',SOLUSDT:'SOLUSD',BNBUSDT:'
 const COINBASE_PRODUCTS={BTCUSDT:'BTC-USD',ETHUSDT:'ETH-USD',SOLUSDT:'SOL-USD',BNBUSDT:'BNB-USD',XRPUSDT:'XRP-USD'};
 const KEY='crypto/paper/v1';
 const SYMBOLS=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
-const CONFIG={capital:1000,orderUsd:50,maxPositions:3,maxTradesPerDay:8,stopLossPct:1,takeProfitPct:1.8,feePct:.1,slippagePct:.05};
+const CONFIG={capital:1000,orderUsd:50,maxPositions:3,maxEntriesPerDay:3,stopLossPct:1,takeProfitPct:1.8,feePct:.1,slippagePct:.05};
 const now=()=>new Date().toISOString();
 const num=v=>Number.isFinite(Number(v))?Number(v):null;
 const round=(v,d=8)=>Number(Number(v).toFixed(d));
@@ -34,8 +34,8 @@ export function cryptoSignal(candles){
  const closes=rows.map(x=>Number(x[4])),volumes=rows.map(x=>Number(x[5]));
  const last=closes.at(-1),prev5=closes.at(-6),prev15=closes.at(-16),m5=prev5?last/prev5-1:0,m15=prev15?last/prev15-1:0;
  const fast=ema(closes.slice(-30),9),slow=ema(closes.slice(-30),21),baseVol=volumes.slice(-21,-1).reduce((a,b)=>a+b,0)/20,volRatio=baseVol?volumes.at(-1)/baseVol:0;
- const bullish=m5>=.0012&&m15>0&&fast>slow&&volRatio>=1.15;
- const bearish=m5<=-.0012&&m15<0&&fast<slow&&volRatio>=1.15;
+ const bullish=m5>=.0006&&m15>0&&fast>slow&&volRatio>=.90;
+ const bearish=m5<=-.0006&&m15<0&&fast<slow&&volRatio>=.90;
  const momentumScore=clamp(m5/.003,-1,1)*.30+clamp(m15/.008,-1,1)*.25,trendDirection=fast>slow?1:fast<slow?-1:0,volumeSign=Math.sign(momentumScore+trendDirection);const score=clamp(momentumScore+trendDirection*.30+(volRatio>=1.15?volumeSign*.15:0),-1,1);const trendScore=clamp((fast/slow-1)*100,-1,1),volatility=closes.slice(-15).reduce((sum,v,i,a)=>i?sum+Math.abs(v/a[i-1]-1):sum,0)/14;return{action:bullish?'BUY':bearish?'SELL':'WAIT',score,trendScore,momentum5m:m5,momentum15m:m15,price:last,ema9:fast,ema21:slow,volumeRatio:volRatio,volatility,coverage:1,agents:{momentum:clamp(m5/.003,-1,1)*.5+clamp(m15/.008,-1,1)*.5,trend:trendScore,volume:clamp((volRatio-1)/1.5,-1,1)},reason:bullish?'Momentum e trend rialzisti confermati dal volume.':bearish?'Momentum e trend ribassisti confermati dal volume.':'Nessuna convergenza sufficiente: attesa.'};
 }
 function freshModule(m,maxAgeMs=6*60*60*1000){if(!m||m.dataAvailable===false||!(Number(m.coverage)>0))return false;const t=Date.parse(m.asOf||m.generatedAt||'')||0,until=Date.parse(m.freshUntil||'')||Infinity;return Boolean(t&&t<=Date.now()+60_000&&Date.now()-t<=maxAgeMs&&until>Date.now()&&m.freshness!=='stale'&&m.freshness!=='incomplete')}
@@ -65,11 +65,11 @@ export function cryptoConsensus(local,context,symbol){
  const weight=votes.reduce((a,v)=>a+v.weight,0),score=weight?votes.reduce((a,v)=>a+v.score*v.weight,0)/weight:0;
  const directional=votes.filter(v=>v.direction!==0),agreementCount=directional.filter(v=>v.direction===Math.sign(score)).length,agree=directional.length?agreementCount/directional.length:0,agreementLabel=directional.length<2?`NON SIGNIFICATIVO (${directional.length}/2 voti direzionali minimi)`:`${Math.round(agree*100)}% (${agreementCount}/${directional.length})`;
  const sourceGroups=new Set(votes.map(v=>v.family==='momentum_agent'||v.family==='trend_agent'?'market_ohlcv':v.family==='order_flow_agent'?'order_flow':v.family));const independent=sourceGroups.size,agentVotes=votes.length,active=directional.length,confidence=Math.round(Math.min(95,50+Math.abs(score)*35+Math.min(10,active*3)));
- const enough=independent>=2&&agentVotes>=3&&active>=2&&agree>=.67&&Math.abs(score)>=.25&&confidence>=62;
+ const enough=independent>=2&&agentVotes>=3&&active>=2&&agree>=.67&&Math.abs(score)>=.18&&confidence>=60;
  const action=enough?(score>0?'BUY':'SELL'):'WAIT';
- return{action,score:Number(score.toFixed(4)),confidence,agreement:Number(agree.toFixed(3)),agreementCount,agreementLabel,independentVotes:independent,independentSources:[...sourceGroups],agentVotes,activeVotes:active,coverage:independent?Number((votes.reduce((a,v)=>a+v.coverage,0)/agentVotes).toFixed(3)):0,thresholds:{minIndependentSources:2,minAgentVotes:3,minActiveVotes:2,minAgreement:.67,minAbsScore:.25,minConfidence:62},votes,reason:enough?'Consenso crypto: momentum, trend e order flow convergono.':`WAIT: ${independent}/2 fonti indipendenti, ${agentVotes}/3 agenti, ${active}/2 voti direzionali, agreement ${agreementLabel}, score ${score.toFixed(2)} (soglia ±0,25).`};
+ return{action,score:Number(score.toFixed(4)),confidence,agreement:Number(agree.toFixed(3)),agreementCount,agreementLabel,independentVotes:independent,independentSources:[...sourceGroups],agentVotes,activeVotes:active,coverage:independent?Number((votes.reduce((a,v)=>a+v.coverage,0)/agentVotes).toFixed(3)):0,thresholds:{minIndependentSources:2,minAgentVotes:3,minActiveVotes:2,minAgreement:.67,minAbsScore:.18,minConfidence:60},votes,reason:enough?'Consenso crypto: momentum, trend e order flow convergono.':`WAIT: ${independent}/2 fonti indipendenti, ${agentVotes}/3 agenti, ${active}/2 voti direzionali, agreement ${agreementLabel}, score ${score.toFixed(2)} (soglia ±0,18).`};
 }
-function emptyState(){return{version:1,mode:'PAPER',createdAt:now(),updatedAt:now(),config:CONFIG,cash:CONFIG.capital,equity:CONFIG.capital,realizedPnl:0,fees:0,positions:[],orders:[],daily:{date:now().slice(0,10),trades:0},symbols:{},errors:[],cycles:0}}
+function emptyState(){return{version:1,mode:'PAPER',createdAt:now(),updatedAt:now(),config:CONFIG,cash:CONFIG.capital,equity:CONFIG.capital,realizedPnl:0,fees:0,positions:[],orders:[],daily:{date:now().slice(0,10),trades:0,entries:0},symbols:{},errors:[],cycles:0}}
 function markEquity(s){const value=s.positions.reduce((a,p)=>a+p.qty*p.markPrice,0);s.equity=round(s.cash+value,2);return s}
 function closePosition(s,p,price,reason){
  const gross=price*p.qty-p.costBasis,fee=price*p.qty*CONFIG.feePct/100,net=gross-fee;
@@ -85,17 +85,17 @@ function applySignal(s,symbol,signal){
   else if(signal.action==='SELL')closePosition(s,p,raw*(1-CONFIG.slippagePct/100),'SIGNAL_EXIT');
   return;
  }
- if(signal.action!=='BUY'||s.positions.length>=CONFIG.maxPositions||s.daily.trades>=CONFIG.maxTradesPerDay)return;
+ if(signal.action!=='BUY'||s.positions.length>=CONFIG.maxPositions||s.daily.entries>=CONFIG.maxEntriesPerDay)return;
  const last=s.symbols[symbol]?.lastEntryAt;if(last&&Date.now()-Date.parse(last)<30*60*1000)return;
  const spend=Math.min(CONFIG.orderUsd,s.cash/(1+CONFIG.feePct/100));if(spend<10)return;
  const fill=raw*(1+CONFIG.slippagePct/100),fee=spend*CONFIG.feePct/100,qty=spend/fill;
  s.cash=round(s.cash-spend-fee,2);s.fees=round(s.fees+fee,4);
  s.positions.push({symbol,qty:round(qty),entryPrice:fill,markPrice:raw,costBasis:spend+fee,openedAt:now(),stopLossPct:CONFIG.stopLossPct,takeProfitPct:CONFIG.takeProfitPct});
  s.orders.push({id:'cp-'+Date.now()+'-'+s.orders.length,symbol,side:'BUY',qty:round(qty),price:fill,fee,pnl:null,reason:signal.reason,time:now(),mode:'PAPER'});
- s.symbols[symbol]={...(s.symbols[symbol]||{}),lastEntryAt:now()};s.daily.trades++;
+ s.symbols[symbol]={...(s.symbols[symbol]||{}),lastEntryAt:now()};s.daily.trades++;s.daily.entries++;
 }
 export async function runCryptoPaperCycle(env,{fetcher=json,contextProvider=null}={}){
- const s=await read(env)||emptyState(),today=now().slice(0,10);if(s.daily?.date!==today)s.daily={date:today,trades:0};
+ const s=await read(env)||emptyState(),today=now().slice(0,10);if(s.daily?.date!==today)s.daily={date:today,trades:0,entries:0};if(!Number.isFinite(Number(s.daily.entries)))s.daily.entries=Number(s.daily.trades)||0;
  const context=await loadCryptoContext(env,contextProvider);const results=await Promise.all(SYMBOLS.map(async symbol=>{try{const market=await fetchMarketCandles(symbol,fetcher);const local=cryptoSignal(market.candles);const consensus=cryptoConsensus({...local,provider:market.provider},context,symbol);const signal={...local,...consensus,localAction:local.action,action:consensus.action,provider:market.provider,reason:consensus.action==='WAIT'?consensus.reason:local.reason+' '+consensus.reason};return{symbol,ok:true,...signal}}catch(e){return{symbol,ok:false,action:'NO_DATA',reason:String(e.message||e)}}}));
  for(const r of results){if(r.ok){s.symbols[r.symbol]={...(s.symbols[r.symbol]||{}),...r,checkedAt:now()};applySignal(s,r.symbol,r)}else{s.errors.push({symbol:r.symbol,error:r.reason,time:now()})}}
  s.errors=s.errors.slice(-30);s.orders=s.orders.slice(-300);s.cycles++;s.updatedAt=now();s.lastCycle={at:s.updatedAt,available:results.filter(x=>x.ok).length,total:results.length,contextAvailable:Boolean(context?.ok),contextReason:context?.reason||null,contextSource:context?.source||'crypto-native autonomous',signals:results};markEquity(s);await write(env,s);
