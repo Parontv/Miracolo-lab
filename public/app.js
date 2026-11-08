@@ -46,6 +46,10 @@ const S = {
   currentSuggestion: null,
 };
 
+let HUMMINGBOT_STATUS = null;
+let HUMMINGBOT_LOADING = false;
+let HUMMINGBOT_REQUEST_ID = 0;
+
 /* ===== CONFIG ===== */
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem('ml_cfg') || '{}'); } catch { return {}; }
@@ -710,6 +714,27 @@ function setPanel(id) {
   S.activePanel = id;
   document.querySelectorAll('.rail-btn').forEach(b => b.classList.toggle('active', b.dataset.panel === id));
   renderPanel();
+  if (id === 'settings') refreshHummingbotStatus();
+}
+
+async function refreshHummingbotStatus() {
+  const requestId = ++HUMMINGBOT_REQUEST_ID;
+  HUMMINGBOT_LOADING = true;
+  if (S.activePanel === 'settings') renderPanel();
+  try {
+    const response = await fetch('/api/hummingbot/overview?ts=' + Date.now(), { cache: 'no-store', headers: { Accept: 'application/json' } });
+    let data = null;
+    try { data = await response.json(); } catch {}
+    if (!data) throw new Error('Risposta Hummingbot non valida.');
+    HUMMINGBOT_STATUS = data;
+  } catch (error) {
+    HUMMINGBOT_STATUS = { ok: false, configured: true, connected: false, error: String(error?.message || error) };
+  } finally {
+    if (requestId === HUMMINGBOT_REQUEST_ID) {
+      HUMMINGBOT_LOADING = false;
+      if (S.activePanel === 'settings') renderPanel();
+    }
+  }
 }
 
 function renderPanel() {
@@ -1034,6 +1059,10 @@ function panelBlackSwan() {
 
 /* ===== PANEL: SETTINGS ===== */
 function panelSettings() {
+  const hb = HUMMINGBOT_STATUS;
+  const hbLabel = HUMMINGBOT_LOADING ? 'Verifica in corso…' : !hb ? 'Non verificato' : !hb.configured ? 'Da configurare' : hb.ok ? 'Connesso' : hb.connected ? 'Parzialmente raggiungibile' : 'Non raggiungibile';
+  const hbClass = HUMMINGBOT_LOADING ? '' : hb?.ok ? 'up' : 'down';
+  const hbSummary = hb?.executors?.summary || {};
   return `<div class="panel-header"><div class="panel-title">⚙️ Impostazioni</div><div class="panel-sub">AI, Telegram, Bot</div></div>
   <div class="panel-body">
     <div class="panel-section">
@@ -1075,6 +1104,20 @@ function panelSettings() {
           <input class="setting-input" type="number" id="scoreInput" value="${CFG.scoreThreshold||5}" min="3" max="6" step="0.5">
         </div>
         <button class="bot-btn" style="width:100%;margin-top:7px" onclick="applyBotSettings()">Applica e resetta bot</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-label">🔌 Hummingbot · Motore crypto</div>
+      <div class="p-card">
+        <div class="stat-row"><span class="stat-key">Connessione API</span><span class="stat-val ${hbClass}">${esc(hbLabel)}</span></div>
+        <div class="stat-row"><span class="stat-key">Versione</span><span class="stat-val">${esc(hb?.system?.hummingbotVersion || hb?.system?.apiVersion || '—')}</span></div>
+        <div class="stat-row"><span class="stat-key">Connettori disponibili</span><span class="stat-val">${hb?.connectors?.count ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-key">Executor attivi</span><span class="stat-val">${hbSummary.total_active ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-key">PnL executor</span><span class="stat-val">${Number.isFinite(hbSummary.total_pnl_quote) ? fmt(hbSummary.total_pnl_quote, 2) + ' quote' : '—'}</span></div>
+        ${hb?.error ? `<div class="setting-desc" style="margin-top:7px">${esc(hb.error)}</div>` : ''}
+        ${Array.isArray(hb?.errors) && hb.errors.length ? `<div class="setting-desc" style="margin-top:7px">${esc(hb.errors.join(' · '))}</div>` : ''}
+        <button class="bot-btn" style="width:100%;margin-top:8px" onclick="refreshHummingbotStatus()" ${HUMMINGBOT_LOADING ? 'disabled' : ''}>↻ Aggiorna stato</button>
+        <div class="setting-desc" style="margin-top:8px">Monitoraggio in sola lettura. Nessun ordine può essere inviato da questa integrazione. URL e credenziali si configurano esclusivamente nei Worker Secrets Cloudflare, mai qui nel browser.</div>
       </div>
     </div>
     <div class="panel-section">
