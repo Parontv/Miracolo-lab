@@ -4,8 +4,10 @@ const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_RESPONSE_BYTES = 256 * 1024;
 
 function basicAuth(username, password) {
-  const raw = `${username}:${password}`;
-  return `Basic ${btoa(unescape(encodeURIComponent(raw)))}`;
+  const bytes = new TextEncoder().encode(`${username}:${password}`);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return `Basic ${btoa(binary)}`;
 }
 
 function configFromEnv(env = {}) {
