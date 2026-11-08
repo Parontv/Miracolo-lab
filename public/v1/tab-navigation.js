@@ -1,7 +1,7 @@
 /* Miracolo Lab — Top tab navigation + canonical Bot mounting */
 (()=>{
   'use strict';
-  const PANELS=['radar','market','investimenti','bot','blackswan','settings'];
+  const PANELS=['radar','market','investimenti','bot','strategy','blackswan','settings'];
   const originalSetPanel=window.setPanel;
   let botObserver=null;
   function mountBot(){
