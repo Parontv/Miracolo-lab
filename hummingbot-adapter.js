@@ -90,11 +90,17 @@ function summarizeSystem(data) {
 
 function summarizeExecutors(data) {
   if (!data || typeof data !== 'object') return null;
-  const allowed = ['total_active', 'total_completed', 'total_executors', 'total_pnl', 'realized_pnl', 'unrealized_pnl', 'total_volume', 'active_positions'];
+  const allowed = ['total_active', 'total_completed', 'total_executors', 'total_pnl', 'total_pnl_quote', 'realized_pnl', 'unrealized_pnl', 'total_volume', 'total_volume_quote', 'active_positions'];
   const result = {};
   for (const key of allowed) {
     const value = data[key];
     if (typeof value === 'number' && Number.isFinite(value)) result[key] = value;
+  }
+  for (const key of ['by_type', 'by_connector', 'by_status']) {
+    const value = data[key];
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result[key] = Object.fromEntries(Object.entries(value).filter(([name, count]) => typeof name === 'string' && typeof count === 'number' && Number.isFinite(count)).slice(0, 50));
+    }
   }
   return result;
 }
