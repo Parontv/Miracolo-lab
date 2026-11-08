@@ -31,7 +31,9 @@ assert.match(evalEngine,/h5d:5\*24\*60\*60\*1000/,'5d horizon present');
 console.log('PASS bot subrequest/evaluation contract');
 
 assert.match(router,/function decisionFresh\(data\)/,'cached decisions must validate input freshness');
-assert.match(router,/macroUntil>now&&aiAt>now-60\*60\*1000/,'cached decision must expire when macro or AI evidence expires');
+assert.match(router,/macroUntil>now&&aiAt>now-60\\*60\\*1000&&aiAt<=now\\+60000&&flow&&flowUntil>now/,'cached decision must expire when macro, AI or order-flow evidence expires');
+assert.match(router,/u\\.pathname===['\"]\\/api\\/bot\\/order-flow['\"]/,'read-only order flow diagnostic route missing');
+assert.match(router,/refreshBinanceOrderFlow\\(\\)/,'context phase must refresh live order flow');
 
 assert.match(paperAuto,/if\(!Array\.isArray\(positions\)\|\|!Array\.isArray\(orders\)\)/,'PAPER buy preflight must fail closed on invalid Alpaca response shapes');
 assert.match(paperAuto,/if\(!Array\.isArray\(rows\)\)return\{ok:false,position:null,positions:\[\]\}/,'PAPER position sync must fail closed on invalid Alpaca positions');
