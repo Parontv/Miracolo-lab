@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { getCryptoDecision } from '../bot-crypto-engine.js';
 import { executePaperDecision } from '../bot-paper-executor.js';
-import { cryptoAction, runAutoPaperBot } from '../bot-paper-auto.js';
+import { cryptoAction, runAutoPaperBot, runCryptoAlpacaExitCheck } from '../bot-paper-auto.js';
 
 const originalFetch=global.fetch;
 try{
@@ -84,6 +84,28 @@ try{
   assert.equal(submitted,1,'non-PAPER mode must never submit an order');
 
   await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'SPY',notional:1000,referencePrice:100,maxRiskUsd:8}),/supera il limite 8 USD/);
+  global.fetch=async(url,options={})=>{
+    const u=String(url),method=String(options.method||'GET').toUpperCase();
+    assert.ok(u.startsWith('https://paper-api.alpaca.markets/v2/'));
+    if(u.endsWith('/positions')&&method==='GET')return new Response(JSON.stringify([{symbol:'BTCUSD',qty:'0.01',market_value:'98',unrealized_pl:'-2'}]),{status:200});
+    if(u.includes('/orders?status=open')&&method==='GET')return new Response(JSON.stringify([{id:'btc-protective-stop',symbol:'BTC/USD',side:'sell',type:'stop_limit',status:'new',qty:'0.01',stop_price:'98'}]),{status:200});
+    if(u.endsWith('/orders/btc-protective-stop')&&method==='DELETE')return new Response(null,{status:204});
+    if(u.endsWith('/orders')&&method==='POST'){const body=JSON.parse(options.body);assert.equal(body.side,'sell');assert.equal(body.symbol,'BTC/USD');assert.equal(body.qty,0.01);return new Response(JSON.stringify({id:'btc-stop-exit',status:'accepted'}),{status:200});}
+    throw new Error('unexpected minute exit monitor request '+method+' '+u);
+  };
+  const managedExit=await runCryptoAlpacaExitCheck(env);
+  assert.equal(managedExit.botAction.action,'SELL');
+  assert.equal(managedExit.execution.executed,true);
+  assert.equal(managedExit.execution.mode,'PAPER');
+
+  global.fetch=async(url,options={})=>{
+    const u=String(url),method=String(options.method||'GET').toUpperCase();
+    if(u.endsWith('/positions')&&method==='GET')return new Response('[]',{status:200});
+    throw new Error('unexpected no-position monitor request '+method+' '+u);
+  };
+  const noPosition=await runCryptoAlpacaExitCheck(env);
+  assert.equal(noPosition.botAction.action,'HOLD');
+  assert.equal(noPosition.execution.executed,false);
   console.log('Equity bracket protection contract: PASS');
   console.log('BTC position-aware exit contract: PASS');
   console.log('BTC crypto decision contract: PASS');
