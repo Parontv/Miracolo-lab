@@ -23,8 +23,6 @@ on:
       - 'bot-server-engine.js'
       - 'bot-live-router.js'
       - 'bot-context-enrichment.js'
-      - 'bot-live-router.js'
-      - 'bot-context-enrichment.js'
       - 'bot-risk-engine.js'
       - 'bot-crypto-engine.js'
       - 'news-event-engine.js'
