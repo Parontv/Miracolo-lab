@@ -35,3 +35,8 @@ assert.match(router,/macroUntil>now&&aiAt>now-60\*60\*1000/,'cached decision mus
 
 assert.match(paperAuto,/if\(!Array\.isArray\(positions\)\|\|!Array\.isArray\(orders\)\)/,'PAPER buy preflight must fail closed on invalid Alpaca response shapes');
 assert.match(paperAuto,/if\(!Array\.isArray\(rows\)\)return\{ok:false,position:null,positions:\[\]\}/,'PAPER position sync must fail closed on invalid Alpaca positions');
+
+assert.match(router,/async function refreshRiskState\(env\)/,'execution routes must refresh live positions and orders before decisions');
+assert.match(router,/const riskState=await refreshRiskState\(env\);if\(!riskState\.ok\)/,'manual plan/run routes must fail closed on reconciliation errors');
+assert.match(paperAuto,/assessPositionRisk\(positions,orders\)/,'PAPER preflight must verify stop coverage for all existing positions');
+assert.match(paperAuto,/pendingEntries/,'PAPER preflight must count pending entry orders against the position cap');
