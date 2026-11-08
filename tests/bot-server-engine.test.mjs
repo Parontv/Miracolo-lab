@@ -23,7 +23,7 @@ test('engine produces explainable modules and a portfolio decision',async()=>{
   const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map((ticker,i)=>({ticker,changePct:.8+i*.05,rsi:55+i,volumeChangePct:20+i*2,smaSignal:.1,emaSignal:.1,atrPct:1.2}));
   const news=Array.from({length:12},(_,i)=>({title:`Market update ${i}`,date:new Date().toISOString(),score:.2}));
   const state={market:{timestamp:new Date().toISOString(),indices},news:{timestamp:new Date().toISOString(),items:news},ai:{status:'ok',direction:'LONG',confidence:75,regime:'risk-on',thesis:'Trend positivo',generatedAt:new Date().toISOString()}};
-  const quant={timestamp:new Date().toISOString(),coverage:{available:3},groups:{macro:[{status:'ok',freshness:'fresh',label:'Inflazione USA',trendPct:-.4}],rates:[{status:'ok',freshness:'fresh',label:'Fed Funds effettivo',trendPct:-.2}]}};
+  const quant={timestamp:new Date().toISOString(),coverage:{available:3},groups:{macro:[{status:'ok',freshness:'fresh',asOf:new Date().toISOString(),maxAgeDays:75,label:'CPI inflation',trendPct:-.4}],rates:[{status:'ok',freshness:'fresh',asOf:new Date().toISOString(),maxAgeDays:7,label:'Fed Funds effective rate',trendPct:-.2}]}};
   const result=await runBot(envWith(state,quant));
   assert.equal(result.ok,true);
   assert.equal(result.mode,'PAPER');
