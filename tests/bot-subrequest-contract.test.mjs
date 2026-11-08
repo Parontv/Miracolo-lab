@@ -44,3 +44,5 @@ assert.match(paperAuto,/pendingEntries/,'PAPER preflight must count pending entr
 assert.ok(paperAuto.indexOf("if(action==='BUY'){const gate=await preflightBuy")<paperAuto.indexOf('if(!execute){result.execution={executed:false,mode:\'PAPER\',dryRun:true'),'Dry-run plans must pass the same live buy preflight before showing an executable plan');
 
 assert.match(router,/flattenAlpacaOrders\(orders\)/,'Journal must import nested Alpaca bracket child orders');
+
+assert.match(router,/groupRole:o\.group_role\|\|prev\.groupRole/,'Journal must preserve Alpaca bracket group roles for daily trade counting');
