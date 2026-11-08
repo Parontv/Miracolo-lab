@@ -103,7 +103,7 @@ test('Binance executed flow and order-book depth contribute only when both instr
  assert.equal(flow.direction,1);
  assert.equal(flow.coverage,1);
  assert.equal(flow.instruments.length,2);
- assert.match(flow.evidence[0],/BTCUSDT \\(XBTUSD\\)/);
+ assert.match(flow.evidence[0],/BTCUSDT \(XBTUSD\)/);
  assert.match(flow.evidence[0],/campione 2.0 min/);
 });
 test('stale or partial Binance order flow never votes',async()=>{
