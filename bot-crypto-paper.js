@@ -2,6 +2,8 @@
  * Public Binance market data only. Simulated fills are never sent to an exchange.
  */
 const BASE='https://data-api.binance.vision/api/v3';
+const KRAKEN_PAIRS={BTCUSDT:'XBTUSD',ETHUSDT:'ETHUSD',SOLUSDT:'SOLUSD',BNBUSDT:'BNBUSD',XRPUSDT:'XRPUSD'};
+const COINBASE_PRODUCTS={BTCUSDT:'BTC-USD',ETHUSDT:'ETH-USD',SOLUSDT:'SOL-USD',BNBUSDT:'BNB-USD',XRPUSDT:'XRP-USD'};
 const KEY='crypto/paper/v1';
 const SYMBOLS=['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT'];
 const CONFIG={capital:1000,orderUsd:50,maxPositions:3,maxTradesPerDay:20,stopLossPct:1,takeProfitPct:1.8,feePct:.1,slippagePct:.05};
@@ -9,6 +11,18 @@ const now=()=>new Date().toISOString();
 const num=v=>Number.isFinite(Number(v))?Number(v):null;
 const round=(v,d=8)=>Number(Number(v).toFixed(d));
 async function json(url){const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'MiracoloLab-CryptoPaper/1.0'}});if(!r.ok)throw Error('Market data HTTP '+r.status+' '+url);return r.json()}
+function normalizeCoinbase(rows){if(!Array.isArray(rows))throw Error('Coinbase response non valida');return rows.map(x=>[Number(x[0])*1000,Number(x[3]),Number(x[2]),Number(x[1]),Number(x[4]),Number(x[5])]).sort((a,b)=>a[0]-b[0])}
+function normalizeKraken(payload){const result=payload?.result;if(!result||payload.error?.length)throw Error('Kraken response non valida: '+(payload?.error||[]).join(', '));const key=Object.keys(result).find(k=>k!=='last');const rows=key?result[key]:null;if(!Array.isArray(rows))throw Error('Kraken OHLC non disponibile');return rows.map(x=>[Number(x[0])*1000,Number(x[1]),Number(x[2]),Number(x[3]),Number(x[4]),Number(x[6])])}
+async function fetchMarketCandles(symbol,fetcher=json){
+ const errors=[];
+ const urls=[
+  {provider:'BINANCE',url:BASE+'/klines?symbol='+symbol+'&interval=1m&limit=60',parse:x=>x},
+  {provider:'COINBASE',url:'https://api.exchange.coinbase.com/products/'+(COINBASE_PRODUCTS[symbol]||symbol.replace('USDT','-USD'))+'/candles?granularity=60',parse:normalizeCoinbase},
+  {provider:'KRAKEN',url:'https://api.kraken.com/0/public/OHLC?pair='+(KRAKEN_PAIRS[symbol]||symbol.replace('USDT','USD'))+'&interval=1',parse:normalizeKraken}
+ ];
+ for(const source of urls){try{const payload=await fetcher(source.url);const candles=source.parse(payload);if(!Array.isArray(candles)||candles.length<30)throw Error(source.provider+' returned fewer than 30 candles');return{candles,provider:source.provider}}catch(e){errors.push(source.provider+': '+String(e.message||e))}}
+ throw Error('Tutte le fonti crypto non disponibili. '+errors.join(' | '));
+}
 async function read(env){try{const raw=await env.ML_KV?.get(KEY);return raw?JSON.parse(raw):null}catch{return null}}
 async function write(env,state){if(!env.ML_KV)throw Error('KV ML_KV non configurato: stato paper non persistibile');await env.ML_KV.put(KEY,JSON.stringify(state),{expirationTtl:90*24*3600})}
 function ema(values,period){if(values.length<period)return null;const k=2/(period+1);let x=values.slice(0,period).reduce((a,b)=>a+b,0)/period;for(const v of values.slice(period))x=v*k+x*(1-k);return x}
@@ -49,7 +63,7 @@ function applySignal(s,symbol,signal){
 }
 export async function runCryptoPaperCycle(env,{fetcher=json}={}){
  const s=await read(env)||emptyState(),today=now().slice(0,10);if(s.daily?.date!==today)s.daily={date:today,trades:0};
- const results=await Promise.all(SYMBOLS.map(async symbol=>{try{const rows=await fetcher(BASE+'/klines?symbol='+symbol+'&interval=1m&limit=60');const sig=cryptoSignal(rows);return{symbol,ok:true,...sig}}catch(e){return{symbol,ok:false,action:'NO_DATA',reason:String(e.message||e)}}}));
+ const results=await Promise.all(SYMBOLS.map(async symbol=>{try{const market=await fetchMarketCandles(symbol,fetcher);const sig=cryptoSignal(market.candles);return{symbol,ok:true,provider:market.provider,...sig}}catch(e){return{symbol,ok:false,action:'NO_DATA',reason:String(e.message||e)}}}));
  for(const r of results){if(r.ok){s.symbols[r.symbol]={...(s.symbols[r.symbol]||{}),...r,checkedAt:now()};applySignal(s,r.symbol,r)}else{s.errors.push({symbol:r.symbol,error:r.reason,time:now()})}}
  s.errors=s.errors.slice(-30);s.orders=s.orders.slice(-300);s.cycles++;s.updatedAt=now();s.lastCycle={at:s.updatedAt,available:results.filter(x=>x.ok).length,total:results.length,signals:results};markEquity(s);await write(env,s);
  return{ok:results.some(x=>x.ok),mode:'PAPER',market:'CRYPTO_24_7',state:s};
