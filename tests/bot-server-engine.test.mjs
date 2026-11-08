@@ -87,3 +87,29 @@ test('learning remains warming up until thirty verified exits exist',async()=>{
   const ready=await runBot(env,state);
   assert.equal(ready.modules.find(m=>m.family==='learning').status,'READY');
 });
+
+test('Binance executed flow and order-book depth contribute only when both instruments are fresh',async()=>{
+ const now=Date.now(),freshUntil=new Date(now+30000).toISOString();
+ const orderFlow={status:'ok',freshness:'fresh',provider:'Binance USD-M Futures public REST',generatedAt:new Date(now).toISOString(),freshUntil,instruments:[
+  {symbol:'BTCUSDT',status:'ok',score:.3,deltaRatio:.4,obi:.1,spreadBps:.5,tradeCount:120,lastTradeAt:now-500},
+  {symbol:'ETHUSDT',status:'ok',score:.2,deltaRatio:.3,obi:.1,spreadBps:.7,tradeCount:90,lastTradeAt:now-700}
+ ]};
+ const state={market:{timestamp:new Date().toISOString(),indices:['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:0})),orderFlow}};
+ const result=await runBot(envWith(state,{coverage:{available:0},groups:{macro:[]}}),state);
+ const flow=result.modules.find(m=>m.family==='flow');
+ assert.equal(flow.dataAvailable,true);
+ assert.equal(flow.freshness,'fresh');
+ assert.equal(flow.source,'Binance USD-M Futures public REST');
+ assert.equal(flow.direction,1);
+ assert.equal(flow.coverage,1);
+ assert.equal(flow.instruments.length,2);
+});
+test('stale or partial Binance order flow never votes',async()=>{
+ const now=Date.now();
+ const orderFlow={status:'partial',freshness:'incomplete',provider:'Binance USD-M Futures public REST',generatedAt:new Date(now).toISOString(),freshUntil:new Date(now+30000).toISOString(),expectedInstruments:2,instruments:[{symbol:'BTCUSDT',status:'ok',score:.8,deltaRatio:.9,obi:.7,lastTradeAt:now-500}]};
+ const state={market:{timestamp:new Date().toISOString(),indices:['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:0})),orderFlow}};
+ const result=await runBot(envWith(state,{coverage:{available:0},groups:{macro:[]}}),state);
+ const flow=result.modules.find(m=>m.family==='flow');
+ assert.equal(flow.dataAvailable,false);
+ assert.equal(flow.status,'NO_DATA');
+});
