@@ -26,3 +26,6 @@ assert.match(evalEngine,/h1:60\*60\*1000/,'1h horizon present');
 assert.match(evalEngine,/h24:24\*60\*60\*1000/,'24h horizon present');
 assert.match(evalEngine,/h5d:5\*24\*60\*60\*1000/,'5d horizon present');
 console.log('PASS bot subrequest/evaluation contract');
+
+assert.match(router,/function decisionFresh\(data\)/,'cached decisions must validate input freshness');
+assert.match(router,/macroUntil>now&&aiAt>now-60\*60\*1000/,'cached decision must expire when macro or AI evidence expires');
