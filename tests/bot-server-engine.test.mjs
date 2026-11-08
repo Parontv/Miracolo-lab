@@ -91,7 +91,7 @@ test('learning remains warming up until thirty verified exits exist',async()=>{
 test('Binance executed flow and order-book depth contribute only when both instruments are fresh',async()=>{
  const now=Date.now(),freshUntil=new Date(now+30000).toISOString();
  const orderFlow={status:'ok',freshness:'fresh',provider:'Binance USD-M Futures public REST',generatedAt:new Date(now).toISOString(),freshUntil,instruments:[
-  {symbol:'BTCUSDT',status:'ok',score:.3,deltaRatio:.4,obi:.1,spreadBps:.5,tradeCount:120,lastTradeAt:now-500},
+  {symbol:'BTCUSDT',venueSymbol:'XBTUSD',status:'ok',score:.3,deltaRatio:.4,obi:.1,spreadBps:.5,tradeCount:120,sampleSpanMs:120000,lastTradeAt:now-500},
   {symbol:'ETHUSDT',status:'ok',score:.2,deltaRatio:.3,obi:.1,spreadBps:.7,tradeCount:90,lastTradeAt:now-700}
  ]};
  const state={market:{timestamp:new Date().toISOString(),indices:['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:0})),orderFlow}};
@@ -103,6 +103,8 @@ test('Binance executed flow and order-book depth contribute only when both instr
  assert.equal(flow.direction,1);
  assert.equal(flow.coverage,1);
  assert.equal(flow.instruments.length,2);
+ assert.match(flow.evidence[0],/BTCUSDT \\(XBTUSD\\)/);
+ assert.match(flow.evidence[0],/campione 2.0 min/);
 });
 test('stale or partial Binance order flow never votes',async()=>{
  const now=Date.now();
