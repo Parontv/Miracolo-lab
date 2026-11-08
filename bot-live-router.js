@@ -8,7 +8,7 @@ import { seedBotMarket } from './bot-market-seed.js';
 import { refreshNewsAndMacro, refreshFredOnly } from './bot-context-enrichment.js';
 import { recordSignals, evaluateSignals, getEvalReport } from './bot-evaluation.js';
 import { getHummingbotOverview } from './hummingbot-adapter.js';
-import { reconcileFilledOrders } from './bot-pnl-reconciliation.js';
+import { reconcileFilledOrders, flattenAlpacaOrders } from './bot-pnl-reconciliation.js';
 import { assessPositionRisk } from './bot-position-risk.js';
 
 const STATE='state/latest',LAST='bot/last-run',BTC_POSITION='bot/positions/btc',QUANT='quantitative/latest-v2',JOURNAL='bot/journal/v1';
@@ -32,7 +32,7 @@ async function syncJournal(env){
   const orders=await r.json();if(!Array.isArray(orders))throw Error('Alpaca orders response shape non valida: journal sync bloccato.');const old=await read(env,JOURNAL,[]),rows=Array.isArray(old)?old:[],byId=new Map(rows.filter(x=>x?.orderId).map(x=>[String(x.orderId),x]));
   const reconciliation=reconcileFilledOrders(orders,{limit:500});
   let imported=0,updated=0,knownRealized=0,unknownRealized=0;
-  for(const o of (Array.isArray(orders)?orders:[])){
+  for(const o of flattenAlpacaOrders(orders)){
    if(!o?.id)continue;
    const id=String(o.id),prev=byId.get(id)||{},status=String(o.status||prev.status||'unknown').toLowerCase();
    const filledQty=Number(o.filled_qty||0),filled=filledQty>0,terminal=['filled','canceled','cancelled','rejected','expired'].includes(status);

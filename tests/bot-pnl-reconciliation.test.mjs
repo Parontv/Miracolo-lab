@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { reconcileFilledOrders } from '../bot-pnl-reconciliation.js';
+import { reconcileFilledOrders, flattenAlpacaOrders } from '../bot-pnl-reconciliation.js';
 
 const orders=[
  {id:'b1',symbol:'SPY',side:'buy',filled_qty:'10',filled_avg_price:'100',filled_at:'2026-11-01T10:00:00Z'},
@@ -32,3 +32,18 @@ assert.equal(truncated.byOrderId.get('s1').realizedGross,null);
 assert.equal(truncated.byOrderId.get('s1').realizedStatus,'HISTORY_TRUNCATED');
 
 console.log('Alpaca realized P&L reconciliation: PASS');
+
+const nestedOrders=[
+ {id:'nested-entry',symbol:'SPY',side:'buy',filled_qty:'10',filled_avg_price:'100',filled_at:'2026-11-03T10:00:00Z',legs:[
+  {id:'nested-tp',symbol:'SPY',side:'sell',type:'limit',status:'filled',filled_qty:'4',filled_avg_price:'110',filled_at:'2026-11-03T11:00:00Z',group_role:'take_profit'},
+  {id:'nested-sl',symbol:'SPY',side:'sell',type:'stop',status:'filled',filled_qty:'6',filled_avg_price:'95',filled_at:'2026-11-03T12:00:00Z',group_role:'stop_loss'}
+ ]}
+];
+const flattened=flattenAlpacaOrders(nestedOrders);
+assert.equal(flattened.length,3);
+const nestedResult=reconcileFilledOrders(nestedOrders);
+assert.equal(nestedResult.processedFills,3);
+assert.equal(nestedResult.byOrderId.get('nested-tp').realizedGross,40);
+assert.equal(nestedResult.byOrderId.get('nested-sl').realizedGross,-30);
+assert.equal(nestedResult.byOrderId.get('nested-tp').realizedStatus,'GROSS_WEIGHTED_AVERAGE');
+console.log('Nested Alpaca bracket child-fill reconciliation: PASS');
