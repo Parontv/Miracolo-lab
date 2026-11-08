@@ -47,6 +47,19 @@ async function fetchBybitLinear(symbol,fetcher){
  const book={bids:bookPayload?.result?.b||[],asks:bookPayload?.result?.a||[]};
  return{trades,book};
 }
+async function fetchKrakenSpot(symbol,fetcher){
+ const pair=symbol==='BTCUSDT'?'XBTUSD':'ETHUSD',base='https://api.kraken.com/0/public/';
+ const [tradePayload,bookPayload]=await Promise.all([
+  getJson(base+'Trades?pair='+pair,fetcher),
+  getJson(base+'Depth?pair='+pair+'&count=20',fetcher)
+ ]);
+ if(tradePayload?.error?.length||bookPayload?.error?.length)throw Error('Kraken API: '+[...(tradePayload.error||[]),...(bookPayload.error||[])].join('; '));
+ const tradeKey=Object.keys(tradePayload?.result||{}).find(k=>k!=='last'),bookKey=Object.keys(bookPayload?.result||{}).find(k=>k!=='last');
+ if(!tradeKey||!bookKey)throw Error('Kraken: risposta Trades/Depth senza coppia richiesta');
+ const trades=(tradePayload.result[tradeKey]||[]).map(x=>({p:x[0],q:x[1],T:Number(x[2])*1000,m:String(x[3]).toLowerCase()==='s'}));
+ const rawBook=bookPayload.result[bookKey],book={bids:rawBook?.bids||[],asks:rawBook?.asks||[]};
+ return{trades,book};
+}
 export async function refreshBinanceOrderFlow({fetcher=fetch,now=Date.now(),symbols=SYMBOLS}={}){
  const started=Date.now();let fetches=0;
  const countedFetcher=(url,options)=>{fetches++;return fetcher(url,options)};
@@ -72,6 +85,10 @@ export async function refreshBinanceOrderFlow({fetcher=fetch,now=Date.now(),symb
     const data=await fetchBybitLinear(symbol,countedFetcher);
     return analyzeOrderFlow(symbol,data.trades,data.book,now,{venue:'Bybit Linear public REST',marketType:'perpetual'});
    }catch(error){errors.push('Bybit Linear: '+String(error?.message||error))}
+   try{
+    const data=await fetchKrakenSpot(symbol,countedFetcher);
+    return analyzeOrderFlow(symbol,data.trades,data.book,now,{venue:'Kraken Spot public REST',marketType:'spot'});
+   }catch(error){errors.push('Kraken Spot: '+String(error?.message||error))}
    return{symbol,status:'unavailable',reason:errors.join(' · '),providerErrors:errors};
   }catch(e){return{symbol,status:'unavailable',reason:String(e?.message||e)}}
  }));
