@@ -52,6 +52,7 @@ jobs:
           node --check news-event-engine.js
           node --check bot-paper-executor.js
           node --check bot-paper-auto.js
+          node --check bot-pnl-reconciliation.js
           node --check live-worker.js
           node --check public/bot-controller.js
           node --check public/bot-workspace.js
@@ -62,6 +63,8 @@ jobs:
         run: node tests/bot-consensus-v3.test.mjs
       - name: Risk guardrail regression
         run: node tests/bot-risk-engine.test.mjs
+      - name: Realized P&L reconciliation
+        run: node tests/bot-pnl-reconciliation.test.mjs
       - name: Canonical UI behavior
         run: node tests/bot-engine.behavior.test.js
       - name: BTC and Paper execution contracts
