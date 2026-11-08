@@ -1,9 +1,6 @@
 /* Miracolo Lab — independent 24/7 crypto PAPER engine.
  * Public Binance market data only. Simulated fills are never sent to an exchange.
  */
-import { runBot } from './bot-server-engine.js';
-import { newsContract } from './news-event-engine.js';
-import { getCryptoDecision } from './bot-crypto-engine.js';
 import { refreshBinanceOrderFlow } from './bot-order-flow.js';
 const BASE='https://data-api.binance.vision/api/v3';
 const KRAKEN_PAIRS={BTCUSDT:'XBTUSD',ETHUSDT:'ETHUSD',SOLUSDT:'SOLUSD',BNBUSDT:'BNBUSD',XRPUSDT:'XRPUSD'};
@@ -39,17 +36,27 @@ export function cryptoSignal(candles){
  const fast=ema(closes.slice(-30),9),slow=ema(closes.slice(-30),21),baseVol=volumes.slice(-21,-1).reduce((a,b)=>a+b,0)/20,volRatio=baseVol?volumes.at(-1)/baseVol:0;
  const bullish=m5>=.0012&&m15>0&&fast>slow&&volRatio>=1.15;
  const bearish=m5<=-.0012&&m15<0&&fast<slow&&volRatio>=1.15;
- const momentumScore=clamp(m5/.003,-1,1)*.30+clamp(m15/.008,-1,1)*.25,trendScore=fast>slow?1:fast<slow?-1:0,volumeSign=Math.sign(momentumScore+trendScore);const score=clamp(momentumScore+trendScore*.30+(volRatio>=1.15?volumeSign*.15:0),-1,1);return{action:bullish?'BUY':bearish?'SELL':'WAIT',score,price:last,momentum5m:m5,momentum15m:m15,ema9:fast,ema21:slow,volumeRatio:volRatio,coverage:1,reason:bullish?'Momentum e trend rialzisti confermati dal volume.':bearish?'Momentum e trend ribassisti confermati dal volume.':'Nessuna convergenza sufficiente: attesa.'};
+ const momentumScore=clamp(m5/.003,-1,1)*.30+clamp(m15/.008,-1,1)*.25,trendScore=fast>slow?1:fast<slow?-1:0,volumeSign=Math.sign(momentumScore+trendScore);const score=clamp(momentumScore+trendScore*.30+(volRatio>=1.15?volumeSign*.15:0),-1,1);const trendScore=clamp((fast/slow-1)*100,-1,1),volatility=closes.slice(-15).reduce((sum,v,i,a)=>i?sum+Math.abs(v/a[i-1]-1):sum,0)/14;return{action:bullish?'BUY':bearish?'SELL':'WAIT',score,trendScore,momentum5m:m5,momentum15m:m15,price:last,ema9:fast,ema21:slow,volumeRatio:volRatio,volatility,coverage:1,agents:{momentum:clamp(m5/.003,-1,1)*.5+clamp(m15/.008,-1,1)*.5,trend:trendScore,volume:clamp((volRatio-1)/1.5,-1,1)},reason:bullish?'Momentum e trend rialzisti confermati dal volume.':bearish?'Momentum e trend ribassisti confermati dal volume.':'Nessuna convergenza sufficiente: attesa.'};
 }
 function freshModule(m,maxAgeMs=6*60*60*1000){if(!m||m.dataAvailable===false||!(Number(m.coverage)>0))return false;const t=Date.parse(m.asOf||m.generatedAt||'')||0,until=Date.parse(m.freshUntil||'')||Infinity;return Boolean(t&&t<=Date.now()+60_000&&Date.now()-t<=maxAgeMs&&until>Date.now()&&m.freshness!=='stale'&&m.freshness!=='incomplete')}
 function moduleScore(m){const d=Math.max(-1,Math.min(1,Number(m?.direction)||0)),strength=Math.max(0,Math.min(1,Number(m?.strength)||0));return d*strength}
 async function loadCryptoContext(env,contextProvider){
  if(contextProvider)return await contextProvider(env);
- try{const raw=await env.ML_KV?.get('state/latest');let state=raw?JSON.parse(raw):null;if(!state?.market)return{ok:false,reason:'Contesto condiviso non disponibile in KV.'};const [orderFlow,btcMarket]=await Promise.all([refreshBinanceOrderFlow(),getCryptoDecision(env,{force:true})]);state={...state,market:{...(state.market||{}),orderFlow},crypto:btcMarket};const result=await runBot(env,state,{cryptoOverride:btcMarket});if(!result?.ok)return{ok:false,reason:result?.decision?.reason||'Decision engine non disponibile.'};const byFamily=Object.fromEntries((result.modules||[]).map(m=>[m.family,m]));const cryptoItems=(Array.isArray(state.news?.items)?state.news.items:[]).filter(x=>/\b(bitcoin|btc|ethereum|eth|crypto|cryptocurrency|binance|coinbase|stablecoin|defi|solana|xrp|token|digital asset|crypto etf)\b/i.test(String(x.title||'')+' '+String(x.description||x.summary||'')));const cryptoNews=newsContract(cryptoItems).summary;byFamily.crypto_news={family:'crypto_news',direction:Math.sign(cryptoNews.net),strength:Math.abs(cryptoNews.net),confidence:cryptoNews.count?55+Math.abs(cryptoNews.net)*30:0,coverage:Math.min(1,cryptoNews.count/20),dataAvailable:cryptoNews.count>0,asOf:cryptoNews.asOf,evidence:cryptoNews.top.slice(0,5).map(x=>x.title)};return{ok:true,modules:byFamily,generatedAt:new Date().toISOString(),source:'Miracolo unified decision engine + crypto-filtered news'};}catch(e){return{ok:false,reason:String(e.message||e)}}}
+ try{
+  const snapshot=await refreshBinanceOrderFlow();
+  const instruments=Array.isArray(snapshot?.instruments)?snapshot.instruments:[];
+  const valid=instruments.filter(x=>x?.status==='ok'&&Number.isFinite(Number(x.score)));
+  const score=valid.length?clamp(valid.reduce((sum,x)=>sum+Number(x.score),0)/valid.length,-1,1):0;
+  const flow={family:'flow',direction:Math.sign(score),strength:Math.abs(score),score,coverage:valid.length/Math.max(1,snapshot.expectedInstruments||2),dataAvailable:valid.length>0,asOf:snapshot.generatedAt,freshUntil:snapshot.freshUntil,freshness:snapshot.freshness,marketType:snapshot.marketType||'mixed-crypto',source:snapshot.provider||'Multi-venue public order flow',instruments:valid,evidence:valid.map(x=>x.symbol+': delta '+(Number(x.deltaRatio)*100).toFixed(1)+'%, OBI '+(Number(x.obi)*100).toFixed(1)+'%')};
+  return{ok:valid.length>0,modules:{flow},generatedAt:new Date().toISOString(),source:'Crypto-native multi-venue order flow',reason:valid.length?'':'Order flow non disponibile: consenso prudenziale.'};
+ }catch(e){return{ok:false,modules:{},reason:String(e.message||e),source:'Crypto-native order flow unavailable'}}
+}
 export function cryptoConsensus(local,context,symbol){
  const m=context?.modules||{},votes=[];
- if(Number.isFinite(Number(local?.score)))votes.push({family:'technical',direction:Math.sign(local.score),score:local.score,weight:.48,coverage:local.coverage||0,source:'OHLCV '+(local.provider||'market')});
- const flow=m.flow;if(freshModule(flow,90_000)&&['perpetual','spot','mixed-crypto'].includes(String(flow.marketType||'').toLowerCase()))votes.push({family:'order_flow',direction:Math.sign(moduleScore(flow)),score:moduleScore(flow),weight:.22,coverage:Number(flow.coverage)||0,source:flow.source||'Order Flow'});
+ if(Number.isFinite(Number(local?.score)))votes.push({family:'momentum_agent',direction:Math.sign(local.score),score:local.score,weight:.42,coverage:local.coverage||0,source:'OHLCV momentum/volume'});
+ if(Number.isFinite(Number(local?.trendScore)))votes.push({family:'trend_agent',direction:Math.sign(local.trendScore),score:local.trendScore,weight:.16,coverage:local.coverage||0,source:'EMA trend regime'});
+ let flow=m.flow;if(flow?.instruments&&!Number.isFinite(Number(flow.direction))){const valid=flow.instruments.filter(x=>x?.status==='ok'&&Number.isFinite(Number(x.score)));const score=valid.length?clamp(valid.reduce((sum,x)=>sum+Number(x.score),0)/valid.length,-1,1):0;flow={...flow,direction:Math.sign(score),strength:Math.abs(score),score,coverage:valid.length/Math.max(1,flow.expectedInstruments||2),dataAvailable:valid.length>0};}
+ if(freshModule(flow,90_000)&&['perpetual','spot','mixed-crypto'].includes(String(flow.marketType||'').toLowerCase()))votes.push({family:'order_flow_agent',direction:Math.sign(moduleScore(flow)),score:moduleScore(flow),weight:.22,coverage:Number(flow.coverage)||0,source:flow.source||'Multi-venue Order Flow'});
  const macro=m.macro,news=m.crypto_news;
  if(freshModule(macro,45*86400_000))votes.push({family:'macro',direction:Math.sign(moduleScore(macro)),score:moduleScore(macro),weight:.08,coverage:Number(macro.coverage)||0,source:'FRED macro'});
  if(freshModule(news,72*60*60*1000))votes.push({family:'crypto_news',direction:Math.sign(moduleScore(news)),score:moduleScore(news),weight:.08,coverage:Number(news.coverage)||0,source:'Crypto-filtered news'});
@@ -60,7 +67,7 @@ export function cryptoConsensus(local,context,symbol){
  const independent=votes.length,active=directional.length,confidence=Math.round(Math.min(95,50+Math.abs(score)*35+Math.min(10,active*3)));
  const enough=independent>=3&&active>=2&&agree>=.67&&Math.abs(score)>=.25&&confidence>=62;
  const action=enough?(score>0?'BUY':'SELL'):'WAIT';
- return{action,score:Number(score.toFixed(4)),confidence,agreement:Number(agree.toFixed(3)),agreementCount,agreementLabel,independentVotes:independent,activeVotes:active,coverage:independent?Number((votes.reduce((a,v)=>a+v.coverage,0)/independent).toFixed(3)):0,thresholds:{minIndependentVotes:3,minActiveVotes:2,minAgreement:.67,minAbsScore:.25,minConfidence:62},votes,reason:enough?'Consenso crypto: tecnica, order flow e contesto indipendente convergono.':`WAIT: ${independent}/3 voti indipendenti, ${active}/2 voti direzionali minimi, agreement ${agreementLabel}, score ${score.toFixed(2)} (soglia ±0,25).`};
+ return{action,score:Number(score.toFixed(4)),confidence,agreement:Number(agree.toFixed(3)),agreementCount,agreementLabel,independentVotes:independent,activeVotes:active,coverage:independent?Number((votes.reduce((a,v)=>a+v.coverage,0)/independent).toFixed(3)):0,thresholds:{minIndependentVotes:3,minActiveVotes:2,minAgreement:.67,minAbsScore:.25,minConfidence:62},votes,reason:enough?'Consenso crypto: momentum, trend e order flow convergono.':`WAIT: ${independent}/3 voti indipendenti, ${active}/2 voti direzionali minimi, agreement ${agreementLabel}, score ${score.toFixed(2)} (soglia ±0,25).`};
 }
 function emptyState(){return{version:1,mode:'PAPER',createdAt:now(),updatedAt:now(),config:CONFIG,cash:CONFIG.capital,equity:CONFIG.capital,realizedPnl:0,fees:0,positions:[],orders:[],daily:{date:now().slice(0,10),trades:0},symbols:{},errors:[],cycles:0}}
 function markEquity(s){const value=s.positions.reduce((a,p)=>a+p.qty*p.markPrice,0);s.equity=round(s.cash+value,2);return s}
@@ -91,7 +98,7 @@ export async function runCryptoPaperCycle(env,{fetcher=json,contextProvider=null
  const s=await read(env)||emptyState(),today=now().slice(0,10);if(s.daily?.date!==today)s.daily={date:today,trades:0};
  const context=await loadCryptoContext(env,contextProvider);const results=await Promise.all(SYMBOLS.map(async symbol=>{try{const market=await fetchMarketCandles(symbol,fetcher);const local=cryptoSignal(market.candles);const consensus=cryptoConsensus({...local,provider:market.provider},context,symbol);const signal={...local,...consensus,localAction:local.action,action:consensus.action,provider:market.provider,reason:consensus.action==='WAIT'?consensus.reason:local.reason+' '+consensus.reason};return{symbol,ok:true,...signal}}catch(e){return{symbol,ok:false,action:'NO_DATA',reason:String(e.message||e)}}}));
  for(const r of results){if(r.ok){s.symbols[r.symbol]={...(s.symbols[r.symbol]||{}),...r,checkedAt:now()};applySignal(s,r.symbol,r)}else{s.errors.push({symbol:r.symbol,error:r.reason,time:now()})}}
- s.errors=s.errors.slice(-30);s.orders=s.orders.slice(-300);s.cycles++;s.updatedAt=now();s.lastCycle={at:s.updatedAt,available:results.filter(x=>x.ok).length,total:results.length,contextAvailable:Boolean(context?.ok),contextReason:context?.reason||null,contextSource:context?.source||'test/injected',signals:results};markEquity(s);await write(env,s);
+ s.errors=s.errors.slice(-30);s.orders=s.orders.slice(-300);s.cycles++;s.updatedAt=now();s.lastCycle={at:s.updatedAt,available:results.filter(x=>x.ok).length,total:results.length,contextAvailable:Boolean(context?.ok),contextReason:context?.reason||null,contextSource:context?.source||'crypto-native autonomous',signals:results};markEquity(s);await write(env,s);
  return{ok:results.some(x=>x.ok),mode:'PAPER',market:'CRYPTO_24_7',state:s};
 }
 export async function getCryptoPaperStatus(env){const s=await read(env);return{ok:Boolean(s),mode:'PAPER',market:'CRYPTO_24_7',running:Boolean(s?.lastCycle),state:s||emptyState(),message:s?'Ultimo ciclo crypto disponibile.':'In attesa del primo ciclo cron.'}}
