@@ -33,6 +33,8 @@ jobs:
           find public -type f -name '*.js' -print0 | xargs -0 -n1 node --check
           node tests/bot-engine.behavior.test.js
           node tests/crypto-paper.test.mjs
+          node tests/hummingbot-adapter.test.mjs
+          node tests/hummingbot-ui.test.mjs
           node tests/market-ui.test.js
           node tests/news-contract.test.js
           node tests/bot-server-engine.test.mjs
