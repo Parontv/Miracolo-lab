@@ -9,7 +9,7 @@ on:
       - 'bot-context-enrichment.js'
       - 'ai-worker.js'
       - 'bot-risk-engine.js'
-      - 'bot-crypto-engine.js'
+      - 'bot-crypto-engine.js'\n      - 'bot-crypto-paper.js'
       - 'news-event-engine.js'
       - 'bot-paper-executor.js'
       - 'bot-paper-auto.js'
@@ -58,7 +58,7 @@ jobs:
           node --check bot-server-engine.js
           node --check bot-order-flow.js
           node --check bot-risk-engine.js
-          node --check bot-crypto-engine.js
+          node --check bot-crypto-engine.js\n          node --check bot-crypto-paper.js
           node --check news-event-engine.js
           node --check bot-paper-executor.js
           node --check bot-paper-auto.js
@@ -84,7 +84,7 @@ jobs:
       - name: Canonical UI behavior
         run: node tests/bot-engine.behavior.test.js
       - name: BTC and Paper execution contracts
-        run: node tests/crypto-paper.test.mjs
+        run: node tests/crypto-paper.test.mjs && node tests/crypto-paper-engine.test.mjs
       - name: Hummingbot read-only adapter contract
         run: node tests/hummingbot-adapter.test.mjs
       - name: Hummingbot status UI contract
