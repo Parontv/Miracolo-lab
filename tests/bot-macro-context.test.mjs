@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { refreshNewsAndMacro } from '../bot-context-enrichment.js';
 
-// Contract: 3 news fetches max + 8 independent FRED series fetches = 11, below Worker limit.
+// Contract: at most 3 news fetches + 16 bounded FRED attempts + 1 mirror fallback.
 const originalFetch = globalThis.fetch;
 const seen = [];
 globalThis.fetch = async (url) => {
@@ -10,7 +10,8 @@ globalThis.fetch = async (url) => {
   if (u.includes('fred.stlouisfed.org')) {
     const id = new URL(u).searchParams.get('id');
     assert.ok(id);
-    return new Response(`DATE,${id}\n2026-10-01,100\n2026-10-02,101\n`, {status:200});
+    const latest=id==='EFFR'?'2026-11-07':'2026-10-02';
+    return new Response(`DATE,${id}\n2026-10-01,100\n${latest},101\n`, {status:200});
   }
   if (u.includes('news.google.com')) return new Response('<rss><channel></channel></rss>', {status:200});
   if (u.includes('gdeltproject.org')) return new Response(JSON.stringify({articles:[]}), {status:200});
@@ -37,23 +38,28 @@ const mirrorRows = [
   ['CPIAUCSL','CPI inflation'],['CPILFESL','Core CPI inflation'],['UNRATE','Unemployment'],
   ['PAYEMS','Nonfarm payrolls'],['GDPC1','Real GDP'],['INDPRO','Industrial production'],
   ['M2SL','M2 money supply'],['EFFR','Fed Funds effective rate']
-].map(([series,label],i)=>({category:'macro',series,label,value:100+i,previous:99+i,change:1,changePct:1,status:'ok',asOf:'2026-10-01',source:'FRED'}));
+].map(([series,label],i)=>({category:'macro',series,label,value:100+i,previous:99+i,change:1,changePct:1,status:'ok',asOf:series==='EFFR'?'2026-11-07':'2026-10-01',source:'FRED'}));
 const mirrorPayload={timestamp:'2026-10-29T20:00:00.000Z',source:'FRED',provider:'GitHub Actions mirror',groups:{macro:mirrorRows},coverage:{available:8,total:8},errors:[],seriesResults:mirrorRows};
 const mirrorSeen=[];
 globalThis.fetch=async url=>{
   const u=String(url);mirrorSeen.push(u);
+  if(u.includes('fred.stlouisfed.org')||u.includes('api.codetabs.com'))return new Response('',{status:503});
   if(u.includes('raw.githubusercontent.com/Parontv/Miracolo-lab/main/public/fred-macro.json'))return new Response(JSON.stringify(mirrorPayload),{status:200});
   if(u.includes('news.google.com'))return new Response('<rss><channel></channel></rss>',{status:200});
   if(u.includes('gdeltproject.org'))return new Response(JSON.stringify({articles:[]}),{status:200});
   if(u.includes('cnbc.com'))return new Response('<rss><channel></channel></rss>',{status:200});
-  throw new Error('FRED direct should not be called when mirror is available: '+u);
+  throw new Error('unexpected fetch: '+u);
 };
 try {
   const result=await refreshNewsAndMacro();
-  assert.equal(result.quantitative.provider,'GitHub Actions mirror');
+  assert.equal(result.quantitative.provider,'live with mirror fallback');
   assert.equal(result.quantitative.coverage.available,8);
   assert.equal(result.macro.length,8);
-  assert.equal(mirrorSeen.filter(x=>x.includes('fred.stlouisfed.org')).length,0);
+  assert.equal(mirrorSeen.filter(x=>x.includes('fred.stlouisfed.org')).length,8);
+  assert.equal(mirrorSeen.filter(x=>x.includes('api.codetabs.com')).length,8);
+  assert.equal(result.fetches,20);
+  assert.ok(result.macro.every(x=>x.freshness==='fresh'));
+  assert.ok(result.macro.every(x=>x.provider==='GitHub Actions mirror fallback'));
   console.log('PASS GitHub FRED mirror fallback');
 } finally {
   globalThis.fetch=originalFetch;
