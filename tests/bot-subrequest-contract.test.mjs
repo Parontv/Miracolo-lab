@@ -10,7 +10,9 @@ assert.match(router,/realizedBasis:exit\?'GROSS_BEFORE_FEES'/,'Journal must labe
 assert.match(router,/fetches:2,alpaca/,'market-test must report exactly two market fetches');
 assert.match(router,/name:'market',fetches:0/,'Decision phase must not fetch');
 assert.match(router,/name:'crypto',fetches:3/,'Crypto phase budget must remain three fetches');
-assert.match(router,/name:'position',fetches:1/,'Position phase must remain one fetch');
+assert.match(router,/name:'position',fetches:0/,'Position phase starts with zero actual fetches');
+assert.match(router,/p\.fetches=2/,'Position risk reconciliation must fetch both positions and active nested orders');
+assert.match(router,/assessPositionRisk\(raw,orders\)/,'Position risk must be derived from verified Alpaca stop orders');
 assert.match(router,/name:'journal'/,'Journal phase must be explicit');
 assert.match(router,/evaluationPhase/,'Evaluation phase must be explicit');
 assert.match(router,/fetches:0,errors:\[\],durationMs:0/,'Evaluation phase adds no external fetches');
