@@ -113,8 +113,15 @@ jobs:
               break
             time.sleep(5)
             crypto_paper_code,crypto_paper=call('/api/crypto-bot/status')
-          print('=== INDEPENDENT CRYPTO PAPER BOT ===');print(json.dumps({'http':crypto_paper_code,'mode':crypto_paper.get('mode'),'market':crypto_paper.get('market'),'cycles':(crypto_paper.get('state') or {}).get('cycles'),'heartbeat':crypto_paper.get('heartbeat')},ensure_ascii=False,indent=2))
-          if crypto_paper_code!=200 or crypto_paper.get('mode')!='PAPER' or crypto_paper.get('market')!='CRYPTO_24_7' or (crypto_paper.get('state') or {}).get('cycles',0)<1 or crypto_paper.get('heartbeat',{}).get('ok') is not True:sys.exit('FAIL: crypto cron non ha completato un ciclo PAPER verificato entro 90 secondi')
+          crypto_state=crypto_paper.get('state') or {}
+          crypto_cycle=crypto_state.get('lastCycle') or {}
+          crypto_signals=crypto_cycle.get('signals') or []
+          crypto_signal_summary=[{'symbol':x.get('symbol'),'action':x.get('action'),'provider':x.get('provider'),'independentVotes':x.get('independentVotes'),'agreement':x.get('agreement'),'score':x.get('score'),'reason':x.get('reason')} for x in crypto_signals]
+          print('=== INDEPENDENT CRYPTO PAPER BOT ===');print(json.dumps({'http':crypto_paper_code,'mode':crypto_paper.get('mode'),'market':crypto_paper.get('market'),'cycles':crypto_state.get('cycles'),'contextAvailable':crypto_cycle.get('contextAvailable'),'contextSource':crypto_cycle.get('contextSource'),'available':crypto_cycle.get('available'),'total':crypto_cycle.get('total'),'signals':crypto_signal_summary,'heartbeat':crypto_paper.get('heartbeat')},ensure_ascii=False,indent=2))
+          if crypto_paper_code!=200 or crypto_paper.get('mode')!='PAPER' or crypto_paper.get('market')!='CRYPTO_24_7' or crypto_state.get('cycles',0)<1 or crypto_paper.get('heartbeat',{}).get('ok') is not True:sys.exit('FAIL: crypto cron non ha completato un ciclo PAPER verificato entro 90 secondi')
+          if crypto_cycle.get('contextAvailable') is not True:sys.exit('FAIL: crypto cycle senza consenso condiviso Miracolo')
+          if crypto_cycle.get('available')!=5 or crypto_cycle.get('total')!=5:sys.exit('FAIL: copertura Crypto non completa 5/5')
+          if len(crypto_signals)!=5 or any(int(x.get('independentVotes') or 0)<3 for x in crypto_signals):sys.exit('FAIL: consenso multi-fonte crypto incompleto: servono almeno 3 voti per ciascun asset')
           crypto_code,crypto=call('/api/bot/crypto')
           print('=== BTC ===');print(json.dumps(crypto,ensure_ascii=False,indent=2))
           if crypto_code!=200 or not crypto.get('ok') or crypto.get('symbol')!='BTC/USD':sys.exit('FAIL: BTC/USD non disponibile')
