@@ -69,3 +69,20 @@ test('falls back to Bybit Linear public REST when Binance hosts are blocked',asy
  assert.ok(result.instruments.every(x=>x.venue==='Bybit Linear public REST'));
  assert.ok(result.instruments.every(x=>x.marketType==='perpetual'));
 });
+
+test('falls back to Kraken public Trades and Depth when Binance and Bybit are blocked',async()=>{
+ let calls=0;
+ const fetcher=async url=>{
+  calls++;const u=String(url);
+  if(u.includes('fapi.binance.com')||u.includes('data-api.binance.vision')||u.includes('api.bybit.com'))return{ok:false,status:403,async json(){return{}}};
+  if(u.includes('/Trades?'))return{ok:true,status:200,async json(){return{error:[],result:{XXBTZUSD:trades().map(t=>[t.p,t.q,String(t.T/1000),t.m?'s':'b','l','']),last:'1'}}}};
+  return{ok:true,status:200,async json(){return{error:[],result:{XXBTZUSD:{bids:book().bids,asks:book().asks}}}}};
+ };
+ const result=await refreshBinanceOrderFlow({fetcher,now});
+ assert.equal(calls,16);
+ assert.equal(result.fetches,16);
+ assert.equal(result.status,'ok');
+ assert.equal(result.provider,'Kraken Spot public REST');
+ assert.ok(result.instruments.every(x=>x.venue==='Kraken Spot public REST'));
+ assert.ok(result.instruments.every(x=>x.marketType==='spot'));
+});
