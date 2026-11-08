@@ -2,6 +2,7 @@
  * Public Binance market data only. Simulated fills are never sent to an exchange.
  */
 import { runBot } from './bot-server-engine.js';
+import { newsContract } from './news-event-engine.js';
 const BASE='https://data-api.binance.vision/api/v3';
 const KRAKEN_PAIRS={BTCUSDT:'XBTUSD',ETHUSDT:'ETHUSD',SOLUSDT:'SOLUSD',BNBUSDT:'BNBUSD',XRPUSDT:'XRPUSD'};
 const COINBASE_PRODUCTS={BTCUSDT:'BTC-USD',ETHUSDT:'ETH-USD',SOLUSDT:'SOL-USD',BNBUSDT:'BNB-USD',XRPUSDT:'XRP-USD'};
@@ -37,18 +38,18 @@ export function cryptoSignal(candles){
  const bearish=m5<=-.0012&&m15<0&&fast<slow&&volRatio>=1.15;
  const momentumScore=clamp(m5/.003,-1,1)*.30+clamp(m15/.008,-1,1)*.25,trendScore=fast>slow?1:fast<slow?-1:0,volumeSign=Math.sign(momentumScore+trendScore);const score=clamp(momentumScore+trendScore*.30+(volRatio>=1.15?volumeSign*.15:0),-1,1);return{action:bullish?'BUY':bearish?'SELL':'WAIT',score,price:last,momentum5m:m5,momentum15m:m15,ema9:fast,ema21:slow,volumeRatio:volRatio,coverage:1,reason:bullish?'Momentum e trend rialzisti confermati dal volume.':bearish?'Momentum e trend ribassisti confermati dal volume.':'Nessuna convergenza sufficiente: attesa.'};
 }
-function freshModule(m,maxAgeMs=6*60*60*1000){if(!m||m.dataAvailable===false||!(Number(m.coverage)>0))return false;const t=Date.parse(m.asOf||m.generatedAt||'')||0;return Boolean(t&&t<=Date.now()+60_000&&Date.now()-t<=maxAgeMs&&m.freshness!=='stale'&&m.freshness!=='incomplete')}
+function freshModule(m,maxAgeMs=6*60*60*1000){if(!m||m.dataAvailable===false||!(Number(m.coverage)>0))return false;const t=Date.parse(m.asOf||m.generatedAt||'')||0,until=Date.parse(m.freshUntil||'')||Infinity;return Boolean(t&&t<=Date.now()+60_000&&Date.now()-t<=maxAgeMs&&until>Date.now()&&m.freshness!=='stale'&&m.freshness!=='incomplete')}
 function moduleScore(m){const d=Math.max(-1,Math.min(1,Number(m?.direction)||0)),strength=Math.max(0,Math.min(1,Number(m?.strength)||0));return d*strength}
 async function loadCryptoContext(env,contextProvider){
  if(contextProvider)return await contextProvider(env);
- try{const raw=await env.ML_KV?.get('state/latest');const state=raw?JSON.parse(raw):null;if(!state?.market)return{ok:false,reason:'Contesto condiviso non disponibile in KV.'};const result=await runBot(env,state);if(!result?.ok)return{ok:false,reason:result?.decision?.reason||'Decision engine non disponibile.'};const byFamily=Object.fromEntries((result.modules||[]).map(m=>[m.family,m]));return{ok:true,modules:byFamily,generatedAt:new Date().toISOString(),source:'Miracolo unified decision engine'};}catch(e){return{ok:false,reason:String(e.message||e)}}}
+ try{const raw=await env.ML_KV?.get('state/latest');const state=raw?JSON.parse(raw):null;if(!state?.market)return{ok:false,reason:'Contesto condiviso non disponibile in KV.'};const result=await runBot(env,state);if(!result?.ok)return{ok:false,reason:result?.decision?.reason||'Decision engine non disponibile.'};const byFamily=Object.fromEntries((result.modules||[]).map(m=>[m.family,m]));const cryptoItems=(Array.isArray(state.news?.items)?state.news.items:[]).filter(x=>/\\b(bitcoin|btc|ethereum|eth|crypto|cryptocurrency|binance|coinbase|stablecoin|defi|solana|xrp|token|digital asset|crypto etf)\\b/i.test(String(x.title||'')+' '+String(x.description||x.summary||'')));const cryptoNews=newsContract(cryptoItems).summary;byFamily.crypto_news={family:'crypto_news',direction:Math.sign(cryptoNews.net),strength:Math.abs(cryptoNews.net),confidence:cryptoNews.count?55+Math.abs(cryptoNews.net)*30:0,coverage:Math.min(1,cryptoNews.count/20),dataAvailable:cryptoNews.count>0,asOf:cryptoNews.asOf,evidence:cryptoNews.top.slice(0,5).map(x=>x.title)};return{ok:true,modules:byFamily,generatedAt:new Date().toISOString(),source:'Miracolo unified decision engine + crypto-filtered news'};}catch(e){return{ok:false,reason:String(e.message||e)}}}
 function cryptoConsensus(local,context,symbol){
  const m=context?.modules||{},votes=[];
  if(Number.isFinite(Number(local?.score)))votes.push({family:'technical',direction:Math.sign(local.score),score:local.score,weight:.48,coverage:local.coverage||0,source:'OHLCV '+(local.provider||'market')});
  const flow=m.flow;if(freshModule(flow,90_000)&&['perpetual','spot','mixed-crypto'].includes(String(flow.marketType||'').toLowerCase()))votes.push({family:'order_flow',direction:Math.sign(moduleScore(flow)),score:moduleScore(flow),weight:.22,coverage:Number(flow.coverage)||0,source:flow.source||'Order Flow'});
- const macro=m.macro,news=m.news,broad=[];
+ const macro=m.macro,news=m.crypto_news,broad=[];
  if(freshModule(macro,45*86400_000))broad.push({family:'macro',score:moduleScore(macro),coverage:Number(macro.coverage)||0});
- if(freshModule(news,72*60*60*1000))broad.push({family:'news',score:moduleScore(news),coverage:Number(news.coverage)||0});
+ if(freshModule(news,72*60*60*1000))broad.push({family:'crypto_news',score:moduleScore(news),coverage:Number(news.coverage)||0});
  if(broad.length){const v=broad.reduce((a,x)=>a+x.score,0)/broad.length;votes.push({family:'macro_news',direction:Math.sign(v),score:v,weight:.12,coverage:Math.min(...broad.map(x=>x.coverage)),source:'News + FRED'});}
  const btc=m.crypto;if(symbol!=='BTCUSDT'&&freshModule(btc,5*60_000)&&btc.symbol==='BTC/USD')votes.push({family:'btc_market',direction:Math.sign(moduleScore(btc)),score:moduleScore(btc),weight:.10,coverage:Number(btc.coverage)||0,source:'BTC/USD market structure'});
  const ai=m.ai;if(freshModule(ai,60*60*1000)&&Number(ai.confidence)>=65&&Math.abs(Number(ai.direction)||0)>0)votes.push({family:'ai_context',direction:Math.sign(moduleScore(ai)),score:moduleScore(ai),weight:.08,coverage:Number(ai.coverage)||0,source:'AI consultiva'});
