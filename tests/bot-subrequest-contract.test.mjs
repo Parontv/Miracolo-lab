@@ -42,3 +42,5 @@ assert.match(paperAuto,/assessPositionRisk\(positions,orders\)/,'PAPER preflight
 assert.match(paperAuto,/pendingEntries/,'PAPER preflight must count pending entry orders against the position cap');
 
 assert.ok(paperAuto.indexOf("if(action==='BUY'){const gate=await preflightBuy")<paperAuto.indexOf('if(!execute){result.execution={executed:false,mode:\'PAPER\',dryRun:true'),'Dry-run plans must pass the same live buy preflight before showing an executable plan');
+
+assert.match(router,/flattenAlpacaOrders\(orders\)/,'Journal must import nested Alpaca bracket child orders');
