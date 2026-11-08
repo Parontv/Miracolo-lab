@@ -68,5 +68,7 @@ jobs:
         run: node tests/crypto-paper.test.mjs
       - name: Hummingbot read-only adapter contract
         run: node tests/hummingbot-adapter.test.mjs
+      - name: Hummingbot status UI contract
+        run: node tests/hummingbot-ui.test.mjs
       - name: Market and News contracts
         run: node tests/market-ui.test.js && node tests/news-contract.test.js
