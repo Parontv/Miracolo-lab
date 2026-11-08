@@ -8,6 +8,7 @@ import { seedBotMarket } from './bot-market-seed.js';
 import { refreshNewsAndMacro, refreshFredOnly, loadFredMirror } from './bot-context-enrichment.js';
 import { recordSignals, evaluateSignals, getEvalReport } from './bot-evaluation.js';
 import { getHummingbotOverview } from './hummingbot-adapter.js';
+import { reconcileFilledOrders } from './bot-pnl-reconciliation.js';
 
 const STATE='state/latest',LAST='bot/last-run',BTC_POSITION='bot/positions/btc',QUANT='quantitative/latest-v2',JOURNAL='bot/journal/v1';
 async function read(env,key,f=null){try{const v=await env.ML_KV?.get(key);return v?JSON.parse(v):f}catch(error){console.error(`KV read failed: ${key}`,error);return f}}
@@ -18,7 +19,59 @@ async function contextPhase(env,state){const p={name:'context',fetches:0,errors:
 async function cryptoPhase(env){const p={name:'crypto',fetches:3,errors:[]};const c=await getCryptoDecision(env,{force:true});if(!c.dataAvailable)p.errors.push(c.reason||'BTC unavailable');await write(env,'bot/crypto/latest',c,600);return{crypto:c,phase:p}}
 async function positionPhase(env){const p={name:'position',fetches:1,errors:[]};try{const key=env?.ALPACA_API_KEY,secret=env?.ALPACA_API_SECRET;if(!key||!secret)throw Error('Alpaca credentials missing');const r=await fetch('https://paper-api.alpaca.markets/v2/positions',{headers:{'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':secret,'Accept':'application/json'}});p.fetches++;if(!r.ok)throw Error('Alpaca positions HTTP '+r.status);const rows=await r.json(),positions=(Array.isArray(rows)?rows:[]).map(x=>({symbol:x.symbol,qty:Number(x.qty||0),notional:Math.abs(Number(x.market_value||0)),marketValue:Number(x.market_value||0),unrealizedPl:Number(x.unrealized_pl||0),risk:null,riskVerified:false})),btc=positions.find(x=>String(x?.symbol||'').toUpperCase().replace(/[^A-Z0-9]/g,'')==='BTCUSD');await write(env,'bot/positions/v1',positions,600);await write(env,BTC_POSITION,btc?{qty:btc.qty,marketValue:btc.marketValue,unrealizedPl:btc.unrealizedPl}:null,600)}catch(e){p.errors.push(String(e.message||e));console.error('position phase failed',e)}return p}
 async function journalOrder(env,result,signalId,preloaded=[]){const ex=result?.execution;if(!ex?.executed||!ex?.orderId)return null;const rows=Array.isArray(preloaded)?preloaded:[],entry={orderId:ex.orderId,symbol:ex.symbol,side:ex.side||ex.action,notional:Number(ex.notional||0),signalRecordId:signalId||null,time:new Date().toISOString()};const next=[...rows.filter(x=>x?.orderId!==entry.orderId),entry].slice(-200);await write(env,JOURNAL,next,30*24*3600);return entry}
-async function syncJournal(env){const p={name:'journal',fetches:0,errors:[]};try{const key=env?.ALPACA_API_KEY,secret=env?.ALPACA_API_SECRET;if(!key||!secret)throw Error('Alpaca credentials missing');const r=await fetch('https://paper-api.alpaca.markets/v2/orders?status=all&limit=100&direction=desc',{headers:{'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':secret,'Accept':'application/json'}});p.fetches++;if(!r.ok)throw Error('Alpaca orders HTTP '+r.status);const orders=await r.json(),old=await read(env,JOURNAL,[]),rows=Array.isArray(old)?old:[],byId=new Map(rows.filter(x=>x?.orderId).map(x=>[String(x.orderId),x]));let imported=0,updated=0;for(const o of (Array.isArray(orders)?orders:[])){if(!o?.id)continue;const prev=byId.get(String(o.id))||{},status=String(o.status||prev.status||'unknown').toLowerCase(),filled=Number(o.filled_qty||0)>0,terminal=['filled','canceled','cancelled','rejected','expired'].includes(status),entry={...prev,orderId:String(o.id),clientOrderId:o.client_order_id||prev.clientOrderId||null,symbol:o.symbol||prev.symbol,side:o.side||prev.side,notional:Number(o.notional||prev.notional||0),qty:Number(o.filled_qty||o.qty||prev.qty||0),status,fillPrice:o.filled_avg_price?Number(o.filled_avg_price):prev.fillPrice||null,filledAt:o.filled_at||prev.filledAt||null,updatedAt:o.updated_at||new Date().toISOString(),time:prev.time||o.submitted_at||o.created_at||new Date().toISOString(),...(filled&&terminal?{closedAt:o.filled_at||o.updated_at||new Date().toISOString(),realized:prev.realized??prev.pnl??null}: {})};if(!prev.orderId)imported++;else if(JSON.stringify(prev)!==JSON.stringify(entry))updated++;byId.set(String(o.id),entry)}const next=[...byId.values()].slice(-200);p.imported=imported;p.updated=updated;if(JSON.stringify(next)!==JSON.stringify(rows))await write(env,JOURNAL,next,30*24*3600)}catch(e){p.errors.push(String(e.message||e));console.error('journal sync failed',e)}return p}
+async function syncJournal(env){
+ const p={name:'journal',fetches:0,errors:[]};
+ try{
+  const key=env?.ALPACA_API_KEY,secret=env?.ALPACA_API_SECRET;
+  if(!key||!secret)throw Error('Alpaca credentials missing');
+  const r=await fetch('https://paper-api.alpaca.markets/v2/orders?status=all&limit=500&direction=desc',{headers:{'APCA-API-KEY-ID':key,'APCA-API-SECRET-KEY':secret,'Accept':'application/json'}});
+  p.fetches++;
+  if(!r.ok)throw Error('Alpaca orders HTTP '+r.status);
+  const orders=await r.json(),old=await read(env,JOURNAL,[]),rows=Array.isArray(old)?old:[],byId=new Map(rows.filter(x=>x?.orderId).map(x=>[String(x.orderId),x]));
+  const reconciliation=reconcileFilledOrders(orders,{limit:500});
+  let imported=0,updated=0,knownRealized=0,unknownRealized=0;
+  for(const o of (Array.isArray(orders)?orders:[])){
+   if(!o?.id)continue;
+   const id=String(o.id),prev=byId.get(id)||{},status=String(o.status||prev.status||'unknown').toLowerCase();
+   const filledQty=Number(o.filled_qty||0),filled=filledQty>0,terminal=['filled','canceled','cancelled','rejected','expired'].includes(status);
+   const side=String(o.side||prev.side||'').toLowerCase(),fill=reconciliation.byOrderId.get(id);
+   const fillPrice=Number(o.filled_avg_price)>0?Number(o.filled_avg_price):null;
+   const exit=side==='sell';
+   const realized=exit?(fill?.realizedGross??null):null;
+   const realizedStatus=exit?(fill?.realizedStatus||'UNKNOWN_FILL_DATA'):'NOT_AN_EXIT';
+   if(exit&&realized!==null)knownRealized++;else if(exit&&terminal)unknownRealized++;
+   const entry={
+    ...prev,
+    orderId:id,
+    clientOrderId:o.client_order_id||prev.clientOrderId||null,
+    symbol:o.symbol||prev.symbol,
+    side:o.side||prev.side,
+    notional:Number(o.notional||prev.notional||(filledQty&&fillPrice?filledQty*fillPrice:0)),
+    qty:filled?filledQty:Number(o.qty||prev.qty||0),
+    filledQty:filledQty||0,
+    status,
+    fillPrice:fillPrice??prev.fillPrice??null,
+    filledAt:o.filled_at||prev.filledAt||null,
+    updatedAt:o.updated_at||new Date().toISOString(),
+    time:prev.time||o.submitted_at||o.created_at||new Date().toISOString(),
+    orderCompletedAt:terminal?(o.filled_at||o.updated_at||new Date().toISOString()):prev.orderCompletedAt||null,
+    closedAt:exit&&terminal?(o.filled_at||o.updated_at||new Date().toISOString()):exit?(prev.closedAt||null):null,
+    realized,
+    pnl:null,
+    pnlNet:null,
+    realizedStatus,
+    realizedBasis:exit?'GROSS_BEFORE_FEES':null,
+    reconciliationHistoryComplete:reconciliation.historyComplete
+   };
+   if(!prev.orderId)imported++;else if(JSON.stringify(prev)!==JSON.stringify(entry))updated++;
+   byId.set(id,entry);
+  }
+  const next=[...byId.values()].slice(-500);
+  p.imported=imported;p.updated=updated;p.realizedKnown=knownRealized;p.realizedUnknown=unknownRealized;p.historyComplete=reconciliation.historyComplete;p.processedFills=reconciliation.processedFills;
+  if(JSON.stringify(next)!==JSON.stringify(rows))await write(env,JOURNAL,next,30*24*3600);
+ }catch(e){p.errors.push(String(e.message||e));console.error('journal sync failed',e)}
+ return p;
+}
 async function evaluationPhase(env,result,state){const started=Date.now(),phase={name:'evaluation',fetches:0,errors:[],durationMs:0};try{const rec=await recordSignals(env,result,state),report=await evaluateSignals(env,state,{records:rec.records,report:rec.report});phase.recorded=rec.recorded;phase.recordId=rec.recordId;phase.modules=Object.values(report.horizons||{}).reduce((n,h)=>n+Object.keys(h).length,0);phase.durationMs=Date.now()-started;return{phase,report,preloadedJournal:rec.journal}}catch(e){phase.errors.push(String(e.message||e));phase.durationMs=Date.now()-started;console.error('evaluation phase failed',e);return{phase,report:null,preloadedJournal:[]}}}
 async function buildLiveBotState(env){const m=await marketPhase(env);const c=await cryptoPhase(env);const x=await contextPhase(env,m.state);const ai=await runAI(env,false,x.state);return{...x.state,ai:ai||x.state.ai,crypto:c.crypto}}
 async function buildLiveBotDecision(env){return await runBot(env,await buildLiveBotState(env))}
