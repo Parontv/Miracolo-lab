@@ -66,10 +66,10 @@ const m=(family,direction,weight,confidence=70,strength=.6,dataAvailable=true)=>
 
 // AI cannot turn generic prose into a directional vote, and low confidence stays neutral.
 {
-  const weak=aiModule({ai:{status:'ok',model:'@cf/meta/llama-3.1-8b-instruct-fast',direction:'SHORT',confidence:50,headline:'Market Analysis for today',thesis:'The market seems uncertain.'}});
+  const weak=aiModule({ai:{status:'ok',model:'@cf/meta/llama-3.1-8b-instruct-fast',generatedAt:new Date().toISOString(),direction:'SHORT',confidence:50,headline:'Market Analysis for today',thesis:'The market seems uncertain.'}});
   assert.equal(weak.direction,0);
   assert.equal(weak.status,'READY');
-  const strong=aiModule({ai:{status:'ok',model:'@cf/meta/llama-3.1-8b-instruct-fast',direction:'SHORT',confidence:80,headline:'Risk-off',thesis:'Evidence-backed short setup.'}});
+  const strong=aiModule({ai:{status:'ok',model:'@cf/meta/llama-3.1-8b-instruct-fast',generatedAt:new Date().toISOString(),direction:'SHORT',confidence:80,headline:'Risk-off',thesis:'Evidence-backed short setup.'}});
   assert.equal(strong.direction,-1);
   assert.equal(strong.status,'CONTRIBUISCE');
 }
