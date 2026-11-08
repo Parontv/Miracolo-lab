@@ -40,3 +40,5 @@ assert.match(router,/async function refreshRiskState\(env\)/,'execution routes m
 assert.match(router,/const riskState=await refreshRiskState\(env\);if\(!riskState\.ok\)/,'manual plan/run routes must fail closed on reconciliation errors');
 assert.match(paperAuto,/assessPositionRisk\(positions,orders\)/,'PAPER preflight must verify stop coverage for all existing positions');
 assert.match(paperAuto,/pendingEntries/,'PAPER preflight must count pending entry orders against the position cap');
+
+assert.ok(paperAuto.indexOf("if(action==='BUY'){const gate=await preflightBuy")<paperAuto.indexOf('if(!execute){result.execution={executed:false,mode:\'PAPER\',dryRun:true'),'Dry-run plans must pass the same live buy preflight before showing an executable plan');
