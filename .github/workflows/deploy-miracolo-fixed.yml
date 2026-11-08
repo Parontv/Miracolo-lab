@@ -121,6 +121,15 @@ jobs:
           symbol=(plan.get('botAction') or {}).get('symbol')
           print(f'PLAN ACTION: {action} {symbol or ""}'.strip())
           print('MODULES:', ', '.join(f"{m.get('family')}={m.get('status')}" for m in modules))
+          flow_code,orderflow=call('/api/bot/order-flow')
+          print('=== BINANCE ORDER FLOW ===');print(json.dumps(orderflow,ensure_ascii=False,indent=2))
+          if flow_code!=200 or orderflow.get('mode')!='READ_ONLY' or orderflow.get('executionEnabled') is not False:
+              sys.exit('FAIL: Order Flow diagnostic is not read-only or unavailable')
+          if orderflow.get('status')!='ok':
+              print('WARNING: Binance order flow feed unavailable/incomplete; flow module must remain NO_DATA.')
+          else:
+              print('ORDER FLOW:', orderflow.get('provider'), orderflow.get('instrumentCount'), '/', orderflow.get('expectedInstruments'))
+
           decision_code,decision=call('/api/bot/decision')
           print('=== BOT DECISION ENDPOINT ===');print(json.dumps(decision,ensure_ascii=False,indent=2))
           if decision_code!=200 or not decision.get('ok') or decision.get('mode')!='PAPER':
