@@ -75,7 +75,7 @@ assert.match(controller,/async function load\(\)/,'Bot controller must expose a 
 console.log('PASS research refresh and cache invalidation contract');
 
 const indexHtml=fs.readFileSync('public/index.html','utf8');
-assert.match(indexHtml,/bot-workspace\\.js\\?v=2\\.0\\.2/,'Bot workspace asset cache version must be bumped after UI changes');
+assert.ok(indexHtml.includes('/bot-workspace.js?v=2.0.2'),'Bot workspace asset cache version must be bumped after UI changes');
 console.log('PASS Bot workspace cache-busting contract');
 
 const engineSource=fs.readFileSync('bot-server-engine.js','utf8');
