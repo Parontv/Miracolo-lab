@@ -13,7 +13,8 @@ console.log('PASS context enrichment contract: bounded live-first FRED requests 
 
 assert.match(source,/tag\('pubDate'\).*tag\('published'\)/,'RSS parser must preserve original publication timestamps');
 assert.match(source,/parsedDate&&Number\.isFinite\(parsedDate\.getTime\(\)\)/,'invalid RSS dates must not be replaced with the current time');
-assert.match(source,/const raw=String\(x\?\.seendate\|\|''\)/,'GDELT dates must be parsed from source timestamps');
+assert.match(source,/function parseSourceDate/,'GDELT timestamp parser missing');
+assert.match(source,/date:parseSourceDate\(x\?\.seendate\)/,'GDELT dates must be parsed from source timestamps');
 assert.doesNotMatch(source,/x\?\.seendate\?new Date\(x\.seendate\)\.toISOString\(\):new Date\(\)\.toISOString\(\)/,'GDELT must not invent current timestamps');
 assert.match(source,/const FRED_MAX_AGE_DAYS=/,'FRED freshness limits missing');
 assert.match(source,/provider:'FRED live'/,'live FRED observations must identify their provider');
