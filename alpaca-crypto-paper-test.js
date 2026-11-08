@@ -1,7 +1,7 @@
 /* One-shot Alpaca Crypto PAPER round-trip smoke test. Fixed $10 BTC/USD; never LIVE. */
 const BASE='https://paper-api.alpaca.markets/v2';
-const LOCK='crypto/alpaca-paper-smoke-lock';
-const REPORT='crypto/alpaca-paper-smoke-last';
+let smokeTestRunning=false;
+let lastSmokeReport=null;
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const norm=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 function assertPaper(env){
@@ -20,12 +20,10 @@ async function waitOrder(env,id,maxMs=15000){
  while(Date.now()<end){last=await api(env,'/orders/'+encodeURIComponent(id));if(['filled','canceled','expired','rejected','done_for_day'].includes(String(last.status||'').toLowerCase()))return last;await sleep(1000)}
  return last;
 }
-async function putReport(env,report){try{await env.ML_KV?.put(REPORT,JSON.stringify(report),{expirationTtl:30*86400})}catch(e){console.error('Crypto Alpaca smoke report KV write failed',e)}}
 export async function runAlpacaCryptoPaperSmokeTest(env){
  assertPaper(env);
- if(!env.ML_KV)throw Error('KV ML_KV necessario per lock e report del test.');
- const existing=await env.ML_KV.get(LOCK);if(existing)throw Error('Test già in esecuzione o lock non scaduto.');
- await env.ML_KV.put(LOCK,JSON.stringify({startedAt:new Date().toISOString()}),{expirationTtl:180});
+ if(smokeTestRunning)throw Error('Test Alpaca Crypto già in esecuzione in questa istanza.');
+ smokeTestRunning=true;
  const report={ok:false,mode:'PAPER',provider:'Alpaca',symbol:'BTC/USD',notionalUsd:10,startedAt:new Date().toISOString(),buy:null,sell:null,positionAfter:null};
  try{
   const [account,assets,positions,orders]=await Promise.all([
@@ -51,7 +49,7 @@ export async function runAlpacaCryptoPaperSmokeTest(env){
   }
   const filledQty=Number(buyFinal?.filled_qty||0);
   report.buy={...report.buy,status:buyFinal?.status||report.buy.status,filledQty,filledAvgPrice:Number(buyFinal?.filled_avg_price||0),submittedNotional:Number(buyFinal?.notional||10)};
-  if(!(filledQty>0)){report.ok=false;report.result='BUY_NOT_FILLED';report.completedAt=new Date().toISOString();await putReport(env,report);return report;}
+  if(!(filledQty>0)){report.ok=false;report.result='BUY_NOT_FILLED';report.completedAt=new Date().toISOString();lastSmokeReport=report;return report;}
   const sell=await api(env,'/orders',{method:'POST',body:JSON.stringify({symbol:'BTC/USD',qty:String(filledQty),side:'sell',type:'market',time_in_force:'gtc',client_order_id:'ml-crypto-test-sell-'+Date.now()})});
   report.sell={id:sell.id,status:sell.status,qty:filledQty,clientOrderId:sell.client_order_id};
   const sellFinal=await waitOrder(env,sell.id,15000);
@@ -61,8 +59,8 @@ export async function runAlpacaCryptoPaperSmokeTest(env){
   report.positionAfter=residual?{qty:Number(residual.qty||0),marketValue:Number(residual.market_value||0),unrealizedPl:Number(residual.unrealized_pl||0)}:null;
   report.ok=String(sellFinal?.status||'').toLowerCase()==='filled'&&!residual;
   report.result=report.ok?'ROUND_TRIP_FILLED_AND_FLAT':residual?'RESIDUAL_POSITION_REQUIRES_REVIEW':'SELL_NOT_FULLY_FILLED';
-  report.completedAt=new Date().toISOString();await putReport(env,report);return report;
- }catch(e){report.error=String(e.message||e);report.completedAt=new Date().toISOString();await putReport(env,report);throw e}
- finally{try{await env.ML_KV.delete(LOCK)}catch(e){console.error('Crypto Alpaca smoke lock cleanup failed',e)}}
+  report.completedAt=new Date().toISOString();lastSmokeReport=report;return report;
+ }catch(e){report.error=String(e.message||e);report.completedAt=new Date().toISOString();lastSmokeReport=report;throw e}
+ finally{smokeTestRunning=false}
 }
-export async function getAlpacaCryptoPaperSmokeReport(env){try{const raw=await env.ML_KV?.get(REPORT);return raw?JSON.parse(raw):null}catch{return null}}
+export async function getAlpacaCryptoPaperSmokeReport(){return lastSmokeReport}
