@@ -32,7 +32,7 @@ jobs:
           for f in *.js; do node --check "$f"; done
           find public -type f -name '*.js' -print0 | xargs -0 -n1 node --check
           node tests/bot-engine.behavior.test.js
-          node tests/crypto-paper.test.mjs
+          node tests/crypto-paper.test.mjs\n          node tests/crypto-paper-engine.test.mjs
           node tests/hummingbot-adapter.test.mjs
           node tests/hummingbot-ui.test.mjs
           node tests/market-ui.test.js
@@ -106,7 +106,7 @@ jobs:
           status_code,status=call('/api/alpaca/status')
           print('=== ALPACA STATUS ===');print(json.dumps(status,ensure_ascii=False,indent=2))
           if status_code!=200 or status.get('mode')!='PAPER':sys.exit('FAIL: Alpaca Paper non verificato')
-          crypto_code,crypto=call('/api/bot/crypto')
+          crypto_paper_code,crypto_paper=call('/api/crypto-bot/status')\n          print('=== INDEPENDENT CRYPTO PAPER BOT ===');print(json.dumps({'http':crypto_paper_code,'mode':crypto_paper.get('mode'),'market':crypto_paper.get('market'),'cycles':(crypto_paper.get('state') or {}).get('cycles'),'heartbeat':crypto_paper.get('heartbeat')},ensure_ascii=False,indent=2))\n          if crypto_paper_code!=200 or crypto_paper.get('mode')!='PAPER' or crypto_paper.get('market')!='CRYPTO_24_7':sys.exit('FAIL: independent crypto paper endpoint unavailable')\n          crypto_code,crypto=call('/api/bot/crypto')
           print('=== BTC ===');print(json.dumps(crypto,ensure_ascii=False,indent=2))
           if crypto_code!=200 or not crypto.get('ok') or crypto.get('symbol')!='BTC/USD':sys.exit('FAIL: BTC/USD non disponibile')
           # Strategy Lab uses these eight instruments for its technical, historical and backtest modules.
