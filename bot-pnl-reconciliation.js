@@ -4,8 +4,9 @@
  */
 const num=v=>v==null||v===''?null:(Number.isFinite(Number(v))?Number(v):null);
 const timestamp=o=>Date.parse(o?.filled_at||o?.updated_at||o?.submitted_at||o?.created_at||'')||0;
+export function flattenAlpacaOrders(orders){const out=[];for(const order of Array.isArray(orders)?orders:[]){if(!order||typeof order!=='object')continue;out.push(order);for(const leg of Array.isArray(order.legs)?order.legs:[])if(leg&&typeof leg==='object')out.push(leg)}return out}
 export function reconcileFilledOrders(orders,{limit=500}={}){
- const list=Array.isArray(orders)?orders:[];
+ const list=flattenAlpacaOrders(orders);
  const historyComplete=list.length<limit;
  const inventory=new Map(),byOrderId=new Map();
  const sorted=[...list].filter(o=>o?.id&&num(o.filled_qty)>0).sort((a,b)=>timestamp(a)-timestamp(b));
