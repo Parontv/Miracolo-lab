@@ -38,3 +38,5 @@ test('engine produces explainable modules and a portfolio decision',async()=>{
   assert.ok(result.diagnostics.inputAudit.technicalFields.includes('rsi'));
   assert.ok(result.decision && result.decision.portfolio);
 });
+
+test('backtest module never treats an unvalidated market snapshot as backtest evidence',async()=>{const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:.8}));const state={market:{timestamp:new Date().toISOString(),indices},backtest:{returnPct:1.2,method:'current-market-sanity-check'}};const result=await runBot(envWith(state,{}));const backtest=result.modules.find(m=>m.family==='backtest');assert.equal(backtest.dataAvailable,false);assert.equal(backtest.status,'NO_DATA');});
