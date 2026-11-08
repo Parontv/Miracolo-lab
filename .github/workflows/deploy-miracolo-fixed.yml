@@ -34,6 +34,7 @@ jobs:
           node tests/bot-engine.behavior.test.js
           node tests/crypto-paper.test.mjs
           node tests/crypto-paper-engine.test.mjs
+          node tests/alpaca-crypto-paper-test.mjs
           node tests/hummingbot-adapter.test.mjs
           node tests/hummingbot-ui.test.mjs
           node tests/market-ui.test.js
