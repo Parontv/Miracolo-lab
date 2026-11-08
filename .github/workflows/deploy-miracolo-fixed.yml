@@ -144,6 +144,10 @@ jobs:
           print('=== BOT PLAN ===');print(json.dumps(plan,ensure_ascii=False,indent=2))
           if plan_code!=200 or plan.get('mode')!='PAPER':sys.exit('FAIL: piano Bot non disponibile')
           if not plan.get('ok'):sys.exit('FAIL: Bot engine returned NO_DATA/ERROR')
+          research_keys=['researchCouncil','researchAdapters','vibeTradingResearch','freqtradeBacktest','llmTradingLab','dayTraderSkill','dailyStockAnalysis','aiHedgeFundResearch']
+          missing_research=[k for k in research_keys if k not in plan]
+          if missing_research:sys.exit('FAIL: research sidecars missing from /api/bot/plan: '+', '.join(missing_research))
+          print('RESEARCH SIDECARS:', ', '.join(research_keys))
           modules=plan.get('modules') or []
           if len(modules)!=11:sys.exit(f'FAIL: expected 11 Bot modules, got {len(modules)}')
           execution=plan.get('execution') or {}
@@ -165,6 +169,8 @@ jobs:
           print('=== BOT DECISION ENDPOINT ===');print(json.dumps(decision,ensure_ascii=False,indent=2))
           if decision_code!=200 or not decision.get('ok') or decision.get('mode')!='PAPER':
               sys.exit('FAIL: /api/bot/decision non disponibile o non PAPER')
+          missing_research=[k for k in research_keys if k not in decision]
+          if missing_research:sys.exit('FAIL: research sidecars missing from /api/bot/decision: '+', '.join(missing_research))
           decision_modules=decision.get('modules') or []
           if len(decision_modules)!=11:
               sys.exit(f'FAIL: /api/bot/decision expected 11 modules, got {len(decision_modules)}')
