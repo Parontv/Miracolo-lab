@@ -33,7 +33,7 @@ try{
     if(u.endsWith('/orders'))return new Response(JSON.stringify({id:'paper-test-order',status:'accepted',symbol:'BTC/USD'}),{status:200});
     throw new Error('unexpected paper URL');
   };
-  await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'BTC/USD',notional:100,clientOrderId:'crypto-paper-test-1'}),/Acquisto crypto automatico disabilitato/);
+  await assert.rejects(()=>executePaperDecision(env,{action:'BUY',symbol:'BTC/USD',notional:100,clientOrderId:'crypto-paper-test-1'}),/PAPER_CRYPTO_SOFTWARE_PROTECTION/);
   const cryptoPaperEnv={...env,PAPER_CRYPTO_SOFTWARE_PROTECTION:'true',PAPER_CRYPTO_NOTIONAL:'50'};
   let cryptoBuySubmitted=0;
   global.fetch=async(url,options={})=>{
