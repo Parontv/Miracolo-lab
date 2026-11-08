@@ -55,8 +55,8 @@ try {
   assert.equal(result.quantitative.provider,'live with mirror fallback');
   assert.equal(result.quantitative.coverage.available,8);
   assert.equal(result.macro.length,8);
-  assert.equal(mirrorSeen.filter(x=>x.includes('fred.stlouisfed.org')).length,8);
-  assert.equal(mirrorSeen.filter(x=>x.includes('api.codetabs.com')).length,8);
+  assert.equal(mirrorSeen.filter(x=>new URL(x).hostname==='fred.stlouisfed.org').length,8);
+  assert.equal(mirrorSeen.filter(x=>new URL(x).hostname==='api.codetabs.com').length,8);
   assert.equal(result.fetches,20);
   assert.ok(result.macro.every(x=>x.freshness==='fresh'));
   assert.ok(result.macro.every(x=>x.provider==='GitHub Actions mirror fallback'));
