@@ -58,3 +58,15 @@ test('stale macro and AI inputs never contribute to consensus',async()=>{
   assert.equal(ai.dataAvailable,false);
   assert.equal(ai.status,'NO_DATA');
 });
+
+test('undated and stale news cannot contribute to market consensus',async()=>{
+  const indices=['SPY','QQQ','IWM','DIA','EFA','XLE','XLI','XLY'].map(ticker=>({ticker,changePct:0}));
+  const state={market:{timestamp:new Date().toISOString(),indices},news:{items:[
+    {title:'Old critical market event',date:'2026-10-01T00:00:00Z',cat:'geopolitics',score:-1},
+    {title:'Undated critical market event',date:null,cat:'geopolitics',score:-1}
+  ]}};
+  const result=await runBot(envWith(state,{}),state);
+  const news=result.modules.find(m=>m.family==='news');
+  assert.equal(news.dataAvailable,false);
+  assert.equal(news.status,'NO_DATA');
+});
